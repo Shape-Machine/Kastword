@@ -14,7 +14,7 @@ set(CMAKE_AUTORCC ON)
 include(FetchContent)
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
-find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Quick QuickControls2 Multimedia Concurrent)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Core DBus Gui Widgets Quick QuickControls2 Multimedia Concurrent)
 find_package(KF6 REQUIRED COMPONENTS Config CoreAddons DBusAddons GlobalAccel I18n Kirigami Notifications StatusNotifierItem)
 
 option(KASTWORD_FETCH_WHISPER "Download the pinned whisper.cpp dependency" ON)
@@ -68,7 +68,7 @@ qt_add_qml_module(kastword
 )
 
 target_link_libraries(kastword PRIVATE
-    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent
+    Qt6::Core Qt6::DBus Qt6::Gui Qt6::Widgets Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent
     KF6::ConfigCore KF6::CoreAddons KF6::DBusAddons KF6::GlobalAccel KF6::I18n
     KF6::I18nQml KF6::Kirigami KF6::Notifications KF6::StatusNotifierItem whisper)
 
@@ -93,7 +93,7 @@ if(BUILD_TESTING)
         src/TextOutput.cpp
         src/TextOutput.h)
     target_include_directories(kastword_textoutput_test PRIVATE src)
-    target_link_libraries(kastword_textoutput_test PRIVATE Qt6::Core Qt6::Gui Qt6::Test)
+    target_link_libraries(kastword_textoutput_test PRIVATE Qt6::Core Qt6::DBus Qt6::Gui Qt6::Test)
     add_test(NAME text-output COMMAND kastword_textoutput_test)
     set_tests_properties(text-output PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
