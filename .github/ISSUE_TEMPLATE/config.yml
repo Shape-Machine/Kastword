@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Sri Rang
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Shape-Machine/Kastword/security/advisories/new
+    about: Report security issues privately rather than opening a public issue.

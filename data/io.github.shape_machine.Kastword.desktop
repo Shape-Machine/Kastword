@@ -1,10 +1,12 @@
+# SPDX-FileCopyrightText: 2026 Sri Rang
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 [Desktop Entry]
 Type=Application
 Name=Kastword
 Comment=Private offline dictation
 Exec=kastword
 Icon=audio-input-microphone
-Categories=Qt;KDE;Utility;Audio;
+Categories=Qt;KDE;Utility;
 StartupNotify=true
 X-KDE-DBUS-Restricted-Interfaces=org.kde.kglobalaccel
-

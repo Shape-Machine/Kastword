@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Sri Rang
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 if(NOT DEFINED OUTPUT OR NOT DEFINED URL OR NOT DEFINED SHA1)
     message(FATAL_ERROR "OUTPUT, URL, and SHA1 are required")
 endif()

@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Sri Rang
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-/build/
-/.cache/
-compile_commands.json
-.kateproject.build
+BasedOnStyle: LLVM
+ColumnLimit: 100
+SortIncludes: CaseSensitive

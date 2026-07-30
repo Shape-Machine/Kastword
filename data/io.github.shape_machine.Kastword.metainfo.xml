@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 Sri Rang
+SPDX-License-Identifier: CC0-1.0
+-->
+<component type="desktop-application">
+  <id>io.github.shape_machine.Kastword</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="io.github.shape_machine">
+    <name>Sri Rang</name>
+    <url>https://github.com/Shape-Machine</url>
+  </developer>
+  <name>Kastword</name>
+  <summary>Private offline dictation for KDE Plasma</summary>
+  <description>
+    <p>Kastword records speech, transcribes it locally with Whisper, and pastes the result into
+    the application you were using. Dictated audio and text are not sent to a cloud service.</p>
+  </description>
+  <launchable type="desktop-id">io.github.shape_machine.Kastword.desktop</launchable>
+  <provides><binary>kastword</binary></provides>
+  <url type="homepage">https://github.com/Shape-Machine/Kastword</url>
+  <url type="bugtracker">https://github.com/Shape-Machine/Kastword/issues</url>
+  <content_rating type="oars-1.1" />
+</component>

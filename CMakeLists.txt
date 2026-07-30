@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Sri Rang
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 cmake_minimum_required(VERSION 3.24)
 project(kastword VERSION 0.1.0 LANGUAGES C CXX)
 
@@ -12,7 +15,7 @@ include(FetchContent)
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 find_package(Qt6 6.6 REQUIRED COMPONENTS Core Gui Widgets Quick QuickControls2 Multimedia Concurrent)
-find_package(KF6 REQUIRED COMPONENTS Config CoreAddons GlobalAccel I18n Notifications StatusNotifierItem)
+find_package(KF6 REQUIRED COMPONENTS Config CoreAddons DBusAddons GlobalAccel I18n Kirigami Notifications StatusNotifierItem)
 
 option(KASTWORD_FETCH_WHISPER "Download the pinned whisper.cpp dependency" ON)
 option(KASTWORD_FETCH_DEFAULT_MODEL "Download the default English Whisper model" ON)
@@ -20,9 +23,10 @@ if(KASTWORD_FETCH_WHISPER)
     set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(WHISPER_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     FetchContent_Declare(whisper
         GIT_REPOSITORY https://github.com/ggml-org/whisper.cpp.git
-        GIT_TAG v1.8.1
+        GIT_TAG a91dd3be72f70dd1b3cb6e252f35fa17b93f596c
         GIT_SHALLOW TRUE)
     FetchContent_MakeAvailable(whisper)
 else()
@@ -36,7 +40,7 @@ if(KASTWORD_FETCH_DEFAULT_MODEL)
         OUTPUT "${KASTWORD_DEFAULT_MODEL}"
         COMMAND "${CMAKE_COMMAND}"
             -DOUTPUT=${KASTWORD_DEFAULT_MODEL}
-            -DURL=https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+            -DURL=https://huggingface.co/ggerganov/whisper.cpp/resolve/4496f29dabb6f37d8e6c45c3ec89ccbe66a832ea/ggml-base.en.bin
             -DSHA1=137c40403d78fd54d454da0f9bd998f78703390c
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/DownloadModel.cmake"
         DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/DownloadModel.cmake"
@@ -58,25 +62,38 @@ qt_add_executable(kastword
 )
 
 qt_add_qml_module(kastword
-    URI org.kde.kastword
+    URI io.github.shape_machine.Kastword
     VERSION 1.0
     QML_FILES src/qml/Main.qml
 )
 
 target_link_libraries(kastword PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent
-    KF6::ConfigCore KF6::CoreAddons KF6::GlobalAccel KF6::I18n
-    KF6::Notifications KF6::StatusNotifierItem whisper)
+    KF6::ConfigCore KF6::CoreAddons KF6::DBusAddons KF6::GlobalAccel KF6::I18n
+    KF6::I18nQml KF6::Kirigami KF6::Notifications KF6::StatusNotifierItem whisper)
 
 if(KASTWORD_FETCH_DEFAULT_MODEL)
     add_dependencies(kastword kastword-default-model)
 endif()
 
-install(TARGETS kastword RUNTIME DESTINATION bin)
-install(FILES data/org.kde.kastword.desktop DESTINATION share/applications)
-install(FILES data/org.kde.kastword.metainfo.xml DESTINATION share/metainfo)
+install(TARGETS kastword RUNTIME DESTINATION bin COMPONENT Kastword)
+install(FILES data/io.github.shape_machine.Kastword.desktop DESTINATION share/applications COMPONENT Kastword)
+install(FILES data/io.github.shape_machine.Kastword.metainfo.xml DESTINATION share/metainfo COMPONENT Kastword)
+install(FILES README.md THIRD_PARTY_NOTICES.md LICENSES/GPL-3.0-or-later.txt
+        DESTINATION share/doc/kastword COMPONENT Kastword)
 if(KASTWORD_FETCH_DEFAULT_MODEL)
-    install(FILES "${KASTWORD_DEFAULT_MODEL}" DESTINATION share/kastword/models)
+    install(FILES "${KASTWORD_DEFAULT_MODEL}" DESTINATION share/kastword/models COMPONENT Kastword)
 endif()
 
 include(CTest)
+if(BUILD_TESTING)
+    find_package(Qt6 6.6 REQUIRED COMPONENTS Test)
+    add_executable(kastword_textoutput_test
+        tests/TextOutputTest.cpp
+        src/TextOutput.cpp
+        src/TextOutput.h)
+    target_include_directories(kastword_textoutput_test PRIVATE src)
+    target_link_libraries(kastword_textoutput_test PRIVATE Qt6::Core Qt6::Gui Qt6::Test)
+    add_test(NAME text-output COMMAND kastword_textoutput_test)
+    set_tests_properties(text-output PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()

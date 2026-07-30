@@ -1,3 +1,8 @@
+// SPDX-FileCopyrightText: 2026 Sri Rang
+// SPDX-License-Identifier: GPL-3.0-or-later
+// qmllint disable unqualified
+// KLocalizedQmlContext and AppController intentionally expose context properties.
+
 import QtQuick
 import QtQuick.Controls as Controls
 import QtQuick.Layouts
