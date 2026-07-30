@@ -1,0 +1,157 @@
+#include "AppController.h"
+
+#include "WhisperEngine.h"
+#include <KConfigGroup>
+#include <KGlobalAccel>
+#include <KNotification>
+#include <QFutureWatcher>
+#include <QCoreApplication>
+#include <QFileInfo>
+#include <QStandardPaths>
+#include <QtConcurrent>
+
+namespace {
+QString findDefaultModel()
+{
+    const QString fileName = QStringLiteral("ggml-base.en.bin");
+    const QString applicationDirectory = QCoreApplication::applicationDirPath();
+    const QStringList candidates = {
+        applicationDirectory + QStringLiteral("/models/") + fileName,
+        applicationDirectory + QStringLiteral("/../share/kastword/models/") + fileName,
+        QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
+            + QStringLiteral("/models/") + fileName,
+        QStringLiteral("/usr/share/kastword/models/") + fileName,
+        QStringLiteral("/usr/local/share/kastword/models/") + fileName,
+    };
+    for (const QString &candidate : candidates) {
+        const QFileInfo info(candidate);
+        if (info.isFile() && info.isReadable())
+            return info.canonicalFilePath();
+    }
+    return {};
+}
+}
+
+AppController::AppController(QObject *parent)
+    : QObject(parent), m_audio(this), m_output(this), m_config(QStringLiteral("kastwordrc")),
+      m_shortcut(tr("Toggle dictation"), this)
+{
+    const KConfigGroup group(&m_config, QStringLiteral("General"));
+    m_modelPath = group.readEntry("ModelPath", QString());
+    if (m_modelPath.isEmpty() || !QFileInfo(m_modelPath).isFile())
+        m_modelPath = findDefaultModel();
+    m_language = group.readEntry("Language", QStringLiteral("en"));
+    m_autoPaste = group.readEntry("AutoPaste", true);
+
+    m_shortcut.setObjectName(QStringLiteral("toggle-dictation"));
+    const QList<QKeySequence> shortcut = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
+    KGlobalAccel::self()->setDefaultShortcut(&m_shortcut, shortcut);
+    // Force migration away from Meta+D, which conflicts with Plasma's Show Desktop action.
+    KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut, KGlobalAccel::NoAutoloading);
+    connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
+    connect(&m_audio, &AudioCapture::levelChanged, this, [this](qreal value) {
+        m_level = value;
+        emit levelChanged();
+    });
+}
+
+void AppController::setModelPath(const QString &value)
+{
+    if (m_modelPath == value)
+        return;
+    m_modelPath = value;
+    saveSettings();
+    emit modelPathChanged();
+}
+
+void AppController::setLanguage(const QString &value)
+{
+    if (m_language == value)
+        return;
+    m_language = value;
+    saveSettings();
+    emit languageChanged();
+}
+
+void AppController::setAutoPaste(bool value)
+{
+    if (m_autoPaste == value)
+        return;
+    m_autoPaste = value;
+    saveSettings();
+    emit autoPasteChanged();
+}
+
+void AppController::toggle()
+{
+    if (m_state == QStringLiteral("transcribing")) {
+        setStatus(tr("Transcription is already in progress."));
+        return;
+    }
+    if (m_audio.isRecording()) {
+        QByteArray audio = m_audio.stop();
+        setState(QStringLiteral("transcribing"));
+        setStatus(tr("Transcribing locally…"));
+        transcribe(std::move(audio));
+        return;
+    }
+
+    QString error;
+    if (!m_audio.start(&error)) {
+        setStatus(error);
+        KNotification::event(KNotification::Error, tr("Kastword"), error);
+        return;
+    }
+    setState(QStringLiteral("recording"));
+    setStatus(tr("Listening — press Meta+Shift+D to finish."));
+}
+
+void AppController::transcribe(QByteArray audio)
+{
+    auto *watcher = new QFutureWatcher<QPair<QString, QString>>(this);
+    connect(watcher, &QFutureWatcherBase::finished, this, [this, watcher] {
+        const auto [text, error] = watcher->result();
+        watcher->deleteLater();
+        setState(QStringLiteral("idle"));
+        if (!error.isEmpty()) {
+            setStatus(error);
+            KNotification::event(KNotification::Error, tr("Transcription failed"), error);
+            return;
+        }
+        m_transcript = text;
+        emit transcriptChanged();
+        const QString delivery = m_output.deliver(text, m_autoPaste);
+        setStatus(delivery);
+        KNotification::event(KNotification::Notification, tr("Dictation complete"), delivery);
+    });
+    const QString model = m_modelPath;
+    const QString languageCode = m_language;
+    watcher->setFuture(QtConcurrent::run([audio = std::move(audio), model, languageCode] {
+        QString error;
+        QString text = WhisperEngine::transcribe(audio, model, languageCode, &error);
+        return qMakePair(text, error);
+    }));
+}
+
+void AppController::setState(const QString &value)
+{
+    if (m_state == value)
+        return;
+    m_state = value;
+    emit stateChanged();
+}
+
+void AppController::setStatus(const QString &value)
+{
+    m_status = value;
+    emit statusChanged();
+}
+
+void AppController::saveSettings()
+{
+    KConfigGroup group(&m_config, QStringLiteral("General"));
+    group.writeEntry("ModelPath", m_modelPath);
+    group.writeEntry("Language", m_language);
+    group.writeEntry("AutoPaste", m_autoPaste);
+    group.sync();
+}

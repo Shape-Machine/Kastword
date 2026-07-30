@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Kastword
+Comment=Private offline dictation
+Exec=kastword
+Icon=audio-input-microphone
+Categories=Qt;KDE;Utility;Audio;
+StartupNotify=true
+X-KDE-DBUS-Restricted-Interfaces=org.kde.kglobalaccel
+

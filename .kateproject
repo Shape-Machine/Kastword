@@ -1,0 +1,35 @@
+{
+    "name": "Kastword",
+    "files": [
+        {
+            "git": 1
+        }
+    ],
+    "build": {
+        "directory": ".",
+        "default_target": "Build",
+        "clean_target": "Clean",
+        "targets": [
+            {
+                "name": "Build",
+                "build_cmd": "make"
+            },
+            {
+                "name": "Run",
+                "build_cmd": "make",
+                "run_cmd": "./build/kastword"
+            },
+            {
+                "name": "Test",
+                "build_cmd": "make test"
+            },
+            {
+                "name": "Clean",
+                "build_cmd": "make clean"
+            }
+        ]
+    },
+    "ctags": {
+        "enable": true
+    }
+}
