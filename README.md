@@ -195,8 +195,6 @@ Roadmap items are intentions, not promised dates.
 The following tasks require decisions, accounts, credentials, or creative assets from the owner:
 
 - [ ] Confirm that “Kastword” is acceptable from a naming and trademark perspective.
-- [ ] Decide whether `srirangan@gmail.com` should remain visible in existing Git commit metadata;
-      rewrite history before the first push if not.
 - [ ] Capture a screenshot and short demo showing dictation into KWrite and Konsole.
 - [ ] Create a project icon and GitHub social-preview image with confirmed licensing.
 - [ ] Confirm the tested Plasma, Qt, KDE Frameworks, CachyOS, and hardware versions.
