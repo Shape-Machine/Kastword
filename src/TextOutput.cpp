@@ -9,7 +9,13 @@ TextOutput::TextOutput(QObject *parent) : QObject(parent) {}
 
 QString TextOutput::deliver(const QString &text, bool autoPaste)
 {
-    QGuiApplication::clipboard()->setText(text);
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    clipboard->setText(text, QClipboard::Clipboard);
+    // Terminal emulators commonly map Shift+Insert to the primary selection,
+    // while regular applications map it to the clipboard. Keep both buffers in
+    // sync so the cross-application paste shortcut cannot insert stale text.
+    if (clipboard->supportsSelection())
+        clipboard->setText(text, QClipboard::Selection);
     if (!autoPaste)
         return tr("Copied to clipboard.");
 
