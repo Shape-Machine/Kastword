@@ -17,7 +17,10 @@
 int main(int argc, char **argv) {
   QApplication app(argc, argv);
   QApplication::setOrganizationDomain(QStringLiteral("shape_machine.github.io"));
-  QApplication::setApplicationName(QStringLiteral("Kastword"));
+  // Keep the internal component name identical to the executable name. KGlobalAccel uses this
+  // value as its persistent identifier, while the separately configured display name remains
+  // the user-facing, capitalized "Kastword".
+  QApplication::setApplicationName(QStringLiteral("kastword"));
   QApplication::setApplicationDisplayName(QStringLiteral("Kastword"));
   QApplication::setQuitOnLastWindowClosed(false);
   KLocalizedString::setApplicationDomain("kastword");

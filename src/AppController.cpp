@@ -50,6 +50,14 @@ AppController::AppController(QObject *parent)
 
   m_shortcut.setObjectName(QStringLiteral("toggle-dictation"));
   const QList<QKeySequence> shortcut = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
+  if (!group.readEntry("GlobalAccelComponentIdentityV2", false)) {
+    // An earlier build used the display name as the component ID, creating a second registration
+    // that competed with the executable's stable lowercase ID. Remove that duplicate once.
+    KGlobalAccel::cleanComponent(QStringLiteral("Kastword"));
+    KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
+    writableGroup.writeEntry("GlobalAccelComponentIdentityV2", true);
+    writableGroup.sync();
+  }
   KGlobalAccel::self()->setDefaultShortcut(&m_shortcut, shortcut);
   if (!group.readEntry("ShortcutMigratedToMetaShiftD", false)) {
     // Migrate the original conflicting Meta+D default exactly once, then preserve user changes.
