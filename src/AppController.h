@@ -18,6 +18,8 @@ class AppController final : public QObject
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
     Q_PROPERTY(bool autoPaste READ autoPaste WRITE setAutoPaste NOTIFY autoPasteChanged)
     Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
+    Q_PROPERTY(int overlayX READ overlayX NOTIFY overlayPositionChanged)
+    Q_PROPERTY(int overlayY READ overlayY NOTIFY overlayPositionChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -28,6 +30,8 @@ public:
     QString language() const { return m_language; }
     bool autoPaste() const { return m_autoPaste; }
     qreal level() const { return m_level; }
+    int overlayX() const { return m_overlayX; }
+    int overlayY() const { return m_overlayY; }
 
     void setModelPath(const QString &value);
     void setLanguage(const QString &value);
@@ -44,12 +48,14 @@ signals:
     void languageChanged();
     void autoPasteChanged();
     void levelChanged();
+    void overlayPositionChanged();
 
 private:
     void setState(const QString &value);
     void setStatus(const QString &value);
     void saveSettings();
     void transcribe(QByteArray audio);
+    void updateOverlayPosition();
 
     AudioCapture m_audio;
     TextOutput m_output;
@@ -62,4 +68,6 @@ private:
     QString m_language = QStringLiteral("en");
     bool m_autoPaste = true;
     qreal m_level = 0.0;
+    int m_overlayX = 0;
+    int m_overlayY = 0;
 };

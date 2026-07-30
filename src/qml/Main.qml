@@ -10,8 +10,69 @@ Kirigami.ApplicationWindow {
     height: 520
     minimumWidth: 420
     minimumHeight: 420
-    visible: true
+    visible: false
     title: i18n("Kastword")
+
+    Window {
+        id: dictationIndicator
+        width: 300
+        height: 68
+        x: appController.overlayX
+        y: appController.overlayY
+        visible: appController.state !== "idle"
+        transientParent: null
+        color: "transparent"
+        flags: Qt.ToolTip | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+               | Qt.WindowDoesNotAcceptFocus
+
+        Rectangle {
+            anchors.fill: parent
+            radius: height / 2
+            color: Kirigami.Theme.backgroundColor
+            border.width: 1
+            border.color: appController.state === "recording"
+                          ? Kirigami.Theme.negativeTextColor
+                          : Kirigami.Theme.highlightColor
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: Kirigami.Units.largeSpacing
+                anchors.rightMargin: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.largeSpacing
+
+                Kirigami.Icon {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    source: appController.state === "recording" ? "media-record"
+                          : appController.state === "success" ? "dialog-ok-apply"
+                          : "view-refresh"
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Controls.Label {
+                        Layout.fillWidth: true
+                        text: appController.state === "recording" ? i18n("Listening…")
+                            : appController.state === "success" ? i18n("Pasted")
+                            : i18n("Transcribing locally…")
+                        font.bold: true
+                    }
+
+                    Controls.ProgressBar {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 5
+                        from: 0
+                        to: 1
+                        value: appController.level
+                        indeterminate: appController.state === "transcribing"
+                        visible: appController.state !== "success"
+                    }
+                }
+            }
+        }
+    }
 
     FileDialog {
         id: modelDialog

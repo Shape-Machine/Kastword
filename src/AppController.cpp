@@ -6,8 +6,12 @@
 #include <KNotification>
 #include <QFutureWatcher>
 #include <QCoreApplication>
+#include <QCursor>
 #include <QFileInfo>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QtConcurrent>
 
 namespace {
@@ -112,8 +116,8 @@ void AppController::transcribe(QByteArray audio)
     connect(watcher, &QFutureWatcherBase::finished, this, [this, watcher] {
         const auto [text, error] = watcher->result();
         watcher->deleteLater();
-        setState(QStringLiteral("idle"));
         if (!error.isEmpty()) {
+            setState(QStringLiteral("idle"));
             setStatus(error);
             KNotification::event(KNotification::Error, tr("Transcription failed"), error);
             return;
@@ -122,7 +126,11 @@ void AppController::transcribe(QByteArray audio)
         emit transcriptChanged();
         const QString delivery = m_output.deliver(text, m_autoPaste);
         setStatus(delivery);
-        KNotification::event(KNotification::Notification, tr("Dictation complete"), delivery);
+        setState(QStringLiteral("success"));
+        QTimer::singleShot(1200, this, [this] {
+            if (m_state == QStringLiteral("success"))
+                setState(QStringLiteral("idle"));
+        });
     });
     const QString model = m_modelPath;
     const QString languageCode = m_language;
@@ -138,7 +146,26 @@ void AppController::setState(const QString &value)
     if (m_state == value)
         return;
     m_state = value;
+    if (value != QStringLiteral("idle"))
+        updateOverlayPosition();
     emit stateChanged();
+}
+
+void AppController::updateOverlayPosition()
+{
+    QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
+    if (!screen)
+        screen = QGuiApplication::primaryScreen();
+    if (!screen)
+        return;
+
+    constexpr int overlayWidth = 300;
+    constexpr int overlayHeight = 68;
+    constexpr int bottomMargin = 48;
+    const QRect available = screen->availableGeometry();
+    m_overlayX = available.x() + (available.width() - overlayWidth) / 2;
+    m_overlayY = available.y() + available.height() - overlayHeight - bottomMargin;
+    emit overlayPositionChanged();
 }
 
 void AppController::setStatus(const QString &value)

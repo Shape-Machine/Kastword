@@ -8,6 +8,7 @@ pastes it into the previously focused application.
 ## MVP features
 
 - KDE global shortcut and system tray integration
+- tray-hidden startup with recording, transcription, and success indicators
 - Qt Multimedia microphone capture
 - fully local Whisper transcription
 - clipboard output
