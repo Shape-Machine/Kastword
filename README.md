@@ -86,18 +86,17 @@ does not.
 To install for the current user:
 
 ```sh
-make install PREFIX="$HOME/.local"
+make install
 ```
 
-Remove the installed files with:
+This installs the application, desktop launcher, and default model below `~/.local`, then refreshes
+Plasma's application database. Launch Kastword from the application menu; `make run` is not needed.
+Set `PREFIX` explicitly to install somewhere else.
+
+To uninstall:
 
 ```sh
-rm "$HOME/.local/bin/kastword" \
-   "$HOME/.local/share/applications/io.github.shape_machine.Kastword.desktop" \
-   "$HOME/.local/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml" \
-   "$HOME/.local/share/kastword/models/ggml-base.en.bin" \
-   "$HOME/.local/share/doc/kastword/README.md" \
-   "$HOME/.local/share/doc/kastword/GPL-3.0-or-later.txt"
+make uninstall
 ```
 
 The application ID is `io.github.shape_machine.Kastword`; the underscore follows D-Bus guidance

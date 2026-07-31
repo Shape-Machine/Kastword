@@ -61,7 +61,7 @@ jobs:
       - name: Validate desktop metadata
         run: |
           appstreamcli validate --no-net data/io.github.shape_machine.Kastword.metainfo.xml
-          desktop-file-validate data/io.github.shape_machine.Kastword.desktop
+          desktop-file-validate build/io.github.shape_machine.Kastword.desktop
 
       - name: Validate QML
         run: /usr/lib/qt6/bin/qmllint -I build -I /usr/lib/qt6/qml src/qml/Main.qml

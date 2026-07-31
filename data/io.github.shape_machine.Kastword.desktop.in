@@ -5,7 +5,7 @@
 Type=Application
 Name=Kastword
 Comment=Private offline dictation
-Exec=kastword
+Exec="@CMAKE_INSTALL_FULL_BINDIR@/kastword"
 Icon=audio-input-microphone
 Categories=Qt;KDE;Utility;
 StartupNotify=true

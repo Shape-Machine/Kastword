@@ -12,6 +12,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 include(FetchContent)
+include(GNUInstallDirs)
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 find_package(Qt6 6.6 REQUIRED COMPONENTS Core DBus Gui Widgets Quick QuickControls2 Multimedia Concurrent)
@@ -64,9 +65,11 @@ qt_add_executable(kastword
     src/TextOutput.h
 )
 
+set_source_files_properties(src/qml/Main.qml PROPERTIES QT_RESOURCE_ALIAS Main.qml)
 qt_add_qml_module(kastword
     URI io.github.shape_machine.Kastword
     VERSION 1.0
+    RESOURCE_PREFIX /qt/qml
     QML_FILES src/qml/Main.qml
 )
 
@@ -87,8 +90,12 @@ if(KASTWORD_FETCH_DEFAULT_MODEL)
     add_dependencies(kastword kastword-default-model)
 endif()
 
-install(TARGETS kastword RUNTIME DESTINATION bin COMPONENT Kastword)
-install(FILES data/io.github.shape_machine.Kastword.desktop DESTINATION share/applications COMPONENT Kastword)
+configure_file(data/io.github.shape_machine.Kastword.desktop.in
+    ${CMAKE_CURRENT_BINARY_DIR}/io.github.shape_machine.Kastword.desktop @ONLY)
+
+install(TARGETS kastword RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Kastword)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.shape_machine.Kastword.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications COMPONENT Kastword)
 install(FILES data/io.github.shape_machine.Kastword.metainfo.xml DESTINATION share/metainfo COMPONENT Kastword)
 install(FILES README.md LICENSES/GPL-3.0-or-later.txt
         DESTINATION share/doc/kastword COMPONENT Kastword)
