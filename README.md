@@ -16,7 +16,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 Kastword records speech, transcribes it locally with `whisper.cpp`, and pastes the result into the
 application you were using. No dictated audio or text is sent to a cloud service. Launch Kastword
-manually and it stays out of the way in the system tray until you press **Meta+Shift+D**.
+manually and it stays out of the way in the system tray until you press **Meta+Z**.
 
 Kastword is an independent project built with KDE technology; it is not currently an official KDE
 project or endorsed by KDE e.V.
@@ -120,8 +120,8 @@ the model download is useful for CI and UI development.
 
 1. Start Kastword. It launches hidden in the system tray.
 2. Focus the text field or terminal where the result should go.
-3. Press **Meta+Shift+D** and speak.
-4. Press **Meta+Shift+D** again.
+3. Press **Meta+Z** and speak.
+4. Press **Meta+Z** again.
 5. Kastword transcribes locally, updates the clipboard, and pastes when a helper is available.
 
 Click the tray icon to open or hide the settings window. The tray menu can start or stop
@@ -142,7 +142,7 @@ may retain data independently of Kastword. Review their settings when dictating 
 
 ## Known limitations
 
-- The shortcut is currently fixed to Meta+Shift+D in Kastword's UI, though KDE can manage it.
+- The shortcut is currently fixed to Meta+Z in Kastword's UI, though KDE can manage it.
 - The model is loaded for every transcription, increasing latency.
 - English `base.en` is the only model fetched automatically.
 - Paste reliability depends on the session, helper, and target application.

@@ -8,11 +8,8 @@
 #include <KGlobalAccel>
 #include <KNotification>
 #include <QCoreApplication>
-#include <QCursor>
 #include <QFileInfo>
 #include <QFutureWatcher>
-#include <QGuiApplication>
-#include <QScreen>
 #include <QStandardPaths>
 #include <QTimer>
 #include <QtConcurrent>
@@ -49,7 +46,7 @@ AppController::AppController(QObject *parent)
   m_autoPaste = group.readEntry("AutoPaste", true);
 
   m_shortcut.setObjectName(QStringLiteral("toggle-dictation"));
-  const QList<QKeySequence> shortcut = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
+  const QList<QKeySequence> shortcut = {QKeySequence(QStringLiteral("Meta+Z"))};
   if (!group.readEntry("GlobalAccelComponentIdentityV2", false)) {
     // An earlier build used the display name as the component ID, creating a second registration
     // that competed with the executable's stable lowercase ID. Remove that duplicate once.
@@ -59,14 +56,17 @@ AppController::AppController(QObject *parent)
     writableGroup.sync();
   }
   KGlobalAccel::self()->setDefaultShortcut(&m_shortcut, shortcut);
-  if (!group.readEntry("ShortcutMigratedToMetaShiftD", false)) {
-    // Migrate the original conflicting Meta+D default exactly once, then preserve user changes.
-    KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut, KGlobalAccel::NoAutoloading);
+  KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut);
+  if (!group.readEntry("ShortcutMigratedToMetaZ", false)) {
+    const QList<QKeySequence> currentShortcut = KGlobalAccel::self()->shortcut(&m_shortcut);
+    const QList<QKeySequence> previousDefault = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
+    const QList<QKeySequence> originalDefault = {QKeySequence(QStringLiteral("Meta+D"))};
+    // Update only Kastword's former defaults. An empty or different shortcut is a user choice.
+    if (currentShortcut == previousDefault || currentShortcut == originalDefault)
+      KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut, KGlobalAccel::NoAutoloading);
     KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
-    writableGroup.writeEntry("ShortcutMigratedToMetaShiftD", true);
+    writableGroup.writeEntry("ShortcutMigratedToMetaZ", true);
     writableGroup.sync();
-  } else {
-    KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut);
   }
   connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
   connect(&m_audio, &AudioCapture::levelChanged, this, [this](qreal value) {
@@ -108,6 +108,8 @@ void AppController::toggle() {
     QByteArray audio = m_audio.stop();
     setState(QStringLiteral("transcribing"));
     setStatus(tr("Transcribing locally…"));
+    showStatusNotification(tr("Kastword"), tr("Transcribing locally…"),
+                           QStringLiteral("view-refresh"), true);
     transcribe(std::move(audio));
     return;
   }
@@ -119,7 +121,9 @@ void AppController::toggle() {
     return;
   }
   setState(QStringLiteral("recording"));
-  setStatus(tr("Listening — press Meta+Shift+D to finish."));
+  setStatus(tr("Listening — press Meta+Z to finish."));
+  showStatusNotification(tr("Dictation started"), tr("Press Meta+Z again to stop."),
+                         QStringLiteral("media-record"), true);
 }
 
 void AppController::transcribe(QByteArray audio) {
@@ -130,6 +134,8 @@ void AppController::transcribe(QByteArray audio) {
     if (!error.isEmpty()) {
       setState(QStringLiteral("idle"));
       setStatus(error);
+      if (m_statusNotification)
+        m_statusNotification->close();
       KNotification::event(KNotification::Error, tr("Transcription failed"), error);
       return;
     }
@@ -138,6 +144,7 @@ void AppController::transcribe(QByteArray audio) {
     const QString delivery = m_output.deliver(text, m_autoPaste);
     setStatus(delivery);
     setState(QStringLiteral("success"));
+    showStatusNotification(tr("Dictation complete"), delivery, QStringLiteral("dialog-ok-apply"));
     QTimer::singleShot(1200, this, [this] {
       if (m_state == QStringLiteral("success"))
         setState(QStringLiteral("idle"));
@@ -156,25 +163,16 @@ void AppController::setState(const QString &value) {
   if (m_state == value)
     return;
   m_state = value;
-  if (value != QStringLiteral("idle"))
-    updateOverlayPosition();
   emit stateChanged();
 }
 
-void AppController::updateOverlayPosition() {
-  QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
-  if (!screen)
-    screen = QGuiApplication::primaryScreen();
-  if (!screen)
-    return;
-
-  constexpr int overlayWidth = 300;
-  constexpr int overlayHeight = 68;
-  constexpr int bottomMargin = 48;
-  const QRect available = screen->availableGeometry();
-  m_overlayX = available.x() + (available.width() - overlayWidth) / 2;
-  m_overlayY = available.y() + available.height() - overlayHeight - bottomMargin;
-  emit overlayPositionChanged();
+void AppController::showStatusNotification(const QString &title, const QString &text,
+                                           const QString &iconName, bool persistent) {
+  if (m_statusNotification)
+    m_statusNotification->close();
+  const auto flags = persistent ? KNotification::Persistent : KNotification::CloseOnTimeout;
+  m_statusNotification =
+      KNotification::event(KNotification::Notification, title, text, iconName, flags);
 }
 
 void AppController::setStatus(const QString &value) {

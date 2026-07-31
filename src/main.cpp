@@ -6,6 +6,7 @@
 #include <KDBusService>
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
+#include <KNotification>
 #include <KStatusNotifierItem>
 #include <QAction>
 #include <QApplication>
@@ -39,7 +40,7 @@ int main(int argc, char **argv) {
   tray.setIconByName(QStringLiteral("audio-input-microphone"));
   tray.setTitle(QStringLiteral("Kastword"));
   tray.setToolTip(QStringLiteral("audio-input-microphone"), QStringLiteral("Kastword"),
-                  QStringLiteral("Offline dictation — Meta+Shift+D"));
+                  QStringLiteral("Offline dictation — Meta+Z"));
 
   QMenu trayMenu;
   QAction openAction(QStringLiteral("Open Kastword"), &trayMenu);
@@ -92,6 +93,10 @@ int main(int argc, char **argv) {
                      tray.setToolTip(QStringLiteral("audio-input-microphone"),
                                      QStringLiteral("Kastword"), controller.status());
                    });
+
+  KNotification::event(KNotification::Notification, QStringLiteral("Kastword is ready"),
+                       QStringLiteral("Running in the system tray. Press Meta+Z to dictate."),
+                       QStringLiteral("audio-input-microphone"), KNotification::CloseOnTimeout);
 
   return app.exec();
 }
