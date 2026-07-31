@@ -15,7 +15,7 @@ include(FetchContent)
 include(GNUInstallDirs)
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
-find_package(Qt6 6.6 REQUIRED COMPONENTS Core DBus Gui Widgets Quick QuickControls2 Multimedia Concurrent)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Core DBus Gui Widgets Quick QuickControls2 Multimedia)
 find_package(KF6 REQUIRED COMPONENTS Config CoreAddons DBusAddons GlobalAccel I18n Kirigami Notifications StatusNotifierItem)
 
 option(KASTWORD_FETCH_WHISPER "Download the pinned whisper.cpp dependency" ON)
@@ -66,6 +66,8 @@ qt_add_executable(kastword
     src/WhisperEngine.h
     src/TextOutput.cpp
     src/TextOutput.h
+    src/TranscriptionWorker.cpp
+    src/TranscriptionWorker.h
 )
 
 set_source_files_properties(src/qml/Main.qml PROPERTIES QT_RESOURCE_ALIAS Main.qml)
@@ -78,7 +80,7 @@ qt_add_qml_module(kastword
 )
 
 target_link_libraries(kastword PRIVATE
-    Qt6::Core Qt6::DBus Qt6::Gui Qt6::Widgets Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent
+    Qt6::Core Qt6::DBus Qt6::Gui Qt6::Widgets Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia
     KF6::ConfigCore KF6::CoreAddons KF6::DBusAddons KF6::GlobalAccel KF6::I18n
     KF6::I18nQml KF6::Kirigami KF6::Notifications KF6::StatusNotifierItem whisper)
 
@@ -154,11 +156,13 @@ if(BUILD_TESTING)
         src/ModelLocator.h
         src/TextOutput.cpp
         src/TextOutput.h
+        src/TranscriptionWorker.cpp
+        src/TranscriptionWorker.h
         src/WhisperEngine.cpp
         src/WhisperEngine.h)
     target_include_directories(kastword_controller_test PRIVATE src)
     target_link_libraries(kastword_controller_test PRIVATE
-        Qt6::Concurrent Qt6::Core Qt6::DBus Qt6::Gui Qt6::Multimedia Qt6::Test Qt6::Widgets
+        Qt6::Core Qt6::DBus Qt6::Gui Qt6::Multimedia Qt6::Test Qt6::Widgets
         KF6::ConfigCore KF6::GlobalAccel KF6::Notifications whisper)
     kastword_enable_coverage(kastword_controller_test)
     kastword_enable_sanitizers(kastword_controller_test)

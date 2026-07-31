@@ -10,10 +10,9 @@
 #include <KNotification>
 #include <QCoreApplication>
 #include <QFileInfo>
-#include <QFutureWatcher>
 #include <QStandardPaths>
 #include <QTimer>
-#include <QtConcurrent>
+#include <memory>
 
 namespace {
 constexpr auto defaultShortcut = "Meta+Z";
@@ -35,27 +34,35 @@ QString findDefaultModel() {
 
 AppController::AppController(QObject *parent)
     : AppController(
-          new AudioCapture, new TextOutput,
-          [](const QByteArray &audio, const QString &model, const QString &language) {
+          std::make_unique<AudioCapture>(), std::make_unique<TextOutput>(),
+          [engine = std::make_shared<WhisperEngine>()](
+              const QByteArray &audio, const QString &model, const QString &language) {
             QString error;
-            const QString text = WhisperEngine::transcribe(audio, model, language, &error);
+            const QString text = engine->transcribe(audio, model, language, &error);
             return qMakePair(text, error);
           },
           true, parent) {}
 
-AppController::AppController(AudioCapture *audio, TextOutput *output, TranscribeFunction transcribe,
+AppController::AppController(std::unique_ptr<AudioCapture> audio,
+                             std::unique_ptr<TextOutput> output, TranscribeFunction transcribe,
                              bool desktopIntegration, QObject *parent)
-    : QObject(parent), m_audio(audio), m_output(output), m_transcribe(std::move(transcribe)),
+    : QObject(parent), m_audio(std::move(audio)), m_output(std::move(output)),
+      m_transcriptionWorker(new TranscriptionWorker(std::move(transcribe))),
       m_desktopIntegration(desktopIntegration), m_config(QStringLiteral("kastwordrc")),
       m_shortcut(tr("Toggle dictation"), this) {
   Q_ASSERT(m_audio);
   Q_ASSERT(m_output);
-  Q_ASSERT(m_transcribe);
-  if (!m_audio->parent())
-    m_audio->setParent(this);
-  if (!m_output->parent())
-    m_output->setParent(this);
+  m_transcriptionWorker->moveToThread(&m_transcriptionThread);
+  connect(&m_transcriptionThread, &QThread::finished, m_transcriptionWorker, &QObject::deleteLater);
+  connect(m_transcriptionWorker, &TranscriptionWorker::finished, this,
+          &AppController::handleTranscriptionFinished);
+  m_transcriptionThread.start();
   initialize();
+}
+
+AppController::~AppController() {
+  m_transcriptionThread.quit();
+  m_transcriptionThread.wait();
 }
 
 void AppController::initialize() {
@@ -92,10 +99,11 @@ void AppController::initialize() {
     }
     connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
   }
-  connect(m_audio, &AudioCapture::levelChanged, this, [this](qreal value) {
+  connect(m_audio.get(), &AudioCapture::levelChanged, this, [this](qreal value) {
     m_level = value;
     emit levelChanged();
   });
+  connect(m_audio.get(), &AudioCapture::captureFailed, this, &AppController::handleCaptureFailure);
   setStatus(tr("Ready — press %1 to dictate.").arg(shortcutText()));
 }
 
@@ -154,37 +162,59 @@ void AppController::toggle() {
 }
 
 void AppController::transcribe(QByteArray audio) {
-  auto *watcher = new QFutureWatcher<QPair<QString, QString>>(this);
-  connect(watcher, &QFutureWatcherBase::finished, this, [this, watcher] {
-    const auto [text, error] = watcher->result();
-    watcher->deleteLater();
-    if (!error.isEmpty()) {
-      setState(State::Idle);
-      setStatus(error);
-      if (m_statusNotification)
-        m_statusNotification->close();
-      if (m_desktopIntegration)
-        KNotification::event(KNotification::Error, tr("Transcription failed"), error);
-      return;
-    }
-    m_transcript = text;
-    emit transcriptChanged();
-    const QString delivery = m_output->deliver(text, m_autoPaste);
-    setStatus(delivery);
-    setState(State::Success);
-    showStatusNotification(tr("Dictation complete"), delivery, QStringLiteral("dialog-ok-apply"));
-    QTimer::singleShot(1200, this, [this] {
-      if (m_state == State::Success)
-        setState(State::Idle);
-    });
-  });
   const QString model = m_modelPath;
   const QString languageCode = m_language;
-  const TranscribeFunction transcribeFunction = m_transcribe;
-  watcher->setFuture(
-      QtConcurrent::run([audio = std::move(audio), model, languageCode, transcribeFunction] {
-        return transcribeFunction(audio, model, languageCode);
-      }));
+  QMetaObject::invokeMethod(
+      m_transcriptionWorker,
+      [worker = m_transcriptionWorker, audio = std::move(audio), model, languageCode]() mutable {
+        worker->transcribe(std::move(audio), model, languageCode);
+      },
+      Qt::QueuedConnection);
+}
+
+void AppController::handleTranscriptionFinished(const QString &text, const QString &error) {
+  if (!error.isEmpty()) {
+    setState(State::Idle);
+    setStatus(error);
+    if (m_statusNotification)
+      m_statusNotification->close();
+    if (m_desktopIntegration)
+      KNotification::event(KNotification::Error, tr("Transcription failed"), error);
+    return;
+  }
+  const QString trimmedText = text.trimmed();
+  if (trimmedText.isEmpty()) {
+    setState(State::Idle);
+    setStatus(tr("No speech detected."));
+    if (m_statusNotification)
+      m_statusNotification->close();
+    return;
+  }
+  m_transcript = trimmedText;
+  emit transcriptChanged();
+  const QString delivery = m_output->deliver(trimmedText, m_autoPaste);
+  setStatus(delivery);
+  setState(State::Success);
+  showStatusNotification(tr("Dictation complete"), delivery, QStringLiteral("dialog-ok-apply"));
+  QTimer::singleShot(1200, this, [this] {
+    if (m_state == State::Success)
+      setState(State::Idle);
+  });
+}
+
+void AppController::handleCaptureFailure(const QString &error) {
+  if (m_state != State::Recording)
+    return;
+  if (!qFuzzyIsNull(m_level)) {
+    m_level = 0.0;
+    emit levelChanged();
+  }
+  setState(State::Idle);
+  setStatus(error);
+  if (m_statusNotification)
+    m_statusNotification->close();
+  if (m_desktopIntegration)
+    KNotification::event(KNotification::Error, tr("Recording failed"), error);
 }
 
 void AppController::setState(State value) {
