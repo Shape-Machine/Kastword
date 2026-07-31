@@ -48,6 +48,7 @@ private slots:
   void rejectsRecordingThatIsTooShort();
   void rejectsMisalignedAudioData();
   void rejectsInvalidWhisperModel();
+  void reusesAndReloadsWhisperModels();
   void convertsEmptyAudio();
   void convertsSampleFormats_data();
   void convertsSampleFormats();
@@ -63,51 +64,93 @@ private slots:
 };
 
 void CoreTest::rejectsMissingWhisperModel() {
+  WhisperEngine engine;
   QString error;
-  const QString text = WhisperEngine::transcribe(QByteArray(1600 * sizeof(float), '\0'),
-                                                 QStringLiteral("/missing/kastword-model.bin"),
-                                                 QStringLiteral("en"), &error);
+  const QString text = engine.transcribe(QByteArray(1600 * sizeof(float), '\0'),
+                                         QStringLiteral("/missing/kastword-model.bin"),
+                                         QStringLiteral("en"), &error);
 
   QVERIFY(text.isEmpty());
   QCOMPARE(error, QStringLiteral("Select a valid Whisper model file."));
 }
 
 void CoreTest::rejectsRecordingThatIsTooShort() {
+  WhisperEngine engine;
   QTemporaryFile model;
   QVERIFY(model.open());
   QString error;
 
-  const QString text = WhisperEngine::transcribe(QByteArray(1599 * sizeof(float), '\0'),
-                                                 model.fileName(), QStringLiteral("en"), &error);
+  const QString text = engine.transcribe(QByteArray(1599 * sizeof(float), '\0'), model.fileName(),
+                                         QStringLiteral("en"), &error);
 
   QVERIFY(text.isEmpty());
   QCOMPARE(error, QStringLiteral("The recording was too short."));
 }
 
 void CoreTest::rejectsMisalignedAudioData() {
+  WhisperEngine engine;
   QTemporaryFile model;
   QVERIFY(model.open());
   QString error;
 
-  const QString text = WhisperEngine::transcribe(QByteArray(1600 * int(sizeof(float)) + 1, '\0'),
-                                                 model.fileName(), QStringLiteral("en"), &error);
+  const QString text = engine.transcribe(QByteArray(1600 * int(sizeof(float)) + 1, '\0'),
+                                         model.fileName(), QStringLiteral("en"), &error);
 
   QVERIFY(text.isEmpty());
   QCOMPARE(error, QStringLiteral("The recording contains invalid audio data."));
 }
 
 void CoreTest::rejectsInvalidWhisperModel() {
+  WhisperEngine engine;
   QTemporaryFile model;
   QVERIFY(model.open());
   model.write("not a whisper model");
   model.flush();
   QString error;
 
-  const QString text = WhisperEngine::transcribe(QByteArray(1600 * sizeof(float), '\0'),
-                                                 model.fileName(), QStringLiteral("en"), &error);
+  const QString text = engine.transcribe(QByteArray(1600 * sizeof(float), '\0'), model.fileName(),
+                                         QStringLiteral("en"), &error);
 
   QVERIFY(text.isEmpty());
   QCOMPARE(error, QStringLiteral("Could not load the Whisper model."));
+}
+
+void CoreTest::reusesAndReloadsWhisperModels() {
+  QTemporaryFile firstModel;
+  QTemporaryFile secondModel;
+  QTemporaryFile invalidModel;
+  QVERIFY(firstModel.open());
+  QVERIFY(secondModel.open());
+  QVERIFY(invalidModel.open());
+  int loads = 0;
+  int frees = 0;
+  {
+    WhisperEngine engine(
+        [&loads, &invalidModel](const QString &path) {
+          ++loads;
+          if (path == invalidModel.fileName())
+            return static_cast<whisper_context *>(nullptr);
+          return reinterpret_cast<whisper_context *>(quintptr(loads));
+        },
+        [&frees](whisper_context *) { ++frees; });
+    QString error;
+
+    QVERIFY(engine.loadModel(firstModel.fileName(), &error));
+    QVERIFY(engine.loadModel(firstModel.fileName(), &error));
+    QCOMPARE(loads, 1);
+    QCOMPARE(frees, 0);
+
+    QVERIFY(!engine.loadModel(invalidModel.fileName(), &error));
+    QCOMPARE(loads, 2);
+    QCOMPARE(frees, 0);
+    QVERIFY(engine.loadModel(firstModel.fileName(), &error));
+    QCOMPARE(loads, 2);
+
+    QVERIFY(engine.loadModel(secondModel.fileName(), &error));
+    QCOMPARE(loads, 3);
+    QCOMPARE(frees, 1);
+  }
+  QCOMPARE(frees, 2);
 }
 
 void CoreTest::convertsEmptyAudio() {

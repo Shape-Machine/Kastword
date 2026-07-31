@@ -21,6 +21,7 @@ public:
 
 signals:
   void levelChanged(qreal level);
+  void captureFailed(const QString &error);
 
 private:
   std::unique_ptr<QAudioSource> m_source;

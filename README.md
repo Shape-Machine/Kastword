@@ -179,7 +179,6 @@ may retain data independently of Kastword. Review their settings when dictating 
 ## Known limitations
 
 - The shortcut is currently fixed to Meta+Z in Kastword's UI, though KDE can manage it.
-- The model is loaded for every transcription, increasing latency.
 - English `base.en` is the only model fetched automatically.
 - Paste reliability depends on the session, helper, and target application.
 - `ydotool` requires privileged input-device access configured outside Kastword.
@@ -226,7 +225,6 @@ plugins. `.kateproject` provides Build, Run, Test, and Clean targets, while CMak
 ## Roadmap
 
 - broader Plasma Wayland/X11 and application compatibility testing
-- lower-latency persistent model loading
 - configurable shortcut and microphone selection
 - improved model management and multilingual workflows
 - reproducible distribution packages and signed binary releases

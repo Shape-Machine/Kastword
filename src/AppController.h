@@ -5,6 +5,7 @@
 
 #include "AudioCapture.h"
 #include "TextOutput.h"
+#include "TranscriptionWorker.h"
 
 #include <KConfig>
 #include <QAction>
@@ -12,7 +13,8 @@
 #include <QPair>
 #include <QPointer>
 #include <QString>
-#include <functional>
+#include <QThread>
+#include <memory>
 
 class KNotification;
 
@@ -34,12 +36,12 @@ public:
   enum class State { Idle, Recording, Transcribing, Success };
   Q_ENUM(State)
 
-  using TranscribeFunction =
-      std::function<QPair<QString, QString>(const QByteArray &, const QString &, const QString &)>;
+  using TranscribeFunction = TranscriptionWorker::TranscribeFunction;
 
   explicit AppController(QObject *parent = nullptr);
-  AppController(AudioCapture *audio, TextOutput *output, TranscribeFunction transcribe,
-                bool desktopIntegration, QObject *parent = nullptr);
+  AppController(std::unique_ptr<AudioCapture> audio, std::unique_ptr<TextOutput> output,
+                TranscribeFunction transcribe, bool desktopIntegration, QObject *parent = nullptr);
+  ~AppController() override;
   State state() const { return m_state; }
   bool isIdle() const { return m_state == State::Idle; }
   bool isRecording() const { return m_state == State::Recording; }
@@ -73,13 +75,16 @@ private:
   void setStatus(const QString &value);
   void saveSettings();
   void transcribe(QByteArray audio);
+  void handleTranscriptionFinished(const QString &text, const QString &error);
+  void handleCaptureFailure(const QString &error);
   void initialize();
   void showStatusNotification(const QString &title, const QString &text, const QString &iconName,
                               bool persistent = false);
 
-  AudioCapture *m_audio;
-  TextOutput *m_output;
-  TranscribeFunction m_transcribe;
+  std::unique_ptr<AudioCapture> m_audio;
+  std::unique_ptr<TextOutput> m_output;
+  QThread m_transcriptionThread;
+  TranscriptionWorker *m_transcriptionWorker;
   bool m_desktopIntegration;
   KConfig m_config;
   QAction m_shortcut;
