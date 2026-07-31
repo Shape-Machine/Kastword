@@ -72,6 +72,7 @@ qt_add_qml_module(kastword
     URI io.github.shape_machine.Kastword
     VERSION 1.0
     RESOURCE_PREFIX /qt/qml
+    NO_IMPORT_SCAN
     QML_FILES src/qml/Main.qml
 )
 
