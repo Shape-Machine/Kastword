@@ -5,6 +5,9 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # Kastword
 
+[![Build](https://github.com/Shape-Machine/Kastword/actions/workflows/ci.yml/badge.svg)](https://github.com/Shape-Machine/Kastword/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/Shape-Machine/Kastword/branch/main/graph/badge.svg)](https://codecov.io/gh/Shape-Machine/Kastword)
+
 **Private, offline dictation built for KDE Plasma.**
 
 > [!WARNING]
@@ -94,7 +97,6 @@ rm "$HOME/.local/bin/kastword" \
    "$HOME/.local/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml" \
    "$HOME/.local/share/kastword/models/ggml-base.en.bin" \
    "$HOME/.local/share/doc/kastword/README.md" \
-   "$HOME/.local/share/doc/kastword/THIRD_PARTY_NOTICES.md" \
    "$HOME/.local/share/doc/kastword/GPL-3.0-or-later.txt"
 ```
 
@@ -177,9 +179,6 @@ Kate users can open the repository directory and enable the Project, Build, and 
 plugins. `.kateproject` provides Build, Run, Test, and Clean targets, while CMake generates
 `build/compile_commands.json` for clangd.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for project policies and dependency attribution.
-
 ## Roadmap
 
 - broader Plasma Wayland/X11 and application compatibility testing
@@ -199,7 +198,7 @@ The following tasks require decisions, accounts, credentials, or creative assets
 - [ ] Create a project icon and GitHub social-preview image with confirmed licensing.
 - [ ] Confirm the tested Plasma, Qt, KDE Frameworks, CachyOS, and hardware versions.
 - [ ] Decide whether to adopt a Code of Conduct and provide a private enforcement contact.
-- [ ] Enable GitHub private vulnerability reporting so `SECURITY.md` has a working channel.
+- [ ] Enable GitHub private vulnerability reporting.
 - [ ] Configure repository description, topics, Issues, labels, and optional Discussions.
 - [ ] Enable secret scanning, push protection, and appropriate GitHub Actions permissions.
 - [ ] Protect `main` and require the CI workflow before merging once collaboration begins.

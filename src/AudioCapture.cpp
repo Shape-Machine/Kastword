@@ -3,13 +3,14 @@
 
 #include "AudioCapture.h"
 
+#include "AudioConversion.h"
+
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <utility>
-#include <vector>
 
 namespace {
 float sampleAt(const char *data, qsizetype index, QAudioFormat::SampleFormat format) {
@@ -84,29 +85,5 @@ QByteArray AudioCapture::stop() {
   m_source.reset();
   emit levelChanged(0.0);
   const QByteArray native = std::exchange(m_audio, {});
-  const qsizetype frames = native.size() / m_format.bytesPerFrame();
-  if (frames <= 0)
-    return {};
-
-  std::vector<float> mono(static_cast<size_t>(frames));
-  for (qsizetype frame = 0; frame < frames; ++frame) {
-    float sum = 0.0F;
-    for (int channel = 0; channel < m_format.channelCount(); ++channel) {
-      const qsizetype sample = frame * m_format.channelCount() + channel;
-      sum += sampleAt(native.constData(), sample, m_format.sampleFormat());
-    }
-    mono[size_t(frame)] = sum / m_format.channelCount();
-  }
-
-  const qsizetype outputFrames = frames * 16000 / m_format.sampleRate();
-  QByteArray output(outputFrames * qsizetype(sizeof(float)), Qt::Uninitialized);
-  auto *destination = reinterpret_cast<float *>(output.data());
-  for (qsizetype i = 0; i < outputFrames; ++i) {
-    const double sourcePosition = double(i) * m_format.sampleRate() / 16000.0;
-    const qsizetype left = std::min<qsizetype>(qsizetype(sourcePosition), frames - 1);
-    const qsizetype right = std::min(left + 1, frames - 1);
-    const float fraction = float(sourcePosition - left);
-    destination[i] = mono[size_t(left)] * (1.0F - fraction) + mono[size_t(right)] * fraction;
-  }
-  return output;
+  return convertAudioForWhisper(native, m_format);
 }

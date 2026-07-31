@@ -19,6 +19,7 @@ find_package(KF6 REQUIRED COMPONENTS Config CoreAddons DBusAddons GlobalAccel I1
 
 option(KASTWORD_FETCH_WHISPER "Download the pinned whisper.cpp dependency" ON)
 option(KASTWORD_FETCH_DEFAULT_MODEL "Download the default English Whisper model" ON)
+option(KASTWORD_ENABLE_COVERAGE "Instrument Kastword targets for test coverage" OFF)
 if(KASTWORD_FETCH_WHISPER)
     set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -53,6 +54,8 @@ qt_add_executable(kastword
     src/main.cpp
     src/AppController.cpp
     src/AppController.h
+    src/AudioConversion.cpp
+    src/AudioConversion.h
     src/AudioCapture.cpp
     src/AudioCapture.h
     src/WhisperEngine.cpp
@@ -72,6 +75,14 @@ target_link_libraries(kastword PRIVATE
     KF6::ConfigCore KF6::CoreAddons KF6::DBusAddons KF6::GlobalAccel KF6::I18n
     KF6::I18nQml KF6::Kirigami KF6::Notifications KF6::StatusNotifierItem whisper)
 
+function(kastword_enable_coverage target)
+    if(KASTWORD_ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${target} PRIVATE --coverage -O0 -g)
+        target_link_options(${target} PRIVATE --coverage)
+    endif()
+endfunction()
+kastword_enable_coverage(kastword)
+
 if(KASTWORD_FETCH_DEFAULT_MODEL)
     add_dependencies(kastword kastword-default-model)
 endif()
@@ -79,7 +90,7 @@ endif()
 install(TARGETS kastword RUNTIME DESTINATION bin COMPONENT Kastword)
 install(FILES data/io.github.shape_machine.Kastword.desktop DESTINATION share/applications COMPONENT Kastword)
 install(FILES data/io.github.shape_machine.Kastword.metainfo.xml DESTINATION share/metainfo COMPONENT Kastword)
-install(FILES README.md THIRD_PARTY_NOTICES.md LICENSES/GPL-3.0-or-later.txt
+install(FILES README.md LICENSES/GPL-3.0-or-later.txt
         DESTINATION share/doc/kastword COMPONENT Kastword)
 if(KASTWORD_FETCH_DEFAULT_MODEL)
     install(FILES "${KASTWORD_DEFAULT_MODEL}" DESTINATION share/kastword/models COMPONENT Kastword)
@@ -94,6 +105,18 @@ if(BUILD_TESTING)
         src/TextOutput.h)
     target_include_directories(kastword_textoutput_test PRIVATE src)
     target_link_libraries(kastword_textoutput_test PRIVATE Qt6::Core Qt6::DBus Qt6::Gui Qt6::Test)
+    kastword_enable_coverage(kastword_textoutput_test)
     add_test(NAME text-output COMMAND kastword_textoutput_test)
     set_tests_properties(text-output PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+    add_executable(kastword_core_test
+        tests/CoreTest.cpp
+        src/AudioConversion.cpp
+        src/AudioConversion.h
+        src/WhisperEngine.cpp
+        src/WhisperEngine.h)
+    target_include_directories(kastword_core_test PRIVATE src)
+    target_link_libraries(kastword_core_test PRIVATE Qt6::Core Qt6::Multimedia Qt6::Test whisper)
+    kastword_enable_coverage(kastword_core_test)
+    add_test(NAME core COMMAND kastword_core_test)
 endif()
