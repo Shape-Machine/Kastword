@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Sri Rang
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-.PHONY: all configure build run install install-smoke uninstall test coverage clean format lint validate
+.PHONY: all configure build run install install-smoke uninstall test coverage clean format lint license validate
 
 BUILD_DIR ?= build
 BUILD_TYPE ?= Release
@@ -79,8 +79,11 @@ format:
 lint:
 	clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp
 
-validate: build test lint
+license:
 	reuse lint
+
+validate: license
+	$(MAKE) test lint
 	appstreamcli validate --no-net data/io.github.shape_machine.Kastword.metainfo.xml
 	desktop-file-validate $(BUILD_DIR)/io.github.shape_machine.Kastword.desktop
 	/usr/lib/qt6/bin/qmllint -I build -I /usr/lib/qt6/qml src/qml/Main.qml
