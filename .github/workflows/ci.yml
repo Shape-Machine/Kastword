@@ -44,12 +44,12 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
       - name: Measure test coverage
-        run: gcovr --root . --filter src/ --xml-pretty --output coverage.xml --print-summary
+        run: gcovr --root . --filter src/ --xml-pretty --output build/coverage.xml --print-summary
 
       - name: Upload test coverage
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6
         with:
-          files: coverage.xml
+          files: build/coverage.xml
           use_oidc: true
 
       - name: Check formatting
