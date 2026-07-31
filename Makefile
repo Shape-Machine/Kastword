@@ -1,16 +1,19 @@
 # SPDX-FileCopyrightText: 2026 Sri Rang
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-.PHONY: all configure build run install uninstall test clean format lint validate
+.PHONY: all configure build run install install-smoke uninstall test coverage clean format lint validate
 
 BUILD_DIR ?= build
 BUILD_TYPE ?= Release
 PREFIX ?= $(HOME)/.local
+CMAKE_ARGS ?=
+COVERAGE_FILE ?= $(BUILD_DIR)/coverage.xml
 
 all: build
 
 configure:
-	cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_INSTALL_PREFIX=$(PREFIX)
+	cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
+		-DCMAKE_INSTALL_PREFIX=$(PREFIX) $(CMAKE_ARGS)
 
 build: configure
 	cmake --build $(BUILD_DIR)
@@ -23,7 +26,8 @@ install:
 		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 		-DCMAKE_INSTALL_PREFIX="$(PREFIX)" \
 		-DKASTWORD_FETCH_WHISPER=ON \
-		-DKASTWORD_FETCH_DEFAULT_MODEL=ON
+		-DKASTWORD_FETCH_DEFAULT_MODEL=ON \
+		$(CMAKE_ARGS)
 	cmake --build $(BUILD_DIR)
 	cmake --install $(BUILD_DIR) --component Kastword
 	@if command -v update-desktop-database >/dev/null 2>&1; then \
@@ -33,6 +37,16 @@ install:
 		kbuildsycoca6; \
 	fi
 	@echo "Kastword is installed. Launch it from the application menu."
+
+install-smoke: build
+	@smoke_prefix="$$(mktemp -d)"; \
+	trap 'cmake -E remove_directory "$$smoke_prefix"' EXIT; \
+	cmake --install "$(BUILD_DIR)" --prefix "$$smoke_prefix" --component Kastword; \
+	test -x "$$smoke_prefix/bin/kastword"; \
+	desktop-file-validate \
+		"$$smoke_prefix/share/applications/io.github.shape_machine.Kastword.desktop"; \
+	appstreamcli validate --no-net \
+		"$$smoke_prefix/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml"
 
 uninstall:
 	cmake -E rm -f \
@@ -52,6 +66,9 @@ uninstall:
 
 test: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure
+
+coverage: test
+	gcovr --root . --filter src/ --xml-pretty --output $(COVERAGE_FILE) --print-summary
 
 clean:
 	cmake -E remove_directory $(BUILD_DIR)
