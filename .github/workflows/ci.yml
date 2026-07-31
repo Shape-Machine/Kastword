@@ -30,6 +30,9 @@ jobs:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      - name: Validate licenses
+        run: reuse lint
+
       - name: Configure
         run: >-
           cmake -S . -B build -G Ninja
@@ -48,9 +51,6 @@ jobs:
 
       - name: Check formatting
         run: clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp
-
-      - name: Validate licenses
-        run: reuse lint
 
       - name: Validate desktop metadata
         run: |
