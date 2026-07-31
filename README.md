@@ -63,9 +63,46 @@ sudo pacman -S --needed ydotool
 sudo pacman -S --needed xdotool
 ```
 
-`ydotool` requires a separately configured `ydotoold` service with access to `/dev/uinput`.
-Kastword never requests elevated permissions. Without a working helper, transcription is still
-copied to the clipboard for manual pasting.
+### Enable automatic paste on Plasma Wayland
+
+Installing `ydotool` provides both the command-line client and the `ydotoold` user service. Enable
+and start the service for the current user:
+
+```sh
+systemctl --user enable --now ydotool.service
+systemctl --user is-active ydotool.service
+```
+
+The second command must print `active`. The daemon creates a virtual keyboard through
+`/dev/uinput` and listens on a socket in the user's runtime directory. Verify both are present and
+that the client can connect:
+
+```sh
+ls -l /dev/uinput "$XDG_RUNTIME_DIR/.ydotool_socket"
+ydotool debug
+```
+
+Finally, test actual input delivery. Run the following command, immediately focus an editable text
+field, and wait one second; `Kastword ydotool test` should appear there:
+
+```sh
+sleep 1 && ydotool type 'Kastword ydotool test'
+```
+
+If the service is inactive or the socket is missing, inspect its log:
+
+```sh
+systemctl --user status ydotool.service
+journalctl --user -u ydotool.service -b
+```
+
+Errors mentioning `/dev/uinput`, the daemon socket, or permission denied mean the helper is not
+usable by the logged-in user. Check that the CachyOS/Arch package is current, restart the user
+service, and log out and back in after changing device or group permissions. Avoid running Kastword
+or `ydotool` with `sudo`.
+
+Kastword never requests elevated permissions and does not start or configure `ydotoold` itself. If
+the helper is unavailable, transcription is still copied to the clipboard for manual pasting.
 
 ## Build and run
 
