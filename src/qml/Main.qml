@@ -69,7 +69,7 @@ Kirigami.ApplicationWindow {
 
                 Controls.Label {
                     Kirigami.FormData.label: i18n("Shortcut:")
-                    text: i18n("Meta+Z")
+                    text: appController.shortcutText
                 }
             }
         }
@@ -95,7 +95,7 @@ Kirigami.ApplicationWindow {
                 Layout.fillWidth: true
                 visible: true
                 text: appController.status
-                type: appController.state === "recording" ? Kirigami.MessageType.Positive
+                type: appController.recording ? Kirigami.MessageType.Positive
                       : Kirigami.MessageType.Information
             }
 
@@ -103,28 +103,27 @@ Kirigami.ApplicationWindow {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 14
                 highlighted: true
-                text: appController.state === "recording" ? i18n("Stop dictation")
-                    : appController.state === "transcribing" ? i18n("Transcribing…")
+                text: appController.recording ? i18n("Stop dictation")
+                    : appController.transcribing ? i18n("Transcribing…")
                     : i18n("Start dictation")
-                icon.name: appController.state === "recording" ? "media-playback-stop" : "audio-input-microphone"
-                enabled: appController.state !== "transcribing"
+                icon.name: appController.recording ? "media-playback-stop" : "audio-input-microphone"
+                enabled: !appController.transcribing
                 onClicked: appController.toggle()
             }
 
             Controls.ProgressBar {
                 Layout.fillWidth: true
-                visible: appController.state === "recording"
-                         || appController.state === "transcribing"
+                visible: appController.recording || appController.transcribing
                 from: 0
                 to: 1
                 value: appController.level
-                indeterminate: appController.state === "transcribing"
+                indeterminate: appController.transcribing
             }
 
             Controls.Label {
                 Layout.alignment: Qt.AlignHCenter
-                visible: appController.state === "idle"
-                text: i18n("Global shortcut: Meta+Z")
+                visible: appController.idle
+                text: i18n("Global shortcut: %1").arg(appController.shortcutText)
                 opacity: 0.7
             }
 

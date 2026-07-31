@@ -20,6 +20,10 @@ QString WhisperEngine::transcribe(const QByteArray &audio, const QString &modelP
     *error = QStringLiteral("The recording was too short.");
     return {};
   }
+  if (audio.size() % int(sizeof(float)) != 0) {
+    *error = QStringLiteral("The recording contains invalid audio data.");
+    return {};
+  }
 
   whisper_context_params contextParams = whisper_context_default_params();
   whisper_context *context =
@@ -30,7 +34,7 @@ QString WhisperEngine::transcribe(const QByteArray &audio, const QString &modelP
   }
 
   std::vector<float> samples(size_t(audio.size() / int(sizeof(float))));
-  std::memcpy(samples.data(), audio.constData(), size_t(audio.size()));
+  std::memcpy(samples.data(), audio.constData(), samples.size() * sizeof(float));
   whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
   params.print_progress = false;
   params.print_realtime = false;

@@ -167,12 +167,20 @@ does not change the application receiving pasted text.
 
 ```sh
 make test
+make coverage CMAKE_ARGS=-DKASTWORD_ENABLE_COVERAGE=ON
+make lint
+make install-smoke
 make format
 make validate
 ```
 
-`make validate` additionally requires `reuse`, `appstreamcli`, `desktop-file-validate`, clang-format,
-and Qt's `qmllint`. CI builds without downloading the model and runs the same core checks.
+`make test` builds and runs the deterministic test suites, and `make coverage` produces their gcovr
+report. `make lint` checks C++ formatting without changing files, while `make format` applies it.
+`make install-smoke` installs into a temporary prefix and checks the installed executable and
+metadata. `make validate` runs the build, tests, formatting check, REUSE license validation, desktop
+metadata validation, and QML linting. These targets require `gcovr`, `reuse`, `appstreamcli`,
+`desktop-file-validate`, `clang-format`, and Qt's `qmllint`. CI invokes the same Make targets without
+downloading the model and also runs the tests under AddressSanitizer and UndefinedBehaviorSanitizer.
 
 Kate users can open the repository directory and enable the Project, Build, and LSP Client
 plugins. `.kateproject` provides Build, Run, Test, and Clean targets, while CMake generates
