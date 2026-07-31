@@ -7,36 +7,7 @@
 
 #include <QAudioDevice>
 #include <QAudioFormat>
-#include <algorithm>
-#include <cmath>
-#include <cstring>
 #include <utility>
-
-namespace {
-float sampleAt(const char *data, qsizetype index, QAudioFormat::SampleFormat format) {
-  switch (format) {
-  case QAudioFormat::UInt8:
-    return (static_cast<unsigned char>(data[index]) - 128.0F) / 128.0F;
-  case QAudioFormat::Int16: {
-    qint16 value;
-    std::memcpy(&value, data + index * 2, 2);
-    return value / 32768.0F;
-  }
-  case QAudioFormat::Int32: {
-    qint32 value;
-    std::memcpy(&value, data + index * 4, 4);
-    return value / 2147483648.0F;
-  }
-  case QAudioFormat::Float: {
-    float value;
-    std::memcpy(&value, data + index * 4, 4);
-    return value;
-  }
-  default:
-    return 0.0F;
-  }
-}
-} // namespace
 
 AudioCapture::AudioCapture(QObject *parent) : QObject(parent) {}
 
@@ -68,11 +39,7 @@ bool AudioCapture::start(QString *error) {
   connect(m_device, &QIODevice::readyRead, this, [this] {
     const QByteArray chunk = m_device->readAll();
     m_audio.append(chunk);
-    const qsizetype count = chunk.size() / m_format.bytesPerSample();
-    float peak = 0.0F;
-    for (qsizetype i = 0; i < count; ++i)
-      peak = std::max(peak, std::abs(sampleAt(chunk.constData(), i, m_format.sampleFormat())));
-    emit levelChanged(std::clamp<qreal>(peak, 0.0, 1.0));
+    emit levelChanged(normalizedAudioPeak(chunk, m_format));
   });
   return true;
 }

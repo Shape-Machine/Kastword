@@ -3,6 +3,7 @@
 
 #include "AppController.h"
 
+#include "ModelLocator.h"
 #include "WhisperEngine.h"
 #include <KConfigGroup>
 #include <KGlobalAccel>
@@ -26,18 +27,36 @@ QString findDefaultModel() {
       QStringLiteral("/usr/share/kastword/models/") + fileName,
       QStringLiteral("/usr/local/share/kastword/models/") + fileName,
   };
-  for (const QString &candidate : candidates) {
-    const QFileInfo info(candidate);
-    if (info.isFile() && info.isReadable())
-      return info.canonicalFilePath();
-  }
-  return {};
+  return firstReadableModel(candidates);
 }
 } // namespace
 
 AppController::AppController(QObject *parent)
-    : QObject(parent), m_audio(this), m_output(this), m_config(QStringLiteral("kastwordrc")),
+    : AppController(
+          new AudioCapture, new TextOutput,
+          [](const QByteArray &audio, const QString &model, const QString &language) {
+            QString error;
+            const QString text = WhisperEngine::transcribe(audio, model, language, &error);
+            return qMakePair(text, error);
+          },
+          true, parent) {}
+
+AppController::AppController(AudioCapture *audio, TextOutput *output, TranscribeFunction transcribe,
+                             bool desktopIntegration, QObject *parent)
+    : QObject(parent), m_audio(audio), m_output(output), m_transcribe(std::move(transcribe)),
+      m_desktopIntegration(desktopIntegration), m_config(QStringLiteral("kastwordrc")),
       m_shortcut(tr("Toggle dictation"), this) {
+  Q_ASSERT(m_audio);
+  Q_ASSERT(m_output);
+  Q_ASSERT(m_transcribe);
+  if (!m_audio->parent())
+    m_audio->setParent(this);
+  if (!m_output->parent())
+    m_output->setParent(this);
+  initialize();
+}
+
+void AppController::initialize() {
   const KConfigGroup group(&m_config, QStringLiteral("General"));
   m_modelPath = group.readEntry("ModelPath", QString());
   if (m_modelPath.isEmpty() || !QFileInfo(m_modelPath).isFile())
@@ -45,31 +64,33 @@ AppController::AppController(QObject *parent)
   m_language = group.readEntry("Language", QStringLiteral("en"));
   m_autoPaste = group.readEntry("AutoPaste", true);
 
-  m_shortcut.setObjectName(QStringLiteral("toggle-dictation"));
-  const QList<QKeySequence> shortcut = {QKeySequence(QStringLiteral("Meta+Z"))};
-  if (!group.readEntry("GlobalAccelComponentIdentityV2", false)) {
-    // An earlier build used the display name as the component ID, creating a second registration
-    // that competed with the executable's stable lowercase ID. Remove that duplicate once.
-    KGlobalAccel::cleanComponent(QStringLiteral("Kastword"));
-    KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
-    writableGroup.writeEntry("GlobalAccelComponentIdentityV2", true);
-    writableGroup.sync();
+  if (m_desktopIntegration) {
+    m_shortcut.setObjectName(QStringLiteral("toggle-dictation"));
+    const QList<QKeySequence> shortcut = {QKeySequence(QStringLiteral("Meta+Z"))};
+    if (!group.readEntry("GlobalAccelComponentIdentityV2", false)) {
+      // An earlier build used the display name as the component ID, creating a second registration
+      // that competed with the executable's stable lowercase ID. Remove that duplicate once.
+      KGlobalAccel::cleanComponent(QStringLiteral("Kastword"));
+      KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
+      writableGroup.writeEntry("GlobalAccelComponentIdentityV2", true);
+      writableGroup.sync();
+    }
+    KGlobalAccel::self()->setDefaultShortcut(&m_shortcut, shortcut);
+    KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut);
+    if (!group.readEntry("ShortcutMigratedToMetaZ", false)) {
+      const QList<QKeySequence> currentShortcut = KGlobalAccel::self()->shortcut(&m_shortcut);
+      const QList<QKeySequence> previousDefault = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
+      const QList<QKeySequence> originalDefault = {QKeySequence(QStringLiteral("Meta+D"))};
+      // Update only Kastword's former defaults. An empty or different shortcut is a user choice.
+      if (currentShortcut == previousDefault || currentShortcut == originalDefault)
+        KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut, KGlobalAccel::NoAutoloading);
+      KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
+      writableGroup.writeEntry("ShortcutMigratedToMetaZ", true);
+      writableGroup.sync();
+    }
+    connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
   }
-  KGlobalAccel::self()->setDefaultShortcut(&m_shortcut, shortcut);
-  KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut);
-  if (!group.readEntry("ShortcutMigratedToMetaZ", false)) {
-    const QList<QKeySequence> currentShortcut = KGlobalAccel::self()->shortcut(&m_shortcut);
-    const QList<QKeySequence> previousDefault = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
-    const QList<QKeySequence> originalDefault = {QKeySequence(QStringLiteral("Meta+D"))};
-    // Update only Kastword's former defaults. An empty or different shortcut is a user choice.
-    if (currentShortcut == previousDefault || currentShortcut == originalDefault)
-      KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut, KGlobalAccel::NoAutoloading);
-    KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
-    writableGroup.writeEntry("ShortcutMigratedToMetaZ", true);
-    writableGroup.sync();
-  }
-  connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
-  connect(&m_audio, &AudioCapture::levelChanged, this, [this](qreal value) {
+  connect(m_audio, &AudioCapture::levelChanged, this, [this](qreal value) {
     m_level = value;
     emit levelChanged();
   });
@@ -104,8 +125,8 @@ void AppController::toggle() {
     setStatus(tr("Transcription is already in progress."));
     return;
   }
-  if (m_audio.isRecording()) {
-    QByteArray audio = m_audio.stop();
+  if (m_audio->isRecording()) {
+    QByteArray audio = m_audio->stop();
     setState(QStringLiteral("transcribing"));
     setStatus(tr("Transcribing locally…"));
     showStatusNotification(tr("Kastword"), tr("Transcribing locally…"),
@@ -115,9 +136,10 @@ void AppController::toggle() {
   }
 
   QString error;
-  if (!m_audio.start(&error)) {
+  if (!m_audio->start(&error)) {
     setStatus(error);
-    KNotification::event(KNotification::Error, tr("Kastword"), error);
+    if (m_desktopIntegration)
+      KNotification::event(KNotification::Error, tr("Kastword"), error);
     return;
   }
   setState(QStringLiteral("recording"));
@@ -136,12 +158,13 @@ void AppController::transcribe(QByteArray audio) {
       setStatus(error);
       if (m_statusNotification)
         m_statusNotification->close();
-      KNotification::event(KNotification::Error, tr("Transcription failed"), error);
+      if (m_desktopIntegration)
+        KNotification::event(KNotification::Error, tr("Transcription failed"), error);
       return;
     }
     m_transcript = text;
     emit transcriptChanged();
-    const QString delivery = m_output.deliver(text, m_autoPaste);
+    const QString delivery = m_output->deliver(text, m_autoPaste);
     setStatus(delivery);
     setState(QStringLiteral("success"));
     showStatusNotification(tr("Dictation complete"), delivery, QStringLiteral("dialog-ok-apply"));
@@ -152,11 +175,11 @@ void AppController::transcribe(QByteArray audio) {
   });
   const QString model = m_modelPath;
   const QString languageCode = m_language;
-  watcher->setFuture(QtConcurrent::run([audio = std::move(audio), model, languageCode] {
-    QString error;
-    QString text = WhisperEngine::transcribe(audio, model, languageCode, &error);
-    return qMakePair(text, error);
-  }));
+  const TranscribeFunction transcribeFunction = m_transcribe;
+  watcher->setFuture(
+      QtConcurrent::run([audio = std::move(audio), model, languageCode, transcribeFunction] {
+        return transcribeFunction(audio, model, languageCode);
+      }));
 }
 
 void AppController::setState(const QString &value) {
@@ -168,6 +191,8 @@ void AppController::setState(const QString &value) {
 
 void AppController::showStatusNotification(const QString &title, const QString &text,
                                            const QString &iconName, bool persistent) {
+  if (!m_desktopIntegration)
+    return;
   if (m_statusNotification)
     m_statusNotification->close();
   const auto flags = persistent ? KNotification::Persistent : KNotification::CloseOnTimeout;

@@ -7,11 +7,16 @@
 #include <QGuiApplication>
 #include <QTest>
 
+Q_DECLARE_METATYPE(TextOutput::PasteMethod)
+
 class TextOutputTest final : public QObject {
   Q_OBJECT
 
 private slots:
   void copiesTranscriptionToAvailableClipboards();
+  void choosesPasteMethod_data();
+  void choosesPasteMethod();
+  void usesExpectedX11Arguments();
   void usesRegularClipboardShortcutOnWayland();
 };
 
@@ -23,6 +28,44 @@ void TextOutputTest::copiesTranscriptionToAvailableClipboards() {
   QCOMPARE(QGuiApplication::clipboard()->text(QClipboard::Clipboard), transcription);
   if (QGuiApplication::clipboard()->supportsSelection())
     QCOMPARE(QGuiApplication::clipboard()->text(QClipboard::Selection), transcription);
+}
+
+void TextOutputTest::choosesPasteMethod_data() {
+  QTest::addColumn<bool>("autoPaste");
+  QTest::addColumn<QString>("session");
+  QTest::addColumn<bool>("xdotoolAvailable");
+  QTest::addColumn<bool>("ydotoolAvailable");
+  QTest::addColumn<TextOutput::PasteMethod>("expected");
+
+  using Method = TextOutput::PasteMethod;
+  QTest::newRow("disabled") << false << QStringLiteral("wayland") << true << true
+                            << Method::ClipboardOnly;
+  QTest::newRow("x11 helper") << true << QStringLiteral("x11") << true << false << Method::Xdotool;
+  QTest::newRow("x11 missing") << true << QStringLiteral("X11") << false << true
+                               << Method::ClipboardOnly;
+  QTest::newRow("wayland helper") << true << QStringLiteral("wayland") << false << true
+                                  << Method::Ydotool;
+  QTest::newRow("wayland missing")
+      << true << QStringLiteral("wayland") << true << false << Method::ClipboardOnly;
+  QTest::newRow("unknown session")
+      << true << QStringLiteral("unknown") << false << true << Method::Ydotool;
+}
+
+void TextOutputTest::choosesPasteMethod() {
+  QFETCH(bool, autoPaste);
+  QFETCH(QString, session);
+  QFETCH(bool, xdotoolAvailable);
+  QFETCH(bool, ydotoolAvailable);
+  QFETCH(TextOutput::PasteMethod, expected);
+
+  QCOMPARE(TextOutput::choosePasteMethod(autoPaste, session, xdotoolAvailable, ydotoolAvailable),
+           expected);
+}
+
+void TextOutputTest::usesExpectedX11Arguments() {
+  QCOMPARE(TextOutput::x11PasteArguments(),
+           QStringList({QStringLiteral("key"), QStringLiteral("--clearmodifiers"),
+                        QStringLiteral("shift+Insert")}));
 }
 
 void TextOutputTest::usesRegularClipboardShortcutOnWayland() {

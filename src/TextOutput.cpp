@@ -12,6 +12,21 @@
 
 TextOutput::TextOutput(QObject *parent) : QObject(parent) {}
 
+TextOutput::PasteMethod TextOutput::choosePasteMethod(bool autoPaste, const QString &session,
+                                                      bool xdotoolAvailable,
+                                                      bool ydotoolAvailable) {
+  if (!autoPaste)
+    return PasteMethod::ClipboardOnly;
+  if (session.compare(QStringLiteral("x11"), Qt::CaseInsensitive) == 0)
+    return xdotoolAvailable ? PasteMethod::Xdotool : PasteMethod::ClipboardOnly;
+  return ydotoolAvailable ? PasteMethod::Ydotool : PasteMethod::ClipboardOnly;
+}
+
+QStringList TextOutput::x11PasteArguments() {
+  return {QStringLiteral("key"), QStringLiteral("--clearmodifiers"),
+          QStringLiteral("shift+Insert")};
+}
+
 QStringList TextOutput::waylandPasteArguments() {
   // KEY_LEFTCTRL=29, KEY_LEFTSHIFT=42, and KEY_V=47.
   return {QStringLiteral("key"),  QStringLiteral("29:1"), QStringLiteral("42:1"),
@@ -36,32 +51,27 @@ QString TextOutput::deliver(const QString &text, bool autoPaste) {
   if (klipper.isValid())
     klipper.call(QStringLiteral("setClipboardContents"), text);
 
-  if (!autoPaste)
+  const QString session = qEnvironmentVariable("XDG_SESSION_TYPE").toLower();
+  const QString xdotool = QStandardPaths::findExecutable(QStringLiteral("xdotool"));
+  const QString ydotool = QStandardPaths::findExecutable(QStringLiteral("ydotool"));
+  const PasteMethod method =
+      choosePasteMethod(autoPaste, session, !xdotool.isEmpty(), !ydotool.isEmpty());
+  if (method == PasteMethod::ClipboardOnly && !autoPaste)
     return tr("Copied to clipboard.");
 
-  const QString session = qEnvironmentVariable("XDG_SESSION_TYPE").toLower();
-  if (session == QStringLiteral("x11")) {
-    const QString tool = QStandardPaths::findExecutable(QStringLiteral("xdotool"));
-    if (!tool.isEmpty()) {
-      // Defer the synthetic key press until Qt has advertised the new clipboard owner to the
-      // window system. Pasting in this same event-loop turn can read the previous clipboard.
-      QTimer::singleShot(150, this, [tool] {
-        QProcess::startDetached(tool, {QStringLiteral("key"), QStringLiteral("--clearmodifiers"),
-                                       QStringLiteral("shift+Insert")});
-      });
-      return tr("Pasted into the focused application.");
-    }
-  } else {
-    const QString tool = QStandardPaths::findExecutable(QStringLiteral("ydotool"));
-    if (!tool.isEmpty()) {
-      // Konsole's Ctrl+Shift+V action reads the regular clipboard; Shift+Insert can instead read a
-      // stale primary selection on Wayland.
-      // Wayland clipboard ownership is asynchronous, so allow the compositor to receive the new
-      // contents before asking the focused application to paste them.
-      QTimer::singleShot(150, this,
-                         [tool] { QProcess::startDetached(tool, waylandPasteArguments()); });
-      return tr("Sent paste to the focused application.");
-    }
+  if (method == PasteMethod::Xdotool) {
+    // Defer the synthetic key press until Qt has advertised the new clipboard owner to the window
+    // system. Pasting in this same event-loop turn can read the previous clipboard.
+    QTimer::singleShot(150, this,
+                       [xdotool] { QProcess::startDetached(xdotool, x11PasteArguments()); });
+    return tr("Pasted into the focused application.");
+  }
+  if (method == PasteMethod::Ydotool) {
+    // Konsole's Ctrl+Shift+V action reads the regular clipboard; Shift+Insert can instead read a
+    // stale primary selection on Wayland. Allow the compositor to receive the new clipboard first.
+    QTimer::singleShot(150, this,
+                       [ydotool] { QProcess::startDetached(ydotool, waylandPasteArguments()); });
+    return tr("Sent paste to the focused application.");
   }
   return tr("Copied to clipboard; install %1 for automatic paste.")
       .arg(session == QStringLiteral("x11") ? QStringLiteral("xdotool")

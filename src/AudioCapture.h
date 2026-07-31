@@ -10,14 +10,14 @@
 #include <QObject>
 #include <memory>
 
-class AudioCapture final : public QObject {
+class AudioCapture : public QObject {
   Q_OBJECT
 public:
   explicit AudioCapture(QObject *parent = nullptr);
 
-  bool start(QString *error);
-  QByteArray stop();
-  bool isRecording() const { return m_source != nullptr; }
+  virtual bool start(QString *error);
+  virtual QByteArray stop();
+  virtual bool isRecording() const { return m_source != nullptr; }
 
 signals:
   void levelChanged(qreal level);

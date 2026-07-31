@@ -59,6 +59,8 @@ qt_add_executable(kastword
     src/AudioConversion.h
     src/AudioCapture.cpp
     src/AudioCapture.h
+    src/ModelLocator.cpp
+    src/ModelLocator.h
     src/WhisperEngine.cpp
     src/WhisperEngine.h
     src/TextOutput.cpp
@@ -120,10 +122,34 @@ if(BUILD_TESTING)
         tests/CoreTest.cpp
         src/AudioConversion.cpp
         src/AudioConversion.h
+        src/ModelLocator.cpp
+        src/ModelLocator.h
         src/WhisperEngine.cpp
         src/WhisperEngine.h)
     target_include_directories(kastword_core_test PRIVATE src)
     target_link_libraries(kastword_core_test PRIVATE Qt6::Core Qt6::Multimedia Qt6::Test whisper)
     kastword_enable_coverage(kastword_core_test)
     add_test(NAME core COMMAND kastword_core_test)
+
+    add_executable(kastword_controller_test
+        tests/AppControllerTest.cpp
+        src/AppController.cpp
+        src/AppController.h
+        src/AudioCapture.cpp
+        src/AudioCapture.h
+        src/AudioConversion.cpp
+        src/AudioConversion.h
+        src/ModelLocator.cpp
+        src/ModelLocator.h
+        src/TextOutput.cpp
+        src/TextOutput.h
+        src/WhisperEngine.cpp
+        src/WhisperEngine.h)
+    target_include_directories(kastword_controller_test PRIVATE src)
+    target_link_libraries(kastword_controller_test PRIVATE
+        Qt6::Concurrent Qt6::Core Qt6::DBus Qt6::Gui Qt6::Multimedia Qt6::Test Qt6::Widgets
+        KF6::ConfigCore KF6::GlobalAccel KF6::Notifications whisper)
+    kastword_enable_coverage(kastword_controller_test)
+    add_test(NAME controller COMMAND kastword_controller_test)
+    set_tests_properties(controller PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()

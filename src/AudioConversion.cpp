@@ -4,6 +4,7 @@
 #include "AudioConversion.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <vector>
 
@@ -32,6 +33,17 @@ float sampleAt(const char *data, qsizetype index, QAudioFormat::SampleFormat for
   }
 }
 } // namespace
+
+qreal normalizedAudioPeak(const QByteArray &native, const QAudioFormat &format) {
+  if (!format.isValid() || format.bytesPerSample() <= 0)
+    return 0.0;
+
+  const qsizetype count = native.size() / format.bytesPerSample();
+  float peak = 0.0F;
+  for (qsizetype i = 0; i < count; ++i)
+    peak = std::max(peak, std::abs(sampleAt(native.constData(), i, format.sampleFormat())));
+  return std::clamp<qreal>(peak, 0.0, 1.0);
+}
 
 QByteArray convertAudioForWhisper(const QByteArray &native, const QAudioFormat &format) {
   if (!format.isValid() || format.bytesPerFrame() <= 0 || format.sampleRate() <= 0 ||

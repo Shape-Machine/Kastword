@@ -7,3 +7,4 @@
 #include <QByteArray>
 
 QByteArray convertAudioForWhisper(const QByteArray &native, const QAudioFormat &format);
+qreal normalizedAudioPeak(const QByteArray &native, const QAudioFormat &format);

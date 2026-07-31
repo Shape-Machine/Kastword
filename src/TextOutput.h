@@ -9,14 +9,15 @@
 
 class TextOutputTest;
 
-class TextOutput final : public QObject {
+class TextOutput : public QObject {
   Q_OBJECT
 public:
   explicit TextOutput(QObject *parent = nullptr);
-  QString deliver(const QString &text, bool autoPaste);
+  virtual QString deliver(const QString &text, bool autoPaste);
 
-private:
-  // Allow the unit test to pin the exact virtual-key sequence used for Wayland paste delivery.
-  friend class TextOutputTest;
+  enum class PasteMethod { ClipboardOnly, Xdotool, Ydotool };
+  static PasteMethod choosePasteMethod(bool autoPaste, const QString &session,
+                                       bool xdotoolAvailable, bool ydotoolAvailable);
+  static QStringList x11PasteArguments();
   static QStringList waylandPasteArguments();
 };

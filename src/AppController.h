@@ -9,8 +9,10 @@
 #include <KConfig>
 #include <QAction>
 #include <QObject>
+#include <QPair>
 #include <QPointer>
 #include <QString>
+#include <functional>
 
 class KNotification;
 
@@ -25,7 +27,12 @@ class AppController final : public QObject {
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
 
 public:
+  using TranscribeFunction =
+      std::function<QPair<QString, QString>(const QByteArray &, const QString &, const QString &)>;
+
   explicit AppController(QObject *parent = nullptr);
+  AppController(AudioCapture *audio, TextOutput *output, TranscribeFunction transcribe,
+                bool desktopIntegration, QObject *parent = nullptr);
   QString state() const { return m_state; }
   QString status() const { return m_status; }
   QString transcript() const { return m_transcript; }
@@ -55,11 +62,14 @@ private:
   void setStatus(const QString &value);
   void saveSettings();
   void transcribe(QByteArray audio);
+  void initialize();
   void showStatusNotification(const QString &title, const QString &text, const QString &iconName,
                               bool persistent = false);
 
-  AudioCapture m_audio;
-  TextOutput m_output;
+  AudioCapture *m_audio;
+  TextOutput *m_output;
+  TranscribeFunction m_transcribe;
+  bool m_desktopIntegration;
   KConfig m_config;
   QAction m_shortcut;
   QString m_state = QStringLiteral("idle");
