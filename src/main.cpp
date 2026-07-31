@@ -45,11 +45,8 @@ int main(int argc, char **argv) {
   QMenu trayMenu;
   QAction openAction(QStringLiteral("Open Kastword"), &trayMenu);
   QAction dictateAction(QStringLiteral("Start Dictation"), &trayMenu);
-  QAction quitAction(QStringLiteral("Quit"), &trayMenu);
   trayMenu.addAction(&openAction);
   trayMenu.addAction(&dictateAction);
-  trayMenu.addSeparator();
-  trayMenu.addAction(&quitAction);
   tray.setContextMenu(&trayMenu);
 
   const auto toggleWindow = [window] {
@@ -71,7 +68,6 @@ int main(int argc, char **argv) {
                    });
   QObject::connect(&openAction, &QAction::triggered, window, toggleWindow);
   QObject::connect(&dictateAction, &QAction::triggered, &controller, &AppController::toggle);
-  QObject::connect(&quitAction, &QAction::triggered, &app, &QApplication::quit);
 
   QObject::connect(&controller, &AppController::stateChanged, &tray,
                    [&controller, &tray, &dictateAction] {
