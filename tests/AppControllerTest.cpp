@@ -82,10 +82,10 @@ void AppControllerTest::startsRecording() {
 
   controller.toggle();
 
-  QCOMPARE(controller.state(), QStringLiteral("recording"));
+  QCOMPARE(controller.state(), AppController::State::Recording);
   QVERIFY(audio->recording);
   QCOMPARE(stateChanged.count(), 1);
-  QVERIFY(controller.status().contains(QStringLiteral("Meta+Z")));
+  QVERIFY(controller.status().contains(controller.shortcutText()));
 }
 
 void AppControllerTest::reportsMicrophoneFailure() {
@@ -101,7 +101,7 @@ void AppControllerTest::reportsMicrophoneFailure() {
 
   controller.toggle();
 
-  QCOMPARE(controller.state(), QStringLiteral("idle"));
+  QCOMPARE(controller.state(), AppController::State::Idle);
   QCOMPARE(controller.status(), audio->startError);
   QVERIFY(!audio->recording);
 }
@@ -123,13 +123,13 @@ void AppControllerTest::completesDictationFlow() {
   controller.toggle();
   controller.toggle();
 
-  QTRY_COMPARE(controller.state(), QStringLiteral("success"));
+  QTRY_COMPARE(controller.state(), AppController::State::Success);
   QCOMPARE(controller.transcript(), QStringLiteral("hello world"));
   QCOMPARE(output->deliveredText, QStringLiteral("hello world"));
   QVERIFY(output->deliveredWithAutoPaste);
   QCOMPARE(controller.status(), output->result);
   QCOMPARE(transcriptChanged.count(), 1);
-  QTRY_COMPARE_WITH_TIMEOUT(controller.state(), QStringLiteral("idle"), 2000);
+  QTRY_COMPARE_WITH_TIMEOUT(controller.state(), AppController::State::Idle, 2000);
 }
 
 void AppControllerTest::recoversFromTranscriptionFailure() {
@@ -145,7 +145,7 @@ void AppControllerTest::recoversFromTranscriptionFailure() {
   controller.toggle();
   controller.toggle();
 
-  QTRY_COMPARE(controller.state(), QStringLiteral("idle"));
+  QTRY_COMPARE(controller.state(), AppController::State::Idle);
   QCOMPARE(controller.status(), QStringLiteral("Transcription failed deterministically."));
   QVERIFY(output->deliveredText.isEmpty());
 }
@@ -170,10 +170,10 @@ void AppControllerTest::rejectsToggleWhileTranscribing() {
   QVERIFY(transcriptionStarted.tryAcquire(1, 1000));
   controller.toggle();
 
-  QCOMPARE(controller.state(), QStringLiteral("transcribing"));
+  QCOMPARE(controller.state(), AppController::State::Transcribing);
   QCOMPARE(controller.status(), QStringLiteral("Transcription is already in progress."));
   allowCompletion.release();
-  QTRY_COMPARE(controller.state(), QStringLiteral("success"));
+  QTRY_COMPARE(controller.state(), AppController::State::Success);
 }
 
 void AppControllerTest::forwardsAudioLevel() {

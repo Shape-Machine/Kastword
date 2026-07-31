@@ -46,6 +46,7 @@ class CoreTest final : public QObject {
 private slots:
   void rejectsMissingWhisperModel();
   void rejectsRecordingThatIsTooShort();
+  void rejectsMisalignedAudioData();
   void rejectsInvalidWhisperModel();
   void convertsEmptyAudio();
   void convertsSampleFormats_data();
@@ -81,6 +82,18 @@ void CoreTest::rejectsRecordingThatIsTooShort() {
 
   QVERIFY(text.isEmpty());
   QCOMPARE(error, QStringLiteral("The recording was too short."));
+}
+
+void CoreTest::rejectsMisalignedAudioData() {
+  QTemporaryFile model;
+  QVERIFY(model.open());
+  QString error;
+
+  const QString text = WhisperEngine::transcribe(QByteArray(1600 * int(sizeof(float)) + 1, '\0'),
+                                                 model.fileName(), QStringLiteral("en"), &error);
+
+  QVERIFY(text.isEmpty());
+  QCOMPARE(error, QStringLiteral("The recording contains invalid audio data."));
 }
 
 void CoreTest::rejectsInvalidWhisperModel() {

@@ -167,12 +167,16 @@ does not change the application receiving pasted text.
 
 ```sh
 make test
+make lint
 make format
 make validate
 ```
 
-`make validate` additionally requires `reuse`, `appstreamcli`, `desktop-file-validate`, clang-format,
-and Qt's `qmllint`. CI builds without downloading the model and runs the same core checks.
+`make test` builds and runs the deterministic test suites. `make lint` checks C++ formatting without
+changing files, while `make format` applies it. `make validate` runs the build, tests, formatting
+check, REUSE license validation, desktop metadata validation, and QML linting. It requires `reuse`,
+`appstreamcli`, `desktop-file-validate`, `clang-format`, and Qt's `qmllint`. CI builds without
+downloading the model and runs the same core checks.
 
 Kate users can open the repository directory and enable the Project, Build, and LSP Client
 plugins. `.kateproject` provides Build, Run, Test, and Clean targets, while CMake generates

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Sri Rang
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-.PHONY: all configure build run install uninstall test clean format validate
+.PHONY: all configure build run install uninstall test clean format lint validate
 
 BUILD_DIR ?= build
 BUILD_TYPE ?= Release
@@ -57,9 +57,12 @@ clean:
 	cmake -E remove_directory $(BUILD_DIR)
 
 format:
-	clang-format -i src/*.cpp src/*.h
+	clang-format -i src/*.cpp src/*.h tests/*.cpp
 
-validate: build test
+lint:
+	clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp
+
+validate: build test lint
 	reuse lint
 	appstreamcli validate --no-net data/io.github.shape_machine.Kastword.metainfo.xml
 	desktop-file-validate $(BUILD_DIR)/io.github.shape_machine.Kastword.desktop

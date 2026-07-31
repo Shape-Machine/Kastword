@@ -16,6 +16,8 @@
 #include <QtConcurrent>
 
 namespace {
+constexpr auto defaultShortcut = "Meta+Z";
+
 QString findDefaultModel() {
   const QString fileName = QStringLiteral("ggml-base.en.bin");
   const QString applicationDirectory = QCoreApplication::applicationDirPath();
@@ -66,7 +68,7 @@ void AppController::initialize() {
 
   if (m_desktopIntegration) {
     m_shortcut.setObjectName(QStringLiteral("toggle-dictation"));
-    const QList<QKeySequence> shortcut = {QKeySequence(QStringLiteral("Meta+Z"))};
+    const QList<QKeySequence> shortcut = {QKeySequence(shortcutText())};
     if (!group.readEntry("GlobalAccelComponentIdentityV2", false)) {
       // An earlier build used the display name as the component ID, creating a second registration
       // that competed with the executable's stable lowercase ID. Remove that duplicate once.
@@ -94,7 +96,10 @@ void AppController::initialize() {
     m_level = value;
     emit levelChanged();
   });
+  setStatus(tr("Ready — press %1 to dictate.").arg(shortcutText()));
 }
+
+QString AppController::shortcutText() const { return QString::fromLatin1(defaultShortcut); }
 
 void AppController::setModelPath(const QString &value) {
   if (m_modelPath == value)
@@ -121,13 +126,13 @@ void AppController::setAutoPaste(bool value) {
 }
 
 void AppController::toggle() {
-  if (m_state == QStringLiteral("transcribing")) {
+  if (m_state == State::Transcribing) {
     setStatus(tr("Transcription is already in progress."));
     return;
   }
   if (m_audio->isRecording()) {
     QByteArray audio = m_audio->stop();
-    setState(QStringLiteral("transcribing"));
+    setState(State::Transcribing);
     setStatus(tr("Transcribing locally…"));
     showStatusNotification(tr("Kastword"), tr("Transcribing locally…"),
                            QStringLiteral("view-refresh"), true);
@@ -142,9 +147,9 @@ void AppController::toggle() {
       KNotification::event(KNotification::Error, tr("Kastword"), error);
     return;
   }
-  setState(QStringLiteral("recording"));
-  setStatus(tr("Listening — press Meta+Z to finish."));
-  showStatusNotification(tr("Dictation started"), tr("Press Meta+Z again to stop."),
+  setState(State::Recording);
+  setStatus(tr("Listening — press %1 to finish.").arg(shortcutText()));
+  showStatusNotification(tr("Dictation started"), tr("Press %1 again to stop.").arg(shortcutText()),
                          QStringLiteral("media-record"), true);
 }
 
@@ -154,7 +159,7 @@ void AppController::transcribe(QByteArray audio) {
     const auto [text, error] = watcher->result();
     watcher->deleteLater();
     if (!error.isEmpty()) {
-      setState(QStringLiteral("idle"));
+      setState(State::Idle);
       setStatus(error);
       if (m_statusNotification)
         m_statusNotification->close();
@@ -166,11 +171,11 @@ void AppController::transcribe(QByteArray audio) {
     emit transcriptChanged();
     const QString delivery = m_output->deliver(text, m_autoPaste);
     setStatus(delivery);
-    setState(QStringLiteral("success"));
+    setState(State::Success);
     showStatusNotification(tr("Dictation complete"), delivery, QStringLiteral("dialog-ok-apply"));
     QTimer::singleShot(1200, this, [this] {
-      if (m_state == QStringLiteral("success"))
-        setState(QStringLiteral("idle"));
+      if (m_state == State::Success)
+        setState(State::Idle);
     });
   });
   const QString model = m_modelPath;
@@ -182,7 +187,7 @@ void AppController::transcribe(QByteArray audio) {
       }));
 }
 
-void AppController::setState(const QString &value) {
+void AppController::setState(State value) {
   if (m_state == value)
     return;
   m_state = value;

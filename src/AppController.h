@@ -18,28 +18,39 @@ class KNotification;
 
 class AppController final : public QObject {
   Q_OBJECT
-  Q_PROPERTY(QString state READ state NOTIFY stateChanged)
+  Q_PROPERTY(State state READ state NOTIFY stateChanged)
+  Q_PROPERTY(bool idle READ isIdle NOTIFY stateChanged)
+  Q_PROPERTY(bool recording READ isRecording NOTIFY stateChanged)
+  Q_PROPERTY(bool transcribing READ isTranscribing NOTIFY stateChanged)
   Q_PROPERTY(QString status READ status NOTIFY statusChanged)
   Q_PROPERTY(QString transcript READ transcript NOTIFY transcriptChanged)
   Q_PROPERTY(QString modelPath READ modelPath WRITE setModelPath NOTIFY modelPathChanged)
   Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
   Q_PROPERTY(bool autoPaste READ autoPaste WRITE setAutoPaste NOTIFY autoPasteChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
+  Q_PROPERTY(QString shortcutText READ shortcutText CONSTANT)
 
 public:
+  enum class State { Idle, Recording, Transcribing, Success };
+  Q_ENUM(State)
+
   using TranscribeFunction =
       std::function<QPair<QString, QString>(const QByteArray &, const QString &, const QString &)>;
 
   explicit AppController(QObject *parent = nullptr);
   AppController(AudioCapture *audio, TextOutput *output, TranscribeFunction transcribe,
                 bool desktopIntegration, QObject *parent = nullptr);
-  QString state() const { return m_state; }
+  State state() const { return m_state; }
+  bool isIdle() const { return m_state == State::Idle; }
+  bool isRecording() const { return m_state == State::Recording; }
+  bool isTranscribing() const { return m_state == State::Transcribing; }
   QString status() const { return m_status; }
   QString transcript() const { return m_transcript; }
   QString modelPath() const { return m_modelPath; }
   QString language() const { return m_language; }
   bool autoPaste() const { return m_autoPaste; }
   qreal level() const { return m_level; }
+  QString shortcutText() const;
 
   void setModelPath(const QString &value);
   void setLanguage(const QString &value);
@@ -58,7 +69,7 @@ signals:
   void levelChanged();
 
 private:
-  void setState(const QString &value);
+  void setState(State value);
   void setStatus(const QString &value);
   void saveSettings();
   void transcribe(QByteArray audio);
@@ -72,8 +83,8 @@ private:
   bool m_desktopIntegration;
   KConfig m_config;
   QAction m_shortcut;
-  QString m_state = QStringLiteral("idle");
-  QString m_status = QStringLiteral("Ready — press Meta+Z to dictate.");
+  State m_state = State::Idle;
+  QString m_status;
   QString m_transcript;
   QString m_modelPath;
   QString m_language = QStringLiteral("en");
