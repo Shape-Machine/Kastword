@@ -70,7 +70,7 @@ public:
   QString transcript() const { return QStringLiteral("Test transcription"); }
   QString modelPath() const { return m_modelPath; }
   bool modelReady() const { return m_modelReady; }
-  bool modelSetupRequired() const { return !m_modelReady; }
+  bool modelSetupRequired() const { return !m_modelReady && !m_restoringModel; }
   QObject *modelManager() { return &m_modelManager; }
   QString language() const { return QStringLiteral("en"); }
   QVariantList availableLanguages() const {
@@ -114,7 +114,15 @@ public:
       return;
     m_modelReady = ready;
     emit modelReadyChanged();
-    if (!ready)
+    if (!ready && !m_restoringModel)
+      emit modelSetupRequested();
+  }
+  Q_INVOKABLE void setRestoringModel(bool restoring) {
+    if (m_restoringModel == restoring)
+      return;
+    m_restoringModel = restoring;
+    emit modelReadyChanged();
+    if (!restoring && !m_modelReady)
       emit modelSetupRequested();
   }
 
@@ -139,6 +147,7 @@ private:
   int m_toggleCount = 0;
   FakeModelManager m_modelManager;
   bool m_modelReady = true;
+  bool m_restoringModel = false;
 };
 
 class QmlTestSetup final : public QObject {

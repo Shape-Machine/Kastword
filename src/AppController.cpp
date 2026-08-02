@@ -46,9 +46,10 @@ AppController::AppController(std::unique_ptr<AudioCapture> audio,
 
 AppController::AppController(std::unique_ptr<AudioCapture> audio,
                              std::unique_ptr<TextOutput> output, TranscribeFunction transcribe,
-                             bool desktopIntegration, bool requireModel, QObject *parent)
+                             bool desktopIntegration, bool requireModel, QObject *parent,
+                             std::unique_ptr<ModelManager> modelManager)
     : QObject(parent), m_audio(std::move(audio)), m_output(std::move(output)),
-      m_modelManager(std::make_unique<ModelManager>()),
+      m_modelManager(modelManager ? std::move(modelManager) : std::make_unique<ModelManager>()),
       m_transcriptionWorker(new TranscriptionWorker(std::move(transcribe))),
       m_desktopIntegration(desktopIntegration), m_requireModel(requireModel),
       m_config(QStringLiteral("kastwordrc")), m_shortcut(i18n("Toggle dictation"), this) {
@@ -92,6 +93,11 @@ void AppController::initialize() {
       m_modelPath = path;
       saveSettings();
       emit modelPathChanged();
+    }
+    if (!modelReady() && m_audio->isRecording()) {
+      m_audio->stop();
+      setState(State::Idle);
+      setStatus(i18n("Recording stopped because the speech model is no longer available."));
     }
     m_shortcut.setEnabled(modelReady());
     emit modelReadyChanged();
@@ -238,6 +244,21 @@ void AppController::forgetTranscript() {
 }
 
 void AppController::toggle() {
+  if (m_audio->isRecording()) {
+    QByteArray audio = m_audio->stop();
+    if (!modelReady()) {
+      setState(State::Idle);
+      setStatus(i18n("Recording stopped because the speech model is no longer available."));
+      emit modelSetupRequested();
+      return;
+    }
+    setState(State::Transcribing);
+    setStatus(i18n("Transcribing locally…"));
+    showStatusNotification(i18n("Kastword"), i18n("Transcribing locally…"),
+                           QStringLiteral("view-refresh"), true);
+    transcribe(std::move(audio));
+    return;
+  }
   if (!modelReady()) {
     setStatus(i18n("Choose a speech model before starting dictation."));
     emit modelSetupRequested();
@@ -247,16 +268,6 @@ void AppController::toggle() {
     setStatus(i18n("Transcription is already in progress."));
     return;
   }
-  if (m_audio->isRecording()) {
-    QByteArray audio = m_audio->stop();
-    setState(State::Transcribing);
-    setStatus(i18n("Transcribing locally…"));
-    showStatusNotification(i18n("Kastword"), i18n("Transcribing locally…"),
-                           QStringLiteral("view-refresh"), true);
-    transcribe(std::move(audio));
-    return;
-  }
-
   QString error;
   if (!m_audio->start(&error)) {
     setStatus(error);

@@ -52,7 +52,7 @@ public:
                 TranscribeFunction transcribe, bool desktopIntegration, QObject *parent = nullptr);
   AppController(std::unique_ptr<AudioCapture> audio, std::unique_ptr<TextOutput> output,
                 TranscribeFunction transcribe, bool desktopIntegration, bool requireModel,
-                QObject *parent = nullptr);
+                QObject *parent = nullptr, std::unique_ptr<ModelManager> modelManager = {});
   ~AppController() override;
   State state() const { return m_state; }
   bool isIdle() const { return m_state == State::Idle; }
@@ -62,7 +62,10 @@ public:
   QString transcript() const { return m_transcript; }
   QString modelPath() const { return m_modelPath; }
   bool modelReady() const { return !m_requireModel || m_modelManager->modelReady(); }
-  bool modelSetupRequired() const { return m_requireModel && !m_modelManager->modelReady(); }
+  bool modelSetupRequired() const {
+    return m_requireModel && !m_modelManager->modelReady() &&
+           !m_modelManager->restoringActiveModel();
+  }
   ModelManager *modelManager() const { return m_modelManager.get(); }
   QString language() const { return m_language; }
   QVariantList availableLanguages() const;

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kastword\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-02 14:50+0200\n"
+"POT-Creation-Date: 2026-08-02 20:51+0200\n"
 "PO-Revision-Date: 2026-08-02 00:00+0000\n"
 "Last-Translator: KDE Test Language <null@kde.org>\n"
 "Language-Team: KDE Test Language <kde-i18n-doc@kde.org>\n"
@@ -15,59 +15,63 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
-#: src/AppController.cpp:54
+#: src/AppController.cpp:55
 msgid "Toggle dictation"
 msgstr "xxToggle dictationxx"
 
-#: src/AppController.cpp:105 src/AppController.cpp:152
+#: src/AppController.cpp:100 src/AppController.cpp:251
+msgid "Recording stopped because the speech model is no longer available."
+msgstr "xxRecording stopped because the speech model is no longer available.xx"
+
+#: src/AppController.cpp:111 src/AppController.cpp:158
 msgid "Choose a speech model to enable dictation."
 msgstr "xxChoose a speech model to enable dictation.xx"
 
-#: src/AppController.cpp:146
+#: src/AppController.cpp:152
 msgid "failed"
 msgstr "xxfailedxx"
 
-#: src/AppController.cpp:147
+#: src/AppController.cpp:153
 msgid "Automatic paste failed"
 msgstr "xxAutomatic paste failedxx"
 
-#: src/AppController.cpp:150
+#: src/AppController.cpp:156
 msgid "Ready — press %1 to dictate."
 msgstr "xxReady — press %1 to dictate.xx"
 
-#: src/AppController.cpp:160
+#: src/AppController.cpp:166
 msgid "English"
 msgstr "xxEnglishxx"
 
-#: src/AppController.cpp:162
+#: src/AppController.cpp:168
 msgid "Automatic"
 msgstr "xxAutomaticxx"
 
-#: src/AppController.cpp:164
+#: src/AppController.cpp:170
 msgid "German"
 msgstr "xxGermanxx"
 
-#: src/AppController.cpp:166
+#: src/AppController.cpp:172
 msgid "French"
 msgstr "xxFrenchxx"
 
-#: src/AppController.cpp:168
+#: src/AppController.cpp:174
 msgid "Spanish"
 msgstr "xxSpanishxx"
 
-#: src/AppController.cpp:170
+#: src/AppController.cpp:176
 msgid "Dutch"
 msgstr "xxDutchxx"
 
-#: src/AppController.cpp:172
+#: src/AppController.cpp:178
 msgid "Italian"
 msgstr "xxItalianxx"
 
-#: src/AppController.cpp:174
+#: src/AppController.cpp:180
 msgid "Portuguese"
 msgstr "xxPortuguesexx"
 
-#: src/AppController.cpp:237
+#: src/AppController.cpp:243
 msgid ""
 "Cleared from Kastword and matching current clipboards. Clipboard history may "
 "retain it."
@@ -75,48 +79,48 @@ msgstr ""
 "xxCleared from Kastword and matching current clipboards. Clipboard history "
 "may retain it.xx"
 
-#: src/AppController.cpp:242
-msgid "Choose a speech model before starting dictation."
-msgstr "xxChoose a speech model before starting dictation.xx"
-
-#: src/AppController.cpp:247
-msgid "Transcription is already in progress."
-msgstr "xxTranscription is already in progress.xx"
-
-#: src/AppController.cpp:253 src/AppController.cpp:254
+#: src/AppController.cpp:256 src/AppController.cpp:257
 msgid "Transcribing locally…"
 msgstr "xxTranscribing locally…xx"
 
-#: src/AppController.cpp:254 src/AppController.cpp:264 src/main.cpp:41
+#: src/AppController.cpp:257 src/AppController.cpp:275 src/main.cpp:41
 #: src/main.cpp:58 src/main.cpp:59 src/main.cpp:108 src/qml/Main.qml:20
 msgid "Kastword"
 msgstr "xxKastwordxx"
 
+#: src/AppController.cpp:263
+msgid "Choose a speech model before starting dictation."
+msgstr "xxChoose a speech model before starting dictation.xx"
+
 #: src/AppController.cpp:268
+msgid "Transcription is already in progress."
+msgstr "xxTranscription is already in progress.xx"
+
+#: src/AppController.cpp:279
 msgid "Listening — press %1 to finish."
 msgstr "xxListening — press %1 to finish.xx"
 
-#: src/AppController.cpp:269
+#: src/AppController.cpp:280
 msgid "Dictation started"
 msgstr "xxDictation startedxx"
 
-#: src/AppController.cpp:269
+#: src/AppController.cpp:280
 msgid "Press %1 again to stop."
 msgstr "xxPress %1 again to stop.xx"
 
-#: src/AppController.cpp:291
+#: src/AppController.cpp:302
 msgid "Transcription failed"
 msgstr "xxTranscription failedxx"
 
-#: src/AppController.cpp:297
+#: src/AppController.cpp:308
 msgid "No speech detected."
 msgstr "xxNo speech detected.xx"
 
-#: src/AppController.cpp:307
+#: src/AppController.cpp:318
 msgid "Dictation complete"
 msgstr "xxDictation completexx"
 
-#: src/AppController.cpp:326
+#: src/AppController.cpp:337
 msgid "Recording failed"
 msgstr "xxRecording failedxx"
 
@@ -152,165 +156,181 @@ msgstr "xxCould not start microphone capture.xx"
 msgid "Recording stopped after reaching the configured duration limit."
 msgstr "xxRecording stopped after reaching the configured duration limit.xx"
 
-#: src/ModelManager.cpp:19
+#: src/ModelManager.cpp:20
 msgid "Tiny English"
 msgstr "xxTiny Englishxx"
 
-#: src/ModelManager.cpp:21
+#: src/ModelManager.cpp:22
 msgid "Base English"
 msgstr "xxBase Englishxx"
 
-#: src/ModelManager.cpp:23
+#: src/ModelManager.cpp:24
 msgid "Small English"
 msgstr "xxSmall Englishxx"
 
-#: src/ModelManager.cpp:25
+#: src/ModelManager.cpp:26
 msgid "Medium English"
 msgstr "xxMedium Englishxx"
 
-#: src/ModelManager.cpp:27
+#: src/ModelManager.cpp:28
 msgid "Tiny Multilingual"
 msgstr "xxTiny Multilingualxx"
 
-#: src/ModelManager.cpp:29
+#: src/ModelManager.cpp:30
 msgid "Base Multilingual"
 msgstr "xxBase Multilingualxx"
 
-#: src/ModelManager.cpp:31
+#: src/ModelManager.cpp:32
 msgid "Small Multilingual"
 msgstr "xxSmall Multilingualxx"
 
-#: src/ModelManager.cpp:33
+#: src/ModelManager.cpp:34
 msgid "Medium Multilingual"
 msgstr "xxMedium Multilingualxx"
 
-#: src/ModelManager.cpp:35
+#: src/ModelManager.cpp:36
 msgid "Large v1 Multilingual"
 msgstr "xxLarge v1 Multilingualxx"
 
-#: src/ModelManager.cpp:37
+#: src/ModelManager.cpp:38
 msgid "Large v2 Multilingual"
 msgstr "xxLarge v2 Multilingualxx"
 
-#: src/ModelManager.cpp:39
+#: src/ModelManager.cpp:40
 msgid "Large v3 Multilingual"
 msgstr "xxLarge v3 Multilingualxx"
 
-#: src/ModelManager.cpp:40
+#: src/ModelManager.cpp:41
 msgid "Large v3 Turbo Multilingual"
 msgstr "xxLarge v3 Turbo Multilingualxx"
 
-#: src/ModelManager.cpp:45
+#: src/ModelManager.cpp:46
 msgid "Fastest"
 msgstr "xxFastestxx"
 
-#: src/ModelManager.cpp:47
+#: src/ModelManager.cpp:48
 msgid "Fast"
 msgstr "xxFastxx"
 
-#: src/ModelManager.cpp:49
+#: src/ModelManager.cpp:50
 msgid "Moderate"
 msgstr "xxModeratexx"
 
-#: src/ModelManager.cpp:51
+#: src/ModelManager.cpp:52
 msgid "Slow"
 msgstr "xxSlowxx"
 
-#: src/ModelManager.cpp:52
+#: src/ModelManager.cpp:53
 msgid "Slowest"
 msgstr "xxSlowestxx"
 
-#: src/ModelManager.cpp:57
+#: src/ModelManager.cpp:58
 msgid "Basic accuracy"
 msgstr "xxBasic accuracyxx"
 
-#: src/ModelManager.cpp:59
+#: src/ModelManager.cpp:60
 msgid "Good accuracy"
 msgstr "xxGood accuracyxx"
 
-#: src/ModelManager.cpp:61
+#: src/ModelManager.cpp:62
 msgid "Better accuracy"
 msgstr "xxBetter accuracyxx"
 
-#: src/ModelManager.cpp:63
+#: src/ModelManager.cpp:64
 msgid "High accuracy"
 msgstr "xxHigh accuracyxx"
 
-#: src/ModelManager.cpp:64
+#: src/ModelManager.cpp:65
 msgid "Highest accuracy"
 msgstr "xxHighest accuracyxx"
 
-#: src/ModelManager.cpp:106
+#: src/ModelManager.cpp:120
 msgid "English only"
 msgstr "xxEnglish onlyxx"
 
-#: src/ModelManager.cpp:106
+#: src/ModelManager.cpp:120
 msgid "Multilingual"
 msgstr "xxMultilingualxx"
 
-#: src/ModelManager.cpp:160
+#: src/ModelManager.cpp:174
 msgid "The selected model is not available."
 msgstr "xxThe selected model is not available.xx"
 
-#: src/ModelManager.cpp:167
+#: src/ModelManager.cpp:181
 msgid "There is not enough free disk space for this model."
 msgstr "xxThere is not enough free disk space for this model.xx"
 
-#: src/ModelManager.cpp:188
+#: src/ModelManager.cpp:202
 msgid "The model download file could not be created."
 msgstr "xxThe model download file could not be created.xx"
 
-#: src/ModelManager.cpp:197
+#: src/ModelManager.cpp:211
 msgid "Downloading %1…"
 msgstr "xxDownloading %1…xx"
 
-#: src/ModelManager.cpp:228
+#: src/ModelManager.cpp:242
 msgid "The model download could not be saved safely."
 msgstr "xxThe model download could not be saved safely.xx"
 
-#: src/ModelManager.cpp:243
+#: src/ModelManager.cpp:257
 msgid "Download cancelled. You can resume it later."
 msgstr "xxDownload cancelled. You can resume it later.xx"
 
-#: src/ModelManager.cpp:251
+#: src/ModelManager.cpp:265
 msgid "The model download failed. Check the connection and try again."
 msgstr "xxThe model download failed. Check the connection and try again.xx"
 
-#: src/ModelManager.cpp:256
+#: src/ModelManager.cpp:270
 msgid "The downloaded model has an unexpected size."
 msgstr "xxThe downloaded model has an unexpected size.xx"
 
-#: src/ModelManager.cpp:267
+#: src/ModelManager.cpp:281
 msgid "Verifying %1…"
 msgstr "xxVerifying %1…xx"
 
-#: src/ModelManager.cpp:278
+#: src/ModelManager.cpp:294
 msgid "The downloaded model failed verification and was removed."
 msgstr "xxThe downloaded model failed verification and was removed.xx"
 
-#: src/ModelManager.cpp:286
+#: src/ModelManager.cpp:304
 msgid "The verified model could not be installed."
 msgstr "xxThe verified model could not be installed.xx"
 
-#: src/ModelManager.cpp:292
+#: src/ModelManager.cpp:311
 msgid "%1 is ready for offline dictation."
 msgstr "xx%1 is ready for offline dictation.xx"
 
-#: src/ModelManager.cpp:309
+#: src/ModelManager.cpp:328
 msgid "Download this model before selecting it."
 msgstr "xxDownload this model before selecting it.xx"
 
-#: src/ModelManager.cpp:317
+#: src/ModelManager.cpp:336
 msgid "Select a valid local Whisper model file."
 msgstr "xxSelect a valid local Whisper model file.xx"
 
-#: src/ModelManager.cpp:321
+#: src/ModelManager.cpp:347
+msgid "Verifying the saved speech model…"
+msgstr "xxVerifying the saved speech model…xx"
+
+#: src/ModelManager.cpp:348
+msgid "Verifying the selected speech model…"
+msgstr "xxVerifying the selected speech model…xx"
+
+#: src/ModelManager.cpp:359
+msgid "The selected file is not a compatible Whisper model."
+msgstr "xxThe selected file is not a compatible Whisper model.xx"
+
+#: src/ModelManager.cpp:365
 msgid "The local model is ready for offline dictation."
 msgstr "xxThe local model is ready for offline dictation.xx"
 
-#: src/ModelManager.cpp:339
+#: src/ModelManager.cpp:382
 msgid "Model removed."
 msgstr "xxModel removed.xx"
+
+#: src/ModelManager.cpp:387
+msgid "The model could not be removed."
+msgstr "xxThe model could not be removed.xx"
 
 #: src/TextOutput.cpp:77
 msgid "Copied to clipboard."

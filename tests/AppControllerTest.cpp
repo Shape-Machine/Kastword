@@ -101,6 +101,7 @@ private slots:
   void supportsMultilingualModels();
   void migratesUnsupportedLanguageSetting();
   void disablesDictationUntilModelIsReady();
+  void stopsRecordingWhenActiveModelDisappears();
 };
 
 void AppControllerTest::initTestCase() {
@@ -554,6 +555,11 @@ void AppControllerTest::migratesUnsupportedLanguageSetting() {
 }
 
 void AppControllerTest::disablesDictationUntilModelIsReady() {
+  QTemporaryDir directory;
+  auto network = std::make_unique<QNetworkAccessManager>();
+  auto manager = std::make_unique<ModelManager>(
+      QList<ModelCatalogEntry>{}, directory.filePath(QStringLiteral("managed")), network.get(),
+      nullptr, [](const QString &) { return true; });
   auto audio = std::make_unique<FakeAudioCapture>();
   auto *audioPtr = audio.get();
   auto output = std::make_unique<FakeTextOutput>();
@@ -562,7 +568,7 @@ void AppControllerTest::disablesDictationUntilModelIsReady() {
       [](const QByteArray &, const QString &, const QString &) {
         return QPair<QString, QString>();
       },
-      false, true);
+      false, true, nullptr, std::move(manager));
 
   QVERIFY(!controller.modelReady());
   QVERIFY(controller.modelSetupRequired());
@@ -577,10 +583,47 @@ void AppControllerTest::disablesDictationUntilModelIsReady() {
   model.flush();
   controller.setModelUrl(QUrl::fromLocalFile(model.fileName()));
 
-  QVERIFY(controller.modelReady());
+  QTRY_VERIFY(controller.modelReady());
   QVERIFY(controller.shortcutAction()->isEnabled());
   controller.toggle();
   QVERIFY(audioPtr->recording);
+}
+
+void AppControllerTest::stopsRecordingWhenActiveModelDisappears() {
+  QTemporaryDir directory;
+  const QString modelPath = directory.filePath(QStringLiteral("custom.bin"));
+  QFile model(modelPath);
+  QVERIFY(model.open(QIODevice::WriteOnly));
+  QCOMPARE(model.write(QByteArray::fromHex("6c6d6767") + QByteArrayLiteral("test-model")), 14);
+  model.close();
+  {
+    KConfig config(QStringLiteral("kastwordrc"));
+    KConfigGroup group(&config, QStringLiteral("General"));
+    group.writeEntry("ModelPath", modelPath);
+    group.sync();
+  }
+  auto network = std::make_unique<QNetworkAccessManager>();
+  auto manager = std::make_unique<ModelManager>(
+      QList<ModelCatalogEntry>{}, directory.filePath(QStringLiteral("managed")), network.get(),
+      nullptr, [](const QString &) { return true; });
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto *audioPtr = audio.get();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false, true, nullptr, std::move(manager));
+  QTRY_VERIFY(controller.modelReady());
+  controller.toggle();
+  QVERIFY(audioPtr->recording);
+
+  QVERIFY(QFile::remove(modelPath));
+
+  QTRY_VERIFY(!audioPtr->recording);
+  QTRY_VERIFY(controller.isIdle());
+  QVERIFY(!controller.modelReady());
 }
 
 QTEST_MAIN(AppControllerTest)

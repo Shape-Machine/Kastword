@@ -12,6 +12,7 @@
 #include <QStandardPaths>
 #include <QStorageInfo>
 #include <QtConcurrentRun>
+#include <whisper.h>
 
 namespace {
 QString localizedModelName(const QString &id) {
@@ -72,16 +73,29 @@ ModelManager::ModelManager(QObject *parent)
                    nullptr, parent) {}
 
 ModelManager::ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath,
-                           QNetworkAccessManager *network, QObject *parent)
+                           QNetworkAccessManager *network, QObject *parent,
+                           ModelValidationFunction validator)
     : QObject(parent), m_catalog(std::move(catalog)), m_storagePath(std::move(storagePath)),
-      m_network(network) {
+      m_network(network), m_validator(std::move(validator)) {
   Q_ASSERT(validateModelCatalog(m_catalog).isEmpty());
   if (!m_network) {
     m_ownedNetwork = std::make_unique<QNetworkAccessManager>();
     m_network = m_ownedNetwork.get();
   }
+  if (!m_validator) {
+    m_validator = [](const QString &path) {
+      whisper_context *context = whisper_init_from_file_with_params(
+          path.toUtf8().constData(), whisper_context_default_params());
+      if (!context)
+        return false;
+      whisper_free(context);
+      return true;
+    };
+  }
   connect(&m_hashWatcher, &QFutureWatcher<QByteArray>::finished, this,
           &ModelManager::finishVerification);
+  connect(&m_modelValidationWatcher, &QFutureWatcher<bool>::finished, this,
+          &ModelManager::finishLocalModelValidation);
   connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, [this] {
     if (!isStructurallyValidModel(m_activeModelPath)) {
       clearActiveModel();
@@ -275,7 +289,11 @@ void ModelManager::finishVerification() {
   if (!item || m_hashWatcher.result() != item->sha256 ||
       !isStructurallyValidModel(m_verificationPath)) {
     QFile::remove(m_verificationPath);
+    const bool restoring = m_restoringActiveModel;
+    m_restoringActiveModel = false;
     setFailure(i18n("The downloaded model failed verification and was removed."));
+    if (restoring)
+      emit setupRequired();
     return;
   }
   QString path = m_verificationPath;
@@ -288,6 +306,7 @@ void ModelManager::finishVerification() {
     }
     path = destination;
   }
+  m_restoringActiveModel = false;
   activatePath(path);
   m_status = i18n("%1 is ready for offline dictation.", localizedModelName(item->id));
   m_error.clear();
@@ -317,11 +336,35 @@ bool ModelManager::selectLocalModel(const QUrl &url) {
     setFailure(i18n("Select a valid local Whisper model file."));
     return false;
   }
-  activatePath(url.toLocalFile());
+  validateLocalModel(url.toLocalFile(), false);
+  return true;
+}
+
+void ModelManager::validateLocalModel(const QString &path, bool restoring) {
+  m_pendingLocalModelPath = path;
+  m_restoringActiveModel = restoring;
+  m_error.clear();
+  m_status = restoring ? i18n("Verifying the saved speech model…")
+                       : i18n("Verifying the selected speech model…");
+  emit changed();
+  m_modelValidationWatcher.setFuture(QtConcurrent::run(m_validator, path));
+}
+
+void ModelManager::finishLocalModelValidation() {
+  const QString path = m_pendingLocalModelPath;
+  const bool restoring = m_restoringActiveModel;
+  m_pendingLocalModelPath.clear();
+  m_restoringActiveModel = false;
+  if (!m_modelValidationWatcher.result() || !isStructurallyValidModel(path)) {
+    setFailure(i18n("The selected file is not a compatible Whisper model."));
+    if (restoring)
+      emit setupRequired();
+    return;
+  }
+  activatePath(path);
   m_status = i18n("The local model is ready for offline dictation.");
   m_error.clear();
   emit changed();
-  return true;
 }
 
 bool ModelManager::removeModel(const QString &id) {
@@ -332,14 +375,16 @@ bool ModelManager::removeModel(const QString &id) {
     return false;
   const QString path = modelPath(*item);
   QFile::remove(partialPath(*item));
-  if (path == m_activeModelPath)
-    clearActiveModel();
   const bool removed = !QFileInfo::exists(path) || QFile::remove(path);
   if (removed) {
+    if (path == m_activeModelPath)
+      clearActiveModel();
     m_status = i18n("Model removed.");
     emit changed();
     if (!modelReady())
       emit setupRequired();
+  } else {
+    setFailure(i18n("The model could not be removed."));
   }
   return removed;
 }
@@ -352,6 +397,7 @@ void ModelManager::restoreActiveModel(const QString &path) {
   }
   if (const ModelCatalogEntry *item = entryForPath(path)) {
     if (QFileInfo(path).size() == item->size) {
+      m_restoringActiveModel = true;
       verifyFile(*item, path, false);
       return;
     }
@@ -359,7 +405,7 @@ void ModelManager::restoreActiveModel(const QString &path) {
     emit setupRequired();
     return;
   }
-  activatePath(path);
+  validateLocalModel(path, true);
 }
 
 void ModelManager::activatePath(const QString &path) {

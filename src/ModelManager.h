@@ -13,6 +13,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QVariantList>
+#include <functional>
 #include <memory>
 
 class ModelManager final : public QObject {
@@ -27,22 +28,29 @@ class ModelManager final : public QObject {
   Q_PROPERTY(QString status READ status NOTIFY changed)
   Q_PROPERTY(QString error READ error NOTIFY changed)
   Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
+  Q_PROPERTY(bool restoringActiveModel READ restoringActiveModel NOTIFY changed)
 
 public:
+  using ModelValidationFunction = std::function<bool(const QString &)>;
+
   explicit ModelManager(QObject *parent = nullptr);
   ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath,
-               QNetworkAccessManager *network, QObject *parent = nullptr);
+               QNetworkAccessManager *network, QObject *parent = nullptr,
+               ModelValidationFunction validator = {});
 
   QVariantList models() const;
   QString activeModelPath() const { return m_activeModelPath; }
   bool modelReady() const { return !m_activeModelPath.isEmpty(); }
   bool activeModelEnglishOnly() const;
-  bool busy() const { return m_reply || m_hashWatcher.isRunning(); }
+  bool busy() const {
+    return m_reply || m_hashWatcher.isRunning() || m_modelValidationWatcher.isRunning();
+  }
   QString currentModelId() const { return m_currentModelId; }
   qreal progress() const { return m_progress; }
   QString status() const { return m_status; }
   QString error() const { return m_error; }
   QString storagePath() const { return m_storagePath; }
+  bool restoringActiveModel() const { return m_restoringActiveModel; }
 
   static bool isStructurallyValidModel(const QString &path);
 
@@ -68,6 +76,8 @@ private:
   void finishRequest();
   void verifyFile(const ModelCatalogEntry &entry, const QString &path, bool installAfterVerify);
   void finishVerification();
+  void validateLocalModel(const QString &path, bool restoring);
+  void finishLocalModelValidation();
   void activatePath(const QString &path);
   void clearActiveModel();
   void setFailure(const QString &message);
@@ -89,5 +99,9 @@ private:
   QString m_verificationPath;
   bool m_installAfterVerify = false;
   QFutureWatcher<QByteArray> m_hashWatcher;
+  QFutureWatcher<bool> m_modelValidationWatcher;
   QFileSystemWatcher m_watcher;
+  ModelValidationFunction m_validator;
+  QString m_pendingLocalModelPath;
+  bool m_restoringActiveModel = false;
 };

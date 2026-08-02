@@ -20,6 +20,7 @@ TestCase {
     }
 
     function init() {
+        appController.setRestoringModel(false)
         appController.setModelReady(true)
         const loader = createTemporaryObject(applicationComponent, testCase)
         verify(loader)
@@ -37,6 +38,15 @@ TestCase {
         const button = findChild(applicationWindow.contentItem, "dictationButton")
         verify(button)
         compare(button.enabled, false)
+    }
+
+    function test_savedModelVerificationDoesNotOpenSetup() {
+        appController.setRestoringModel(true)
+        appController.setModelReady(false)
+        verify(applicationWindow.pageStack.currentItem.objectName !== "modelManagerPage")
+
+        appController.setRestoringModel(false)
+        tryCompare(applicationWindow.pageStack.currentItem, "objectName", "modelManagerPage")
     }
 
     function cleanup() {

@@ -7,6 +7,7 @@
 #include <KLocalizedString>
 #include <QCryptographicHash>
 #include <QNetworkReply>
+#include <QSemaphore>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -112,7 +113,10 @@ private slots:
   void removesActiveModel();
   void restoresVerifiedManagedModel();
   void acceptsValidLocalModel();
+  void rejectsStructurallyValidButUnparseableLocalModel();
   void rejectsInvalidLocalModel();
+  void reportsRestorationWhileValidatingLocalModel();
+  void keepsActiveModelWhenRemovalFails();
 };
 
 namespace {
@@ -285,11 +289,28 @@ void ModelManagerTest::acceptsValidLocalModel() {
   model.close();
   FakeNetworkAccessManager network;
   ModelManager manager({testEntry(payload)}, directory.filePath(QStringLiteral("managed")),
-                       &network);
+                       &network, nullptr, [](const QString &) { return true; });
 
   QVERIFY(manager.selectLocalModel(QUrl::fromLocalFile(model.fileName())));
-  QVERIFY(manager.modelReady());
+  QTRY_VERIFY(manager.modelReady());
   QCOMPARE(manager.activeModelPath(), model.fileName());
+}
+
+void ModelManagerTest::rejectsStructurallyValidButUnparseableLocalModel() {
+  QTemporaryDir directory;
+  QFile model(directory.filePath(QStringLiteral("invalid.bin")));
+  QVERIFY(model.open(QIODevice::WriteOnly));
+  QCOMPARE(model.write(validPayload()), validPayload().size());
+  model.close();
+  FakeNetworkAccessManager network;
+  ModelManager manager({testEntry(validPayload())}, directory.filePath(QStringLiteral("managed")),
+                       &network, nullptr, [](const QString &) { return false; });
+
+  QVERIFY(manager.selectLocalModel(QUrl::fromLocalFile(model.fileName())));
+
+  QTRY_VERIFY(!manager.busy());
+  QVERIFY(!manager.modelReady());
+  QVERIFY(manager.error().contains(QStringLiteral("not a compatible")));
 }
 
 void ModelManagerTest::rejectsInvalidLocalModel() {
@@ -303,6 +324,49 @@ void ModelManagerTest::rejectsInvalidLocalModel() {
 
   QVERIFY(!manager.selectLocalModel(QUrl::fromLocalFile(invalid.fileName())));
   QVERIFY(!manager.modelReady());
+}
+
+void ModelManagerTest::reportsRestorationWhileValidatingLocalModel() {
+  QTemporaryDir directory;
+  QFile model(directory.filePath(QStringLiteral("custom.bin")));
+  QVERIFY(model.open(QIODevice::WriteOnly));
+  QCOMPARE(model.write(validPayload()), validPayload().size());
+  model.close();
+  QSemaphore validationGate;
+  FakeNetworkAccessManager network;
+  ModelManager manager({testEntry(validPayload())}, directory.filePath(QStringLiteral("managed")),
+                       &network, nullptr, [&validationGate](const QString &) {
+                         validationGate.acquire();
+                         return true;
+                       });
+
+  manager.restoreActiveModel(model.fileName());
+
+  QVERIFY(manager.restoringActiveModel());
+  QVERIFY(!manager.modelReady());
+  validationGate.release();
+  QTRY_VERIFY(manager.modelReady());
+  QVERIFY(!manager.restoringActiveModel());
+}
+
+void ModelManagerTest::keepsActiveModelWhenRemovalFails() {
+  QTemporaryDir directory;
+  FakeNetworkAccessManager network;
+  network.payload = validPayload();
+  const ModelCatalogEntry item = testEntry(network.payload);
+  ModelManager manager({item}, directory.path(), &network);
+  manager.download(item.id);
+  QTRY_VERIFY(manager.modelReady());
+  const QFileDevice::Permissions originalPermissions = QFileInfo(directory.path()).permissions();
+  QVERIFY(QFile::setPermissions(directory.path(), QFileDevice::ReadOwner | QFileDevice::ExeOwner));
+
+  const bool removed = manager.removeModel(item.id);
+
+  QVERIFY(QFile::setPermissions(directory.path(), originalPermissions));
+  QVERIFY(!removed);
+  QVERIFY(manager.modelReady());
+  QVERIFY(QFileInfo::exists(manager.activeModelPath()));
+  QVERIFY(manager.error().contains(QStringLiteral("could not be removed")));
 }
 
 QTEST_MAIN(ModelManagerTest)

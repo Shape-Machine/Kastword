@@ -169,7 +169,7 @@ if(BUILD_TESTING)
         src/ModelManager.h)
     target_include_directories(kastword_model_manager_test PRIVATE src)
     target_link_libraries(kastword_model_manager_test PRIVATE
-        Qt6::Concurrent Qt6::Core Qt6::Network Qt6::Test KF6::I18n)
+        Qt6::Concurrent Qt6::Core Qt6::Network Qt6::Test KF6::I18n whisper)
     kastword_enable_coverage(kastword_model_manager_test)
     kastword_enable_sanitizers(kastword_model_manager_test)
     add_test(NAME model-manager COMMAND kastword_model_manager_test)
