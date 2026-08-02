@@ -48,7 +48,8 @@ QStringList TextOutput::waylandPasteArguments() {
   // KEY_LEFTCTRL=29, KEY_LEFTSHIFT=42, and KEY_V=47.
   return {QStringLiteral("key"),  QStringLiteral("29:1"), QStringLiteral("42:1"),
           QStringLiteral("47:1"), QStringLiteral("47:0"), QStringLiteral("42:0"),
-          QStringLiteral("29:0")};
+          QStringLiteral("29:0"), QStringLiteral("29:1"), QStringLiteral("47:1"),
+          QStringLiteral("47:0"), QStringLiteral("29:0")};
 }
 
 QString TextOutput::deliver(const QString &text, bool autoPaste) {
