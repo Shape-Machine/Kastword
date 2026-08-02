@@ -40,7 +40,6 @@ int main(int argc, char **argv) {
   QApplication::setApplicationDisplayName(QStringLiteral("Kastword"));
   QApplication::setQuitOnLastWindowClosed(false);
   KLocalizedString::setApplicationDomain("kastword");
-  KDBusService dbusService(KDBusService::Unique);
 
   AppController controller;
   QQmlApplicationEngine engine;
@@ -52,6 +51,7 @@ int main(int argc, char **argv) {
   if (smokeTest)
     return 0;
 
+  KDBusService dbusService(KDBusService::Unique);
   auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
   KStatusNotifierItem tray(QStringLiteral("kastword"));
   tray.setIconByName(QStringLiteral("audio-input-microphone"));
