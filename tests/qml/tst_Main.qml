@@ -98,6 +98,33 @@ TestCase {
         compare(filter.Accessible.name, "Filter speech models")
     }
 
+    function test_modelFiltersDefaultToRecommendedAndOfferPopularLanguages() {
+        applicationWindow.openModelManager()
+        const filter = findChild(applicationWindow.contentItem, "modelLanguageFilter")
+        const english = findChild(applicationWindow.contentItem, "modelCard-base.en")
+        const recommendedMultilingual = findChild(applicationWindow.contentItem, "modelCard-small")
+        const otherMultilingual = findChild(applicationWindow.contentItem, "modelCard-tiny")
+        verify(filter)
+        verify(english)
+        verify(recommendedMultilingual)
+        verify(otherMultilingual)
+
+        compare(filter.currentValue, "recommended")
+        compare(english.visible, true)
+        compare(recommendedMultilingual.visible, true)
+        compare(otherMultilingual.visible, false)
+
+        filter.currentIndex = filter.indexOfValue("es")
+        compare(english.visible, false)
+        compare(recommendedMultilingual.visible, true)
+        compare(otherMultilingual.visible, true)
+        verify(filter.indexOfValue("de") >= 0)
+        verify(filter.indexOfValue("fr") >= 0)
+        verify(filter.indexOfValue("pt") >= 0)
+        verify(filter.indexOfValue("it") >= 0)
+        verify(filter.indexOfValue("nl") >= 0)
+    }
+
     function test_primaryActionSupportsKeyboard() {
         const button = findChild(applicationWindow.contentItem, "dictationButton")
         verify(button)

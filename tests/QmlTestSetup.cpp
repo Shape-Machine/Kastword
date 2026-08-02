@@ -21,18 +21,25 @@ class FakeModelManager final : public QObject {
 
 public:
   QVariantList models() const {
-    return {QVariantMap{{QStringLiteral("id"), QStringLiteral("base.en")},
-                        {QStringLiteral("name"), QStringLiteral("Base English")},
-                        {QStringLiteral("sizeText"), QStringLiteral("141 MiB")},
-                        {QStringLiteral("englishOnly"), true},
-                        {QStringLiteral("languageText"), QStringLiteral("English only")},
-                        {QStringLiteral("recommended"), true},
-                        {QStringLiteral("speed"), QStringLiteral("Fast")},
-                        {QStringLiteral("accuracy"), QStringLiteral("Good accuracy")},
-                        {QStringLiteral("installed"), false},
-                        {QStringLiteral("active"), false},
-                        {QStringLiteral("downloading"), false},
-                        {QStringLiteral("verifying"), false}}};
+    const auto model = [](const QString &id, bool englishOnly, bool recommended) {
+      return QVariantMap{{QStringLiteral("id"), id},
+                         {QStringLiteral("name"), id},
+                         {QStringLiteral("sizeText"), QStringLiteral("141 MiB")},
+                         {QStringLiteral("englishOnly"), englishOnly},
+                         {QStringLiteral("languageText"), englishOnly
+                                                              ? QStringLiteral("English only")
+                                                              : QStringLiteral("Multilingual")},
+                         {QStringLiteral("recommended"), recommended},
+                         {QStringLiteral("speed"), QStringLiteral("Fast")},
+                         {QStringLiteral("accuracy"), QStringLiteral("Good accuracy")},
+                         {QStringLiteral("installed"), false},
+                         {QStringLiteral("active"), false},
+                         {QStringLiteral("downloading"), false},
+                         {QStringLiteral("verifying"), false}};
+    };
+    return {model(QStringLiteral("base.en"), true, true),
+            model(QStringLiteral("small"), false, true),
+            model(QStringLiteral("tiny"), false, false)};
   }
   bool busy() const { return false; }
   qreal progress() const { return 0.0; }
