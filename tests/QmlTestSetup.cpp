@@ -33,6 +33,8 @@ public:
                          {QStringLiteral("speed"), QStringLiteral("Fast")},
                          {QStringLiteral("accuracy"), QStringLiteral("Good accuracy")},
                          {QStringLiteral("installed"), false},
+                         {QStringLiteral("partial"), m_partialId == id},
+                         {QStringLiteral("partialSizeText"), QStringLiteral("42 MiB")},
                          {QStringLiteral("active"), false},
                          {QStringLiteral("downloading"), false},
                          {QStringLiteral("verifying"), m_verifyingId == id}};
@@ -62,6 +64,12 @@ public:
     m_verifyingId = id;
     emit changed();
   }
+  Q_INVOKABLE void setPartialId(const QString &id) {
+    if (m_partialId == id)
+      return;
+    m_partialId = id;
+    emit changed();
+  }
 
 signals:
   void changed();
@@ -69,6 +77,7 @@ signals:
 private:
   bool m_verificationPending = false;
   QString m_verifyingId;
+  QString m_partialId;
 };
 
 class FakeAppController final : public QObject {

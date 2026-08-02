@@ -121,6 +121,7 @@ private slots:
   void removesActiveModel();
   void restoresVerifiedManagedModel();
   void acceptsValidLocalModel();
+  void preservesEnglishOnlyCapabilityForLocalModel();
   void rejectsStructurallyValidButUnparseableLocalModel();
   void rejectsInvalidLocalModel();
   void reportsRestorationWhileValidatingLocalModel();
@@ -130,6 +131,7 @@ private slots:
   void invalidatesChangedManagedModel();
   void invalidatesChangedLocalModel();
   void resetsOversizedPartialBeforeRequest();
+  void discardsPartialDownload();
 };
 
 namespace {
@@ -375,12 +377,31 @@ void ModelManagerTest::acceptsValidLocalModel() {
   QCOMPARE(model.write(payload), payload.size());
   model.close();
   FakeNetworkAccessManager network;
-  ModelManager manager({testEntry(payload)}, directory.filePath(QStringLiteral("managed")),
-                       &network, nullptr, [](const QString &) { return true; });
+  ModelManager manager(
+      {testEntry(payload)}, directory.filePath(QStringLiteral("managed")), &network, nullptr,
+      [](const QString &) { return ModelManager::ModelValidationResult{true, false}; });
 
   QVERIFY(manager.selectLocalModel(QUrl::fromLocalFile(model.fileName())));
   QTRY_VERIFY(manager.modelReady());
   QCOMPARE(manager.activeModelPath(), model.fileName());
+  QVERIFY(!manager.activeModelEnglishOnly());
+}
+
+void ModelManagerTest::preservesEnglishOnlyCapabilityForLocalModel() {
+  QTemporaryDir directory;
+  QFile model(directory.filePath(QStringLiteral("custom.en.bin")));
+  QVERIFY(model.open(QIODevice::WriteOnly));
+  QCOMPARE(model.write(validPayload()), validPayload().size());
+  model.close();
+  FakeNetworkAccessManager network;
+  ModelManager manager(
+      {testEntry(validPayload())}, directory.filePath(QStringLiteral("managed")), &network, nullptr,
+      [](const QString &) { return ModelManager::ModelValidationResult{true, true}; });
+
+  QVERIFY(manager.selectLocalModel(QUrl::fromLocalFile(model.fileName())));
+
+  QTRY_VERIFY(manager.modelReady());
+  QVERIFY(manager.activeModelEnglishOnly());
 }
 
 void ModelManagerTest::rejectsStructurallyValidButUnparseableLocalModel() {
@@ -391,7 +412,8 @@ void ModelManagerTest::rejectsStructurallyValidButUnparseableLocalModel() {
   model.close();
   FakeNetworkAccessManager network;
   ModelManager manager({testEntry(validPayload())}, directory.filePath(QStringLiteral("managed")),
-                       &network, nullptr, [](const QString &) { return false; });
+                       &network, nullptr,
+                       [](const QString &) { return ModelManager::ModelValidationResult{}; });
 
   QVERIFY(manager.selectLocalModel(QUrl::fromLocalFile(model.fileName())));
 
@@ -424,7 +446,7 @@ void ModelManagerTest::reportsRestorationWhileValidatingLocalModel() {
   ModelManager manager({testEntry(validPayload())}, directory.filePath(QStringLiteral("managed")),
                        &network, nullptr, [&validationGate](const QString &) {
                          validationGate.acquire();
-                         return true;
+                         return ModelManager::ModelValidationResult{true, false};
                        });
   const auto releaseValidation = qScopeGuard([&validationGate] { validationGate.release(); });
 
@@ -532,8 +554,10 @@ void ModelManagerTest::invalidatesChangedLocalModel() {
   std::atomic_int validations = 0;
   FakeNetworkAccessManager network;
   ModelManager manager({testEntry(validPayload())}, directory.filePath(QStringLiteral("managed")),
-                       &network, nullptr,
-                       [&validations](const QString &) { return validations.fetch_add(1) == 0; });
+                       &network, nullptr, [&validations](const QString &) {
+                         return ModelManager::ModelValidationResult{validations.fetch_add(1) == 0,
+                                                                    false};
+                       });
   QVERIFY(manager.selectLocalModel(QUrl::fromLocalFile(model.fileName())));
   QTRY_VERIFY(manager.modelReady());
   QVERIFY(model.open(QIODevice::WriteOnly | QIODevice::Truncate));
@@ -553,15 +577,37 @@ void ModelManagerTest::resetsOversizedPartialBeforeRequest() {
   const ModelCatalogEntry item = testEntry(network.payload);
   QFile partial(directory.filePath(item.fileName + QStringLiteral(".part")));
   QVERIFY(partial.open(QIODevice::WriteOnly));
-  QVERIFY(partial.resize(item.size));
+  QVERIFY(partial.resize(item.size + 1));
   partial.close();
   ModelManager manager({item}, directory.path(), &network);
 
   manager.download(item.id);
 
   QVERIFY(network.receivedRange.isEmpty());
+  QCOMPARE(network.requestCount, 1);
   manager.cancel();
   QTRY_VERIFY(!manager.busy());
+}
+
+void ModelManagerTest::discardsPartialDownload() {
+  QTemporaryDir directory;
+  FakeNetworkAccessManager network;
+  network.payload = validPayload();
+  const ModelCatalogEntry item = testEntry(network.payload);
+  const QString partialPath = directory.filePath(item.fileName + QStringLiteral(".part"));
+  QFile partial(partialPath);
+  QVERIFY(partial.open(QIODevice::WriteOnly));
+  QCOMPARE(partial.write(network.payload.first(5)), 5);
+  partial.close();
+  ModelManager manager({item}, directory.path(), &network);
+
+  const QVariantMap state = manager.models().constFirst().toMap();
+  QVERIFY(state.value(QStringLiteral("partial")).toBool());
+  QCOMPARE(state.value(QStringLiteral("partialSize")).toLongLong(), 5);
+  QVERIFY(manager.removeModel(item.id));
+
+  QVERIFY(!QFileInfo::exists(partialPath));
+  QVERIFY(!manager.models().constFirst().toMap().value(QStringLiteral("partial")).toBool());
 }
 
 void ModelManagerTest::keepsActiveModelWhenRemovalFails() {

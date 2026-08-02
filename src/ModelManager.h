@@ -34,7 +34,11 @@ class ModelManager final : public QObject {
   Q_PROPERTY(bool verificationPending READ verificationPending NOTIFY changed)
 
 public:
-  using ModelValidationFunction = std::function<bool(const QString &)>;
+  struct ModelValidationResult {
+    bool valid = false;
+    bool englishOnly = false;
+  };
+  using ModelValidationFunction = std::function<ModelValidationResult(const QString &)>;
   using HashResult = std::optional<QByteArray>;
   using CancellationFlag = std::shared_ptr<std::atomic_bool>;
   using HashFunction = std::function<HashResult(const QString &, const CancellationFlag &)>;
@@ -47,7 +51,7 @@ public:
   QVariantList models() const;
   QString activeModelPath() const { return m_activeModelPath; }
   bool modelReady() const { return !m_activeModelPath.isEmpty(); }
-  bool activeModelEnglishOnly() const;
+  bool activeModelEnglishOnly() const { return m_activeModelEnglishOnly; }
   bool busy() const {
     return m_reply || m_hashWatcher.isRunning() || m_modelValidationWatcher.isRunning();
   }
@@ -87,7 +91,7 @@ private:
   void finishVerification();
   void validateLocalModel(const QString &path, bool restoring);
   void finishLocalModelValidation();
-  void activatePath(const QString &path);
+  void activatePath(const QString &path, bool englishOnly);
   void clearActiveModel();
   void setFailure(const QString &message);
   void watchActiveModel();
@@ -106,10 +110,11 @@ private:
   QString m_status;
   QString m_error;
   QString m_activeModelPath;
+  bool m_activeModelEnglishOnly = false;
   QString m_verificationPath;
   bool m_installAfterVerify = false;
   QFutureWatcher<HashResult> m_hashWatcher;
-  QFutureWatcher<bool> m_modelValidationWatcher;
+  QFutureWatcher<ModelValidationResult> m_modelValidationWatcher;
   QFileSystemWatcher m_watcher;
   ModelValidationFunction m_validator;
   HashFunction m_hasher;

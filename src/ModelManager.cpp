@@ -93,16 +93,17 @@ ModelManager::ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath
       whisper_context *context = whisper_init_from_file_with_params(
           path.toUtf8().constData(), whisper_context_default_params());
       if (!context)
-        return false;
+        return ModelValidationResult{};
+      const bool englishOnly = !whisper_is_multilingual(context);
       whisper_free(context);
-      return true;
+      return ModelValidationResult{true, englishOnly};
     };
   }
   if (!m_hasher)
     m_hasher = &ModelManager::hashFile;
   connect(&m_hashWatcher, &QFutureWatcher<HashResult>::finished, this,
           &ModelManager::finishVerification);
-  connect(&m_modelValidationWatcher, &QFutureWatcher<bool>::finished, this,
+  connect(&m_modelValidationWatcher, &QFutureWatcher<ModelValidationResult>::finished, this,
           &ModelManager::finishLocalModelValidation);
   connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, &ModelManager::revalidateActiveModel);
 }
@@ -111,7 +112,9 @@ QVariantList ModelManager::models() const {
   QVariantList result;
   for (const ModelCatalogEntry &item : m_catalog) {
     const QString path = modelPath(item);
+    const QString partial = partialPath(item);
     const bool installed = QFileInfo(path).isFile() && QFileInfo(path).size() == item.size;
+    const qint64 partialSize = QFileInfo(partial).isFile() ? QFileInfo(partial).size() : 0;
     result.append(QVariantMap{
         {QStringLiteral("id"), item.id},
         {QStringLiteral("name"), localizedModelName(item.id)},
@@ -125,17 +128,15 @@ QVariantList ModelManager::models() const {
         {QStringLiteral("speed"), localizedSpeed(item.speed)},
         {QStringLiteral("accuracy"), localizedAccuracy(item.accuracy)},
         {QStringLiteral("installed"), installed},
+        {QStringLiteral("partial"), partialSize > 0},
+        {QStringLiteral("partialSize"), partialSize},
+        {QStringLiteral("partialSizeText"), QLocale().formattedDataSize(partialSize)},
         {QStringLiteral("active"), path == m_activeModelPath},
         {QStringLiteral("downloading"), item.id == m_currentModelId && m_reply},
         {QStringLiteral("verifying"), item.id == m_currentModelId && m_hashWatcher.isRunning()},
     });
   }
   return result;
-}
-
-bool ModelManager::activeModelEnglishOnly() const {
-  const ModelCatalogEntry *item = entryForPath(m_activeModelPath);
-  return item && item->englishOnly;
 }
 
 bool ModelManager::isStructurallyValidModel(const QString &path) {
@@ -343,7 +344,7 @@ void ModelManager::finishVerification() {
     path = destination;
   }
   m_restoringActiveModel = false;
-  activatePath(path);
+  activatePath(path, item->englishOnly);
   m_status = i18n("%1 is ready for offline dictation.", localizedModelName(item->id));
   m_error.clear();
   m_currentModelId.clear();
@@ -391,15 +392,16 @@ void ModelManager::validateLocalModel(const QString &path, bool restoring) {
 void ModelManager::finishLocalModelValidation() {
   const QString path = m_pendingLocalModelPath;
   const bool restoring = m_restoringActiveModel;
+  const ModelValidationResult result = m_modelValidationWatcher.result();
   m_pendingLocalModelPath.clear();
   m_restoringActiveModel = false;
-  if (!m_modelValidationWatcher.result() || !isStructurallyValidModel(path)) {
+  if (!result.valid || !isStructurallyValidModel(path)) {
     setFailure(i18n("The selected file is not a compatible Whisper model."));
     if (restoring)
       emit setupRequired();
     return;
   }
-  activatePath(path);
+  activatePath(path, result.englishOnly);
   m_status = i18n("The local model is ready for offline dictation.");
   m_error.clear();
   emit changed();
@@ -412,7 +414,11 @@ bool ModelManager::removeModel(const QString &id) {
   if (!item)
     return false;
   const QString path = modelPath(*item);
-  QFile::remove(partialPath(*item));
+  const QString partial = partialPath(*item);
+  if (QFileInfo::exists(partial) && !QFile::remove(partial)) {
+    setFailure(i18n("The model could not be removed."));
+    return false;
+  }
   const bool removed = !QFileInfo::exists(path) || QFile::remove(path);
   if (removed) {
     if (path == m_activeModelPath)
@@ -446,11 +452,14 @@ void ModelManager::restoreActiveModel(const QString &path) {
   validateLocalModel(path, true);
 }
 
-void ModelManager::activatePath(const QString &path) {
-  if (m_activeModelPath == path)
+void ModelManager::activatePath(const QString &path, bool englishOnly) {
+  if (m_activeModelPath == path && m_activeModelEnglishOnly == englishOnly)
     return;
+  const bool pathChanged = m_activeModelPath != path;
   m_activeModelPath = path;
-  watchActiveModel();
+  m_activeModelEnglishOnly = englishOnly;
+  if (pathChanged)
+    watchActiveModel();
   emit activeModelPathChanged();
   emit changed();
 }
@@ -459,6 +468,7 @@ void ModelManager::clearActiveModel() {
   if (m_activeModelPath.isEmpty())
     return;
   m_activeModelPath.clear();
+  m_activeModelEnglishOnly = false;
   watchActiveModel();
   emit activeModelPathChanged();
   emit changed();

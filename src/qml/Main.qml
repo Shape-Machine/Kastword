@@ -140,6 +140,13 @@ Kirigami.ApplicationWindow {
                                 text: i18n("%1 · %2 · %3", modelData.languageText, modelData.speed, modelData.accuracy)
                             }
 
+                            Controls.Label {
+                                objectName: "partialModel-" + modelData.id
+                                Layout.fillWidth: true
+                                visible: modelData.partial && !modelData.downloading
+                                text: i18n("Partial download: %1", modelData.partialSizeText)
+                            }
+
                             Controls.ProgressBar {
                                 Layout.fillWidth: true
                                 visible: modelData.downloading
@@ -189,7 +196,8 @@ Kirigami.ApplicationWindow {
                                 }
 
                                 Controls.Button {
-                                    visible: modelData.installed
+                                    objectName: "removeModel-" + modelData.id
+                                    visible: modelData.installed || modelData.partial
                                     enabled: !appController.modelManager.busy && appController.idle
                                     text: i18n("Remove")
                                     onClicked: {

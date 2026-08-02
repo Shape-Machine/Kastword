@@ -55,6 +55,7 @@ TestCase {
 
     function cleanup() {
         appController.modelManager.setVerifyingId("")
+        appController.modelManager.setPartialId("")
         if (applicationWindow) {
             applicationWindow.visible = false
             wait(50)
@@ -137,6 +138,22 @@ TestCase {
         verify(cancel)
         tryCompare(cancel, "visible", true)
         compare(cancel.text, "Cancel")
+    }
+
+    function test_partialDownloadCanBeRemoved() {
+        applicationWindow.openModelManager()
+        const filter = findChild(applicationWindow.contentItem, "modelLanguageFilter")
+        verify(filter)
+        filter.currentIndex = filter.indexOfValue("all")
+        appController.modelManager.setPartialId("tiny")
+
+        const partial = findChild(applicationWindow.contentItem, "partialModel-tiny")
+        const remove = findChild(applicationWindow.contentItem, "removeModel-tiny")
+        verify(partial)
+        verify(remove)
+        tryCompare(partial, "visible", true)
+        compare(partial.text, "Partial download: 42 MiB")
+        compare(remove.visible, true)
     }
 
     function test_primaryActionSupportsKeyboard() {
