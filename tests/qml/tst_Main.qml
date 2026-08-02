@@ -98,7 +98,7 @@ TestCase {
         compare(filter.Accessible.name, "Filter speech models")
     }
 
-    function test_modelFiltersDefaultToRecommendedAndOfferPopularLanguages() {
+    function test_modelFiltersDefaultToRecommendedAndSeparateCapabilities() {
         applicationWindow.openModelManager()
         const filter = findChild(applicationWindow.contentItem, "modelLanguageFilter")
         const english = findChild(applicationWindow.contentItem, "modelCard-base.en")
@@ -114,15 +114,15 @@ TestCase {
         compare(recommendedMultilingual.visible, true)
         compare(otherMultilingual.visible, false)
 
-        filter.currentIndex = filter.indexOfValue("es")
+        filter.currentIndex = filter.indexOfValue("multilingual")
         compare(english.visible, false)
         compare(recommendedMultilingual.visible, true)
         compare(otherMultilingual.visible, true)
-        verify(filter.indexOfValue("de") >= 0)
-        verify(filter.indexOfValue("fr") >= 0)
-        verify(filter.indexOfValue("pt") >= 0)
-        verify(filter.indexOfValue("it") >= 0)
-        verify(filter.indexOfValue("nl") >= 0)
+
+        filter.currentIndex = filter.indexOfValue("english")
+        compare(english.visible, true)
+        compare(recommendedMultilingual.visible, false)
+        compare(otherMultilingual.visible, false)
     }
 
     function test_primaryActionSupportsKeyboard() {

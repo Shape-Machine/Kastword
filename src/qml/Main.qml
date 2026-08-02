@@ -96,13 +96,8 @@ Kirigami.ApplicationWindow {
                     valueRole: "code"
                     model: [
                         { text: i18n("Recommended"), code: "recommended" },
-                        { text: i18n("English (English-only)"), code: "en" },
-                        { text: i18n("Spanish"), code: "es" },
-                        { text: i18n("German"), code: "de" },
-                        { text: i18n("French"), code: "fr" },
-                        { text: i18n("Portuguese"), code: "pt" },
-                        { text: i18n("Italian"), code: "it" },
-                        { text: i18n("Dutch"), code: "nl" },
+                        { text: i18n("English-only models"), code: "english" },
+                        { text: i18n("Multilingual models"), code: "multilingual" },
                         { text: i18n("All models"), code: "all" }
                     ]
                     Accessible.name: i18n("Filter speech models")
@@ -117,11 +112,8 @@ Kirigami.ApplicationWindow {
                         Layout.fillWidth: true
                         visible: modelLanguageFilter.currentValue === "all"
                             || (modelLanguageFilter.currentValue === "recommended" && modelData.recommended)
-                            || (modelLanguageFilter.currentValue === "en" && modelData.englishOnly)
-                            || (modelLanguageFilter.currentValue !== "recommended"
-                                && modelLanguageFilter.currentValue !== "all"
-                                && modelLanguageFilter.currentValue !== "en"
-                                && !modelData.englishOnly)
+                            || (modelLanguageFilter.currentValue === "english" && modelData.englishOnly)
+                            || (modelLanguageFilter.currentValue === "multilingual" && !modelData.englishOnly)
                         implicitHeight: visible ? modelDetails.implicitHeight + padding * 2 : 0
 
                         ColumnLayout {
