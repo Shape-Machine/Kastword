@@ -138,6 +138,14 @@ Kirigami.ApplicationWindow {
                                 Accessible.name: i18n("Model download progress")
                             }
 
+                            Controls.ProgressBar {
+                                Layout.fillWidth: true
+                                visible: modelData.verifying
+                                indeterminate: true
+                                Accessible.name: i18n("Model verification progress")
+                                Accessible.description: i18n("The model is being verified")
+                            }
+
                             RowLayout {
                                 Layout.alignment: Qt.AlignRight
 

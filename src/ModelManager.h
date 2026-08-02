@@ -15,6 +15,7 @@
 #include <QVariantList>
 #include <functional>
 #include <memory>
+#include <optional>
 
 class ModelManager final : public QObject {
   Q_OBJECT
@@ -32,11 +33,13 @@ class ModelManager final : public QObject {
 
 public:
   using ModelValidationFunction = std::function<bool(const QString &)>;
+  using HashResult = std::optional<QByteArray>;
+  using HashFunction = std::function<HashResult(const QString &)>;
 
   explicit ModelManager(QObject *parent = nullptr);
   ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath,
                QNetworkAccessManager *network, QObject *parent = nullptr,
-               ModelValidationFunction validator = {});
+               ModelValidationFunction validator = {}, HashFunction hasher = {});
 
   QVariantList models() const;
   QString activeModelPath() const { return m_activeModelPath; }
@@ -82,7 +85,8 @@ private:
   void clearActiveModel();
   void setFailure(const QString &message);
   void watchActiveModel();
-  static QByteArray hashFile(const QString &path);
+  void revalidateActiveModel();
+  static HashResult hashFile(const QString &path);
 
   QList<ModelCatalogEntry> m_catalog;
   QString m_storagePath;
@@ -98,10 +102,11 @@ private:
   QString m_activeModelPath;
   QString m_verificationPath;
   bool m_installAfterVerify = false;
-  QFutureWatcher<QByteArray> m_hashWatcher;
+  QFutureWatcher<HashResult> m_hashWatcher;
   QFutureWatcher<bool> m_modelValidationWatcher;
   QFileSystemWatcher m_watcher;
   ModelValidationFunction m_validator;
+  HashFunction m_hasher;
   QString m_pendingLocalModelPath;
   bool m_restoringActiveModel = false;
 };

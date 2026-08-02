@@ -7,11 +7,13 @@
 #include <KLocalizedString>
 #include <QCryptographicHash>
 #include <QNetworkReply>
+#include <QScopeGuard>
 #include <QSemaphore>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <atomic>
 #include <cstring>
 
 class FakeReply final : public QNetworkReply {
@@ -117,6 +119,11 @@ private slots:
   void rejectsInvalidLocalModel();
   void reportsRestorationWhileValidatingLocalModel();
   void keepsActiveModelWhenRemovalFails();
+  void distinguishesDownloadFromVerification();
+  void retainsModelOnHashReadFailure();
+  void invalidatesChangedManagedModel();
+  void invalidatesChangedLocalModel();
+  void resetsOversizedPartialBeforeRequest();
 };
 
 namespace {
@@ -339,6 +346,7 @@ void ModelManagerTest::reportsRestorationWhileValidatingLocalModel() {
                          validationGate.acquire();
                          return true;
                        });
+  const auto releaseValidation = qScopeGuard([&validationGate] { validationGate.release(); });
 
   manager.restoreActiveModel(model.fileName());
 
@@ -347,6 +355,129 @@ void ModelManagerTest::reportsRestorationWhileValidatingLocalModel() {
   validationGate.release();
   QTRY_VERIFY(manager.modelReady());
   QVERIFY(!manager.restoringActiveModel());
+}
+
+void ModelManagerTest::distinguishesDownloadFromVerification() {
+  QTemporaryDir directory;
+  const QByteArray payload = validPayload();
+  const ModelCatalogEntry item = testEntry(payload);
+  FakeNetworkAccessManager network;
+  network.payload = payload;
+  network.delay = 100;
+  ModelManager downloading({item}, directory.filePath(QStringLiteral("download")), &network);
+
+  downloading.download(item.id);
+
+  QVariantMap state = downloading.models().constFirst().toMap();
+  QVERIFY(state.value(QStringLiteral("downloading")).toBool());
+  QVERIFY(!state.value(QStringLiteral("verifying")).toBool());
+  downloading.cancel();
+  QTRY_VERIFY(!downloading.busy());
+
+  QDir().mkpath(directory.filePath(QStringLiteral("verify")));
+  QFile model(directory.filePath(QStringLiteral("verify/") + item.fileName));
+  QVERIFY(model.open(QIODevice::WriteOnly));
+  QCOMPARE(model.write(payload), payload.size());
+  model.close();
+  QSemaphore hashGate;
+  FakeNetworkAccessManager verificationNetwork;
+  ModelManager verifying({item}, directory.filePath(QStringLiteral("verify")), &verificationNetwork,
+                         nullptr, {},
+                         [&hashGate, payload](const QString &) -> ModelManager::HashResult {
+                           hashGate.acquire();
+                           return QCryptographicHash::hash(payload, QCryptographicHash::Sha256);
+                         });
+  const auto releaseHash = qScopeGuard([&hashGate] { hashGate.release(); });
+
+  verifying.selectModel(item.id);
+
+  state = verifying.models().constFirst().toMap();
+  QVERIFY(!state.value(QStringLiteral("downloading")).toBool());
+  QVERIFY(state.value(QStringLiteral("verifying")).toBool());
+  hashGate.release();
+  QTRY_VERIFY(verifying.modelReady());
+}
+
+void ModelManagerTest::retainsModelOnHashReadFailure() {
+  QTemporaryDir directory;
+  const QByteArray payload = validPayload();
+  const ModelCatalogEntry item = testEntry(payload);
+  QFile model(directory.filePath(item.fileName));
+  QVERIFY(model.open(QIODevice::WriteOnly));
+  QCOMPARE(model.write(payload), payload.size());
+  model.close();
+  FakeNetworkAccessManager network;
+  ModelManager manager({item}, directory.path(), &network, nullptr, {},
+                       [](const QString &) -> ModelManager::HashResult { return std::nullopt; });
+
+  manager.selectModel(item.id);
+
+  QTRY_VERIFY(!manager.busy());
+  QVERIFY(QFileInfo::exists(model.fileName()));
+  QVERIFY(!manager.modelReady());
+  QVERIFY(manager.error().contains(QStringLiteral("could not be read")));
+}
+
+void ModelManagerTest::invalidatesChangedManagedModel() {
+  QTemporaryDir directory;
+  FakeNetworkAccessManager network;
+  network.payload = validPayload();
+  const ModelCatalogEntry item = testEntry(network.payload);
+  ModelManager manager({item}, directory.path(), &network);
+  manager.download(item.id);
+  QTRY_VERIFY(manager.modelReady());
+  const QString path = manager.activeModelPath();
+  QFile corrupt(path);
+  QVERIFY(corrupt.open(QIODevice::WriteOnly | QIODevice::Truncate));
+  const QByteArray replacement = QByteArray::fromHex("6c6d6767") + QByteArray(10, 'x');
+  QCOMPARE(replacement.size(), network.payload.size());
+  QCOMPARE(corrupt.write(replacement), replacement.size());
+  corrupt.close();
+
+  QTRY_VERIFY(!manager.modelReady());
+  QTRY_VERIFY(!manager.busy());
+  QVERIFY(!QFileInfo::exists(path));
+}
+
+void ModelManagerTest::invalidatesChangedLocalModel() {
+  QTemporaryDir directory;
+  QFile model(directory.filePath(QStringLiteral("custom.bin")));
+  QVERIFY(model.open(QIODevice::WriteOnly));
+  QCOMPARE(model.write(validPayload()), validPayload().size());
+  model.close();
+  std::atomic_int validations = 0;
+  FakeNetworkAccessManager network;
+  ModelManager manager({testEntry(validPayload())}, directory.filePath(QStringLiteral("managed")),
+                       &network, nullptr,
+                       [&validations](const QString &) { return validations.fetch_add(1) == 0; });
+  QVERIFY(manager.selectLocalModel(QUrl::fromLocalFile(model.fileName())));
+  QTRY_VERIFY(manager.modelReady());
+  QVERIFY(model.open(QIODevice::WriteOnly | QIODevice::Truncate));
+  QCOMPARE(model.write(QByteArray::fromHex("6c6d6767") + QByteArray(10, 'x')), 14);
+  model.close();
+
+  QTRY_VERIFY(!manager.modelReady());
+  QTRY_VERIFY(!manager.busy());
+  QVERIFY(QFileInfo::exists(model.fileName()));
+}
+
+void ModelManagerTest::resetsOversizedPartialBeforeRequest() {
+  QTemporaryDir directory;
+  FakeNetworkAccessManager network;
+  network.payload = validPayload();
+  network.delay = 100;
+  const ModelCatalogEntry item = testEntry(network.payload);
+  QFile partial(directory.filePath(item.fileName + QStringLiteral(".part")));
+  QVERIFY(partial.open(QIODevice::WriteOnly));
+  QVERIFY(partial.resize(item.size));
+  partial.close();
+  ModelManager manager({item}, directory.path(), &network);
+
+  manager.download(item.id);
+
+  QVERIFY(network.receivedRange.isEmpty());
+  manager.cancel();
+  QTRY_VERIFY(!manager.busy());
 }
 
 void ModelManagerTest::keepsActiveModelWhenRemovalFails() {

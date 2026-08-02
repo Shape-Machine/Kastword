@@ -30,7 +30,8 @@ public:
                         {QStringLiteral("accuracy"), QStringLiteral("Good accuracy")},
                         {QStringLiteral("installed"), false},
                         {QStringLiteral("active"), false},
-                        {QStringLiteral("downloading"), false}}};
+                        {QStringLiteral("downloading"), false},
+                        {QStringLiteral("verifying"), false}}};
   }
   bool busy() const { return false; }
   qreal progress() const { return 0.0; }

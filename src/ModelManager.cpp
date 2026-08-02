@@ -74,9 +74,9 @@ ModelManager::ModelManager(QObject *parent)
 
 ModelManager::ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath,
                            QNetworkAccessManager *network, QObject *parent,
-                           ModelValidationFunction validator)
+                           ModelValidationFunction validator, HashFunction hasher)
     : QObject(parent), m_catalog(std::move(catalog)), m_storagePath(std::move(storagePath)),
-      m_network(network), m_validator(std::move(validator)) {
+      m_network(network), m_validator(std::move(validator)), m_hasher(std::move(hasher)) {
   Q_ASSERT(validateModelCatalog(m_catalog).isEmpty());
   if (!m_network) {
     m_ownedNetwork = std::make_unique<QNetworkAccessManager>();
@@ -92,16 +92,13 @@ ModelManager::ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath
       return true;
     };
   }
-  connect(&m_hashWatcher, &QFutureWatcher<QByteArray>::finished, this,
+  if (!m_hasher)
+    m_hasher = &ModelManager::hashFile;
+  connect(&m_hashWatcher, &QFutureWatcher<HashResult>::finished, this,
           &ModelManager::finishVerification);
   connect(&m_modelValidationWatcher, &QFutureWatcher<bool>::finished, this,
           &ModelManager::finishLocalModelValidation);
-  connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, [this] {
-    if (!isStructurallyValidModel(m_activeModelPath)) {
-      clearActiveModel();
-      emit setupRequired();
-    }
-  });
+  connect(&m_watcher, &QFileSystemWatcher::fileChanged, this, &ModelManager::revalidateActiveModel);
 }
 
 QVariantList ModelManager::models() const {
@@ -123,7 +120,8 @@ QVariantList ModelManager::models() const {
         {QStringLiteral("accuracy"), localizedAccuracy(item.accuracy)},
         {QStringLiteral("installed"), installed},
         {QStringLiteral("active"), path == m_activeModelPath},
-        {QStringLiteral("downloading"), item.id == m_currentModelId && busy()},
+        {QStringLiteral("downloading"), item.id == m_currentModelId && m_reply},
+        {QStringLiteral("verifying"), item.id == m_currentModelId && m_hashWatcher.isRunning()},
     });
   }
   return result;
@@ -175,7 +173,12 @@ void ModelManager::download(const QString &id) {
     return;
   }
   QDir().mkpath(m_storagePath);
-  const qint64 partialSize = QFileInfo(partialPath(*item)).size();
+  const QString partial = partialPath(*item);
+  qint64 partialSize = QFileInfo(partial).size();
+  if (partialSize < 0 || partialSize >= item->size) {
+    QFile::remove(partial);
+    partialSize = 0;
+  }
   const QStorageInfo storage(m_storagePath);
   if (storage.isValid() && storage.bytesAvailable() < item->size - qMax<qint64>(0, partialSize)) {
     setFailure(i18n("There is not enough free disk space for this model."));
@@ -281,13 +284,21 @@ void ModelManager::verifyFile(const ModelCatalogEntry &item, const QString &path
   m_status = i18n("Verifying %1…", localizedModelName(item.id));
   m_progress = 1.0;
   emit changed();
-  m_hashWatcher.setFuture(QtConcurrent::run(&ModelManager::hashFile, path));
+  m_hashWatcher.setFuture(QtConcurrent::run(m_hasher, path));
 }
 
 void ModelManager::finishVerification() {
   const ModelCatalogEntry *item = entry(m_currentModelId);
-  if (!item || m_hashWatcher.result() != item->sha256 ||
-      !isStructurallyValidModel(m_verificationPath)) {
+  const HashResult result = m_hashWatcher.result();
+  if (!item || !result) {
+    const bool restoring = m_restoringActiveModel;
+    m_restoringActiveModel = false;
+    setFailure(i18n("The model could not be read for verification."));
+    if (restoring)
+      emit setupRequired();
+    return;
+  }
+  if (*result != item->sha256 || !isStructurallyValidModel(m_verificationPath)) {
     QFile::remove(m_verificationPath);
     const bool restoring = m_restoringActiveModel;
     m_restoringActiveModel = false;
@@ -442,12 +453,36 @@ void ModelManager::watchActiveModel() {
     m_watcher.addPath(m_activeModelPath);
 }
 
-QByteArray ModelManager::hashFile(const QString &path) {
+void ModelManager::revalidateActiveModel() {
+  if (m_activeModelPath.isEmpty())
+    return;
+  if (busy()) {
+    clearActiveModel();
+    emit setupRequired();
+    return;
+  }
+  const QString path = m_activeModelPath;
+  const ModelCatalogEntry *item = entryForPath(path);
+  m_restoringActiveModel = true;
+  clearActiveModel();
+  if (!isStructurallyValidModel(path) || (item && QFileInfo(path).size() != item->size)) {
+    m_restoringActiveModel = false;
+    setFailure(i18n("The active speech model is no longer valid."));
+    emit setupRequired();
+    return;
+  }
+  if (item)
+    verifyFile(*item, path, false);
+  else
+    validateLocalModel(path, true);
+}
+
+ModelManager::HashResult ModelManager::hashFile(const QString &path) {
   QFile file(path);
   if (!file.open(QIODevice::ReadOnly))
-    return {};
+    return std::nullopt;
   QCryptographicHash hash(QCryptographicHash::Sha256);
   if (!hash.addData(&file))
-    return {};
+    return std::nullopt;
   return hash.result();
 }
