@@ -80,9 +80,11 @@ ModelManager::ModelManager(QObject *parent)
 
 ModelManager::ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath,
                            QNetworkAccessManager *network, QObject *parent,
-                           ModelValidationFunction validator, HashFunction hasher)
+                           ModelValidationFunction validator, HashFunction hasher,
+                           FileRemoveFunction removeFile)
     : QObject(parent), m_catalog(std::move(catalog)), m_storagePath(std::move(storagePath)),
-      m_network(network), m_validator(std::move(validator)), m_hasher(std::move(hasher)) {
+      m_network(network), m_validator(std::move(validator)), m_hasher(std::move(hasher)),
+      m_removeFile(std::move(removeFile)) {
   Q_ASSERT(validateModelCatalog(m_catalog).isEmpty());
   if (!m_network) {
     m_ownedNetwork = std::make_unique<QNetworkAccessManager>();
@@ -101,6 +103,8 @@ ModelManager::ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath
   }
   if (!m_hasher)
     m_hasher = &ModelManager::hashFile;
+  if (!m_removeFile)
+    m_removeFile = [](const QString &path) { return QFile::remove(path); };
   connect(&m_hashWatcher, &QFutureWatcher<HashResult>::finished, this,
           &ModelManager::finishVerification);
   connect(&m_modelValidationWatcher, &QFutureWatcher<ModelValidationResult>::finished, this,
@@ -415,11 +419,11 @@ bool ModelManager::removeModel(const QString &id) {
     return false;
   const QString path = modelPath(*item);
   const QString partial = partialPath(*item);
-  if (QFileInfo::exists(partial) && !QFile::remove(partial)) {
+  if (QFileInfo::exists(partial) && !m_removeFile(partial)) {
     setFailure(i18n("The model could not be removed."));
     return false;
   }
-  const bool removed = !QFileInfo::exists(path) || QFile::remove(path);
+  const bool removed = !QFileInfo::exists(path) || m_removeFile(path);
   if (removed) {
     if (path == m_activeModelPath)
       clearActiveModel();

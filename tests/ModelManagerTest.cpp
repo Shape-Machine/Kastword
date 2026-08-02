@@ -618,16 +618,19 @@ void ModelManagerTest::keepsActiveModelWhenRemovalFails() {
   ModelManager manager({item}, directory.path(), &network);
   manager.download(item.id);
   QTRY_VERIFY(manager.modelReady());
-  const QFileDevice::Permissions originalPermissions = QFileInfo(directory.path()).permissions();
-  QVERIFY(QFile::setPermissions(directory.path(), QFileDevice::ReadOwner | QFileDevice::ExeOwner));
+  const QString activePath = manager.activeModelPath();
+  ModelManager managerWithRemovalFailure(
+      {item}, directory.path(), &network, nullptr, {}, {},
+      [activePath](const QString &path) { return path != activePath && QFile::remove(path); });
+  managerWithRemovalFailure.restoreActiveModel(activePath);
+  QTRY_VERIFY(managerWithRemovalFailure.modelReady());
 
-  const bool removed = manager.removeModel(item.id);
+  const bool removed = managerWithRemovalFailure.removeModel(item.id);
 
-  QVERIFY(QFile::setPermissions(directory.path(), originalPermissions));
   QVERIFY(!removed);
-  QVERIFY(manager.modelReady());
-  QVERIFY(QFileInfo::exists(manager.activeModelPath()));
-  QVERIFY(manager.error().contains(QStringLiteral("could not be removed")));
+  QVERIFY(managerWithRemovalFailure.modelReady());
+  QVERIFY(QFileInfo::exists(managerWithRemovalFailure.activeModelPath()));
+  QVERIFY(managerWithRemovalFailure.error().contains(QStringLiteral("could not be removed")));
 }
 
 QTEST_MAIN(ModelManagerTest)

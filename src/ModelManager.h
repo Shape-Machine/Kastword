@@ -42,11 +42,13 @@ public:
   using HashResult = std::optional<QByteArray>;
   using CancellationFlag = std::shared_ptr<std::atomic_bool>;
   using HashFunction = std::function<HashResult(const QString &, const CancellationFlag &)>;
+  using FileRemoveFunction = std::function<bool(const QString &)>;
 
   explicit ModelManager(QObject *parent = nullptr);
   ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath,
                QNetworkAccessManager *network, QObject *parent = nullptr,
-               ModelValidationFunction validator = {}, HashFunction hasher = {});
+               ModelValidationFunction validator = {}, HashFunction hasher = {},
+               FileRemoveFunction removeFile = {});
 
   QVariantList models() const;
   QString activeModelPath() const { return m_activeModelPath; }
@@ -118,6 +120,7 @@ private:
   QFileSystemWatcher m_watcher;
   ModelValidationFunction m_validator;
   HashFunction m_hasher;
+  FileRemoveFunction m_removeFile;
   CancellationFlag m_hashCancelled;
   QString m_pendingLocalModelPath;
   bool m_restoringActiveModel = false;
