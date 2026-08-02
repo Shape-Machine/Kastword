@@ -74,8 +74,10 @@ Kirigami.ApplicationWindow {
                 spacing: Kirigami.Units.largeSpacing
 
                 Kirigami.InlineMessage {
+                    objectName: "modelSetupWarning"
                     Layout.fillWidth: true
                     visible: !appController.modelReady
+                        && !appController.modelManager.verificationPending
                     type: Kirigami.MessageType.Warning
                     text: i18n("Choose and download a model before using dictation.")
                 }

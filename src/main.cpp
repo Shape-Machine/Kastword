@@ -56,8 +56,7 @@ int main(int argc, char **argv) {
   KStatusNotifierItem tray(QStringLiteral("kastword"));
   tray.setIconByName(QStringLiteral("audio-input-microphone"));
   tray.setTitle(i18n("Kastword"));
-  tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"),
-                  i18n("Offline dictation — %1", controller.shortcutText()));
+  tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"), controller.status());
 
   QMenu trayMenu;
   QAction openAction(i18n("Open Kastword"), &trayMenu);
@@ -113,6 +112,10 @@ int main(int argc, char **argv) {
                      dictateAction.setEnabled(controller.modelReady() &&
                                               !controller.isTranscribing());
                    });
+  QObject::connect(&controller, &AppController::statusChanged, &tray, [&controller, &tray] {
+    tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"),
+                    controller.status());
+  });
   QObject::connect(&controller, &AppController::modelSetupRequested, window, [window] {
     window->show();
     window->raise();

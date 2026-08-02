@@ -102,6 +102,7 @@ private slots:
   void migratesUnsupportedLanguageSetting();
   void disablesDictationUntilModelIsReady();
   void stopsRecordingWhenActiveModelDisappears();
+  void reportsModelVerificationAndReadiness();
 };
 
 void AppControllerTest::initTestCase() {
@@ -624,6 +625,45 @@ void AppControllerTest::stopsRecordingWhenActiveModelDisappears() {
   QTRY_VERIFY(!audioPtr->recording);
   QTRY_VERIFY(controller.isIdle());
   QVERIFY(!controller.modelReady());
+}
+
+void AppControllerTest::reportsModelVerificationAndReadiness() {
+  QTemporaryDir directory;
+  const QString modelPath = directory.filePath(QStringLiteral("custom.bin"));
+  QFile model(modelPath);
+  QVERIFY(model.open(QIODevice::WriteOnly));
+  QCOMPARE(model.write(QByteArray::fromHex("6c6d6767") + QByteArrayLiteral("test-model")), 14);
+  model.close();
+  {
+    KConfig config(QStringLiteral("kastwordrc"));
+    KConfigGroup group(&config, QStringLiteral("General"));
+    group.writeEntry("ModelPath", modelPath);
+    group.sync();
+  }
+  QSemaphore validationGate;
+  auto network = std::make_unique<QNetworkAccessManager>();
+  auto manager = std::make_unique<ModelManager>(
+      QList<ModelCatalogEntry>{}, directory.filePath(QStringLiteral("managed")), network.get(),
+      nullptr, [&validationGate](const QString &) {
+        validationGate.acquire();
+        return true;
+      });
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false, true, nullptr, std::move(manager));
+  const auto releaseValidation = qScopeGuard([&validationGate] { validationGate.release(); });
+
+  QCOMPARE(controller.status(), QStringLiteral("Verifying the speech model…"));
+  QVERIFY(!controller.modelReady());
+  validationGate.release();
+  QTRY_VERIFY(controller.modelReady());
+  QCOMPARE(controller.status(),
+           QStringLiteral("Ready — press %1 to dictate.").arg(controller.shortcutText()));
 }
 
 QTEST_MAIN(AppControllerTest)

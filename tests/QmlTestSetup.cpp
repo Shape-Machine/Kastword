@@ -17,6 +17,7 @@ class FakeModelManager final : public QObject {
   Q_PROPERTY(QString status READ status CONSTANT)
   Q_PROPERTY(QString error READ error CONSTANT)
   Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
+  Q_PROPERTY(bool verificationPending READ verificationPending NOTIFY changed)
 
 public:
   QVariantList models() const {
@@ -38,9 +39,22 @@ public:
   QString status() const { return {}; }
   QString error() const { return {}; }
   QString storagePath() const { return QStringLiteral("/tmp/models"); }
+  bool verificationPending() const { return m_verificationPending; }
+  void setVerificationPending(bool pending) {
+    if (m_verificationPending == pending)
+      return;
+    m_verificationPending = pending;
+    emit changed();
+  }
   Q_INVOKABLE void download(const QString &) {}
   Q_INVOKABLE void cancel() {}
   Q_INVOKABLE void selectModel(const QString &) {}
+
+signals:
+  void changed();
+
+private:
+  bool m_verificationPending = false;
 };
 
 class FakeAppController final : public QObject {
@@ -122,6 +136,7 @@ public:
     if (m_restoringModel == restoring)
       return;
     m_restoringModel = restoring;
+    m_modelManager.setVerificationPending(restoring);
     emit modelReadyChanged();
     if (!restoring && !m_modelReady)
       emit modelSetupRequested();

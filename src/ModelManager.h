@@ -30,6 +30,7 @@ class ModelManager final : public QObject {
   Q_PROPERTY(QString error READ error NOTIFY changed)
   Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
   Q_PROPERTY(bool restoringActiveModel READ restoringActiveModel NOTIFY changed)
+  Q_PROPERTY(bool verificationPending READ verificationPending NOTIFY changed)
 
 public:
   using ModelValidationFunction = std::function<bool(const QString &)>;
@@ -54,6 +55,9 @@ public:
   QString error() const { return m_error; }
   QString storagePath() const { return m_storagePath; }
   bool restoringActiveModel() const { return m_restoringActiveModel; }
+  bool verificationPending() const {
+    return m_hashWatcher.isRunning() || m_modelValidationWatcher.isRunning();
+  }
 
   static bool isStructurallyValidModel(const QString &path);
 

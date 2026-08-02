@@ -44,6 +44,10 @@ TestCase {
         appController.setRestoringModel(true)
         appController.setModelReady(false)
         verify(applicationWindow.pageStack.currentItem.objectName !== "modelManagerPage")
+        applicationWindow.openModelManager()
+        const warning = findChild(applicationWindow.contentItem, "modelSetupWarning")
+        verify(warning)
+        compare(warning.visible, false)
 
         appController.setRestoringModel(false)
         tryCompare(applicationWindow.pageStack.currentItem, "objectName", "modelManagerPage")

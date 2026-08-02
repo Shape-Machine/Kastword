@@ -315,9 +315,9 @@ void ModelManagerTest::rejectsStructurallyValidButUnparseableLocalModel() {
 
   QVERIFY(manager.selectLocalModel(QUrl::fromLocalFile(model.fileName())));
 
-  QTRY_VERIFY(!manager.busy());
+  QTRY_VERIFY(manager.error().contains(QStringLiteral("not a compatible")));
+  QVERIFY(!manager.busy());
   QVERIFY(!manager.modelReady());
-  QVERIFY(manager.error().contains(QStringLiteral("not a compatible")));
 }
 
 void ModelManagerTest::rejectsInvalidLocalModel() {

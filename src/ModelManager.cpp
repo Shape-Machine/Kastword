@@ -283,8 +283,8 @@ void ModelManager::verifyFile(const ModelCatalogEntry &item, const QString &path
   m_installAfterVerify = installAfterVerify;
   m_status = i18n("Verifying %1…", localizedModelName(item.id));
   m_progress = 1.0;
-  emit changed();
   m_hashWatcher.setFuture(QtConcurrent::run(m_hasher, path));
+  emit changed();
 }
 
 void ModelManager::finishVerification() {
@@ -357,8 +357,8 @@ void ModelManager::validateLocalModel(const QString &path, bool restoring) {
   m_error.clear();
   m_status = restoring ? i18n("Verifying the saved speech model…")
                        : i18n("Verifying the selected speech model…");
-  emit changed();
   m_modelValidationWatcher.setFuture(QtConcurrent::run(m_validator, path));
+  emit changed();
 }
 
 void ModelManager::finishLocalModelValidation() {

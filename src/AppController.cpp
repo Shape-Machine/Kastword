@@ -94,13 +94,23 @@ void AppController::initialize() {
       saveSettings();
       emit modelPathChanged();
     }
+    bool recordingStopped = false;
     if (!modelReady() && m_audio->isRecording()) {
       m_audio->stop();
       setState(State::Idle);
       setStatus(i18n("Recording stopped because the speech model is no longer available."));
+      recordingStopped = true;
     }
+    if (modelReady())
+      setStatus(i18n("Ready — press %1 to dictate.", shortcutText()));
+    else if (m_modelManager->verificationPending() && !recordingStopped)
+      setStatus(i18n("Verifying the speech model…"));
     m_shortcut.setEnabled(modelReady());
     emit modelReadyChanged();
+  });
+  connect(m_modelManager.get(), &ModelManager::changed, this, [this] {
+    if (!modelReady() && m_modelManager->verificationPending())
+      setStatus(i18n("Verifying the speech model…"));
   });
   connect(m_modelManager.get(), &ModelManager::setupRequired, this, [this] {
     if (!m_modelPath.isEmpty()) {
@@ -154,6 +164,8 @@ void AppController::initialize() {
   });
   if (modelReady())
     setStatus(i18n("Ready — press %1 to dictate.", shortcutText()));
+  else if (m_modelManager->verificationPending())
+    setStatus(i18n("Verifying the speech model…"));
   else
     setStatus(i18n("Choose a speech model to enable dictation."));
 }
