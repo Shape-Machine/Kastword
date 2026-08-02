@@ -3,6 +3,7 @@
 
 #include "TranscriptionWorker.h"
 
+#include <KLocalizedString>
 #include <exception>
 #include <utility>
 
@@ -14,8 +15,8 @@ void TranscriptionWorker::transcribe(QByteArray audio, QString model, QString la
     const auto [text, error] = m_transcribe(audio, model, language);
     emit finished(text, error);
   } catch (const std::exception &exception) {
-    emit finished({}, tr("Transcription failed unexpectedly: %1").arg(exception.what()));
+    emit finished({}, i18n("Transcription failed unexpectedly: %1", exception.what()));
   } catch (...) {
-    emit finished({}, tr("Transcription failed unexpectedly."));
+    emit finished({}, i18n("Transcription failed unexpectedly."));
   }
 }

@@ -3,6 +3,7 @@
 
 #include "TextOutput.h"
 
+#include <KLocalizedString>
 #include <QClipboard>
 #include <QDBusInterface>
 #include <QDBusReply>
@@ -73,35 +74,35 @@ QString TextOutput::deliver(const QString &text, bool autoPaste) {
   const PasteMethod method =
       choosePasteMethod(autoPaste, session, !xdotool.isEmpty(), !ydotool.isEmpty());
   if (method == PasteMethod::ClipboardOnly && !autoPaste)
-    return tr("Copied to clipboard.");
+    return i18n("Copied to clipboard.");
 
   if (method == PasteMethod::Xdotool) {
     // Defer the synthetic key press until Qt has advertised the new clipboard owner to the window
     // system. Pasting in this same event-loop turn can read the previous clipboard.
     scheduleX11Paste(xdotool);
-    return tr("Copied to clipboard; automatic paste scheduled.");
+    return i18n("Copied to clipboard; automatic paste scheduled.");
   }
   if (method == PasteMethod::Ydotool) {
     // Konsole's Ctrl+Shift+V action reads the regular clipboard; Shift+Insert can instead read a
     // stale primary selection on Wayland. Allow the compositor to receive the new clipboard first.
     QTimer::singleShot(150, this, [this, ydotool] {
-      startPaste(ydotool, waylandPasteArguments(), tr("Sent paste to the focused application."));
+      startPaste(ydotool, waylandPasteArguments(), i18n("Sent paste to the focused application."));
     });
-    return tr("Copied to clipboard; automatic paste scheduled.");
+    return i18n("Copied to clipboard; automatic paste scheduled.");
   }
-  return tr("Copied to clipboard; install %1 for automatic paste.")
-      .arg(session == QStringLiteral("x11") ? QStringLiteral("xdotool")
-                                            : QStringLiteral("ydotool"));
+  return i18n("Copied to clipboard; install %1 for automatic paste.",
+              session == QStringLiteral("x11") ? QStringLiteral("xdotool")
+                                               : QStringLiteral("ydotool"));
 }
 
 void TextOutput::scheduleX11Paste(const QString &xdotool) {
   const QString originalWindow = m_focusReader(xdotool);
   QTimer::singleShot(150, this, [this, xdotool, originalWindow] {
     if (originalWindow.isEmpty() || m_focusReader(xdotool) != originalWindow) {
-      emit deliveryStatus(tr("Automatic paste was cancelled because focus changed."));
+      emit deliveryStatus(i18n("Automatic paste was cancelled because focus changed."));
       return;
     }
-    startPaste(xdotool, x11PasteArguments(), tr("Pasted into the focused application."));
+    startPaste(xdotool, x11PasteArguments(), i18n("Pasted into the focused application."));
   });
 }
 
@@ -110,10 +111,10 @@ void TextOutput::startPaste(const QString &program, const QStringList &arguments
   auto *process = new QProcess(this);
   connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError error) {
     if (error == QProcess::FailedToStart) {
-      emit deliveryStatus(tr("Automatic paste helper could not be started."));
+      emit deliveryStatus(i18n("Automatic paste helper could not be started."));
       process->deleteLater();
     } else if (error == QProcess::Crashed) {
-      emit deliveryStatus(tr("Automatic paste helper crashed."));
+      emit deliveryStatus(i18n("Automatic paste helper crashed."));
       process->deleteLater();
     }
   });
@@ -123,7 +124,7 @@ void TextOutput::startPaste(const QString &program, const QStringList &arguments
               emit deliveryStatus(success);
             else if (exitStatus == QProcess::NormalExit)
               emit deliveryStatus(
-                  tr("Automatic paste helper failed with exit code %1.").arg(exitCode));
+                  i18n("Automatic paste helper failed with exit code %1.", exitCode));
             process->deleteLater();
           });
   process->start(program, arguments);

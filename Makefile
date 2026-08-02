@@ -48,13 +48,15 @@ install-smoke: build
 	desktop-file-validate \
 		"$$smoke_prefix/share/applications/io.github.shape_machine.Kastword.desktop"; \
 	appstreamcli validate --no-net \
-		"$$smoke_prefix/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml"
+		"$$smoke_prefix/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml"; \
+	test -f "$$smoke_prefix/share/locale/x-test/LC_MESSAGES/kastword.mo"
 
 uninstall:
 	cmake -E rm -f \
 		"$(PREFIX)/bin/kastword" \
 		"$(PREFIX)/share/applications/io.github.shape_machine.Kastword.desktop" \
 		"$(PREFIX)/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml" \
+		"$(PREFIX)/share/locale/x-test/LC_MESSAGES/kastword.mo" \
 		"$(PREFIX)/share/kastword/models/ggml-base.en.bin" \
 		"$(PREFIX)/share/doc/kastword/README.md" \
 		"$(PREFIX)/share/doc/kastword/GPL-3.0-or-later.txt"

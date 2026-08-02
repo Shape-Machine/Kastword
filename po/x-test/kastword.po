@@ -1,0 +1,400 @@
+# SPDX-FileCopyrightText: 2026 Sri Rang
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: kastword\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-02 14:19+0200\n"
+"PO-Revision-Date: 2026-08-02 00:00+0000\n"
+"Last-Translator: KDE Test Language <null@kde.org>\n"
+"Language-Team: KDE Test Language <kde-i18n-doc@kde.org>\n"
+"Language: x-test\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+
+#: src/AppController.cpp:61
+msgid "Toggle dictation"
+msgstr "xxToggle dictationxx"
+
+#: src/AppController.cpp:126
+msgid "failed"
+msgstr "xxfailedxx"
+
+#: src/AppController.cpp:127
+msgid "Automatic paste failed"
+msgstr "xxAutomatic paste failedxx"
+
+#: src/AppController.cpp:129
+msgid "Ready — press %1 to dictate."
+msgstr "xxReady — press %1 to dictate.xx"
+
+#: src/AppController.cpp:137
+msgid "English"
+msgstr "xxEnglishxx"
+
+#: src/AppController.cpp:139
+msgid "Automatic"
+msgstr "xxAutomaticxx"
+
+#: src/AppController.cpp:141
+msgid "German"
+msgstr "xxGermanxx"
+
+#: src/AppController.cpp:143
+msgid "French"
+msgstr "xxFrenchxx"
+
+#: src/AppController.cpp:145
+msgid "Spanish"
+msgstr "xxSpanishxx"
+
+#: src/AppController.cpp:147
+msgid "Dutch"
+msgstr "xxDutchxx"
+
+#: src/AppController.cpp:149
+msgid "Italian"
+msgstr "xxItalianxx"
+
+#: src/AppController.cpp:151
+msgid "Portuguese"
+msgstr "xxPortuguesexx"
+
+#: src/AppController.cpp:203
+msgid ""
+"Cleared from Kastword and matching current clipboards. Clipboard history may "
+"retain it."
+msgstr ""
+"xxCleared from Kastword and matching current clipboards. Clipboard history "
+"may retain it.xx"
+
+#: src/AppController.cpp:208
+msgid "Transcription is already in progress."
+msgstr "xxTranscription is already in progress.xx"
+
+#: src/AppController.cpp:214 src/AppController.cpp:215
+msgid "Transcribing locally…"
+msgstr "xxTranscribing locally…xx"
+
+#: src/AppController.cpp:215 src/AppController.cpp:225 src/main.cpp:41
+#: src/main.cpp:58 src/main.cpp:59 src/main.cpp:106 src/qml/Main.qml:20
+msgid "Kastword"
+msgstr "xxKastwordxx"
+
+#: src/AppController.cpp:229
+msgid "Listening — press %1 to finish."
+msgstr "xxListening — press %1 to finish.xx"
+
+#: src/AppController.cpp:230
+msgid "Dictation started"
+msgstr "xxDictation startedxx"
+
+#: src/AppController.cpp:230
+msgid "Press %1 again to stop."
+msgstr "xxPress %1 again to stop.xx"
+
+#: src/AppController.cpp:252
+msgid "Transcription failed"
+msgstr "xxTranscription failedxx"
+
+#: src/AppController.cpp:258
+msgid "No speech detected."
+msgstr "xxNo speech detected.xx"
+
+#: src/AppController.cpp:268
+msgid "Dictation complete"
+msgstr "xxDictation completexx"
+
+#: src/AppController.cpp:287
+msgid "Recording failed"
+msgstr "xxRecording failedxx"
+
+#: src/AudioCapture.cpp:19
+msgid "The microphone could not be opened."
+msgstr "xxThe microphone could not be opened.xx"
+
+#: src/AudioCapture.cpp:21
+msgid "The microphone stopped responding."
+msgstr "xxThe microphone stopped responding.xx"
+
+#: src/AudioCapture.cpp:23
+msgid "The microphone backend failed."
+msgstr "xxThe microphone backend failed.xx"
+
+#: src/AudioCapture.cpp:27
+msgid "Microphone capture stopped unexpectedly."
+msgstr "xxMicrophone capture stopped unexpectedly.xx"
+
+#: src/AudioCapture.cpp:59
+msgid "No microphone is available."
+msgstr "xxNo microphone is available.xx"
+
+#: src/AudioCapture.cpp:65
+msgid "The microphone reported an invalid audio format."
+msgstr "xxThe microphone reported an invalid audio format.xx"
+
+#: src/AudioCapture.cpp:73
+msgid "Could not start microphone capture."
+msgstr "xxCould not start microphone capture.xx"
+
+#: src/AudioCapture.cpp:101
+msgid "Recording stopped after reaching the configured duration limit."
+msgstr "xxRecording stopped after reaching the configured duration limit.xx"
+
+#: src/TextOutput.cpp:77
+msgid "Copied to clipboard."
+msgstr "xxCopied to clipboard.xx"
+
+#: src/TextOutput.cpp:83 src/TextOutput.cpp:91
+msgid "Copied to clipboard; automatic paste scheduled."
+msgstr "xxCopied to clipboard; automatic paste scheduled.xx"
+
+#: src/TextOutput.cpp:89
+msgid "Sent paste to the focused application."
+msgstr "xxSent paste to the focused application.xx"
+
+#: src/TextOutput.cpp:93
+msgid "Copied to clipboard; install %1 for automatic paste."
+msgstr "xxCopied to clipboard; install %1 for automatic paste.xx"
+
+#: src/TextOutput.cpp:102
+msgid "Automatic paste was cancelled because focus changed."
+msgstr "xxAutomatic paste was cancelled because focus changed.xx"
+
+#: src/TextOutput.cpp:105
+msgid "Pasted into the focused application."
+msgstr "xxPasted into the focused application.xx"
+
+#: src/TextOutput.cpp:114
+msgid "Automatic paste helper could not be started."
+msgstr "xxAutomatic paste helper could not be started.xx"
+
+#: src/TextOutput.cpp:117
+msgid "Automatic paste helper crashed."
+msgstr "xxAutomatic paste helper crashed.xx"
+
+#: src/TextOutput.cpp:127
+msgid "Automatic paste helper failed with exit code %1."
+msgstr "xxAutomatic paste helper failed with exit code %1.xx"
+
+#: src/TranscriptionWorker.cpp:18
+msgid "Transcription failed unexpectedly: %1"
+msgstr "xxTranscription failed unexpectedly: %1xx"
+
+#: src/TranscriptionWorker.cpp:20
+msgid "Transcription failed unexpectedly."
+msgstr "xxTranscription failed unexpectedly.xx"
+
+#: src/WhisperEngine.cpp:39
+msgid "Select a valid Whisper model file."
+msgstr "xxSelect a valid Whisper model file.xx"
+
+#: src/WhisperEngine.cpp:45 src/WhisperEngine.cpp:52
+msgid "Select a regular Whisper model file."
+msgstr "xxSelect a regular Whisper model file.xx"
+
+#: src/WhisperEngine.cpp:58
+msgid "The selected Whisper model is too large."
+msgstr "xxThe selected Whisper model is too large.xx"
+
+#: src/WhisperEngine.cpp:62
+msgid "The selected file is not a supported Whisper model."
+msgstr "xxThe selected file is not a supported Whisper model.xx"
+
+#: src/WhisperEngine.cpp:77
+msgid "Could not load the Whisper model."
+msgstr "xxCould not load the Whisper model.xx"
+
+#: src/WhisperEngine.cpp:90
+msgid "The recording was too short."
+msgstr "xxThe recording was too short.xx"
+
+#: src/WhisperEngine.cpp:94
+msgid "The recording contains invalid audio data."
+msgstr "xxThe recording contains invalid audio data.xx"
+
+#: src/WhisperEngine.cpp:98
+msgid "The recording is too long to transcribe safely."
+msgstr "xxThe recording is too long to transcribe safely.xx"
+
+#: src/WhisperEngine.cpp:125
+msgid "Whisper could not transcribe the recording."
+msgstr "xxWhisper could not transcribe the recording.xx"
+
+#: src/main.cpp:60
+msgid "Offline dictation — %1"
+msgstr "xxOffline dictation — %1xx"
+
+#: src/main.cpp:63
+msgid "Open Kastword"
+msgstr "xxOpen Kastwordxx"
+
+#: src/main.cpp:64 src/main.cpp:100 src/main.cpp:103
+msgid "Start Dictation"
+msgstr "xxStart Dictationxx"
+
+#: src/main.cpp:94
+msgid "Stop and Transcribe"
+msgstr "xxStop and Transcribexx"
+
+#: src/main.cpp:97 src/qml/Main.qml:150
+msgid "Transcribing…"
+msgstr "xxTranscribing…xx"
+
+#: src/main.cpp:111
+msgid "Kastword is ready"
+msgstr "xxKastword is readyxx"
+
+#: src/main.cpp:112
+msgid "Running in the system tray. Press %1 to dictate."
+msgstr "xxRunning in the system tray. Press %1 to dictate.xx"
+
+#: src/qml/Main.qml:28
+msgid "Select a Whisper model"
+msgstr "xxSelect a Whisper modelxx"
+
+#: src/qml/Main.qml:29
+msgid "Whisper models (*.bin)"
+msgstr "xxWhisper models (*.bin)xx"
+
+#: src/qml/Main.qml:29
+msgid "All files (*)"
+msgstr "xxAll files (*)xx"
+
+#: src/qml/Main.qml:37 src/qml/Main.qml:121
+msgid "Settings"
+msgstr "xxSettingsxx"
+
+#: src/qml/Main.qml:43
+msgid "Model:"
+msgstr "xxModel:xx"
+
+#: src/qml/Main.qml:49
+msgid "Path to ggml model"
+msgstr "xxPath to ggml modelxx"
+
+#: src/qml/Main.qml:51
+msgid "Whisper model path"
+msgstr "xxWhisper model pathxx"
+
+#: src/qml/Main.qml:56
+msgid "Browse…"
+msgstr "xxBrowse…xx"
+
+#: src/qml/Main.qml:58
+msgid "Browse for Whisper model"
+msgstr "xxBrowse for Whisper modelxx"
+
+#: src/qml/Main.qml:65
+msgid "Language:"
+msgstr "xxLanguage:xx"
+
+#: src/qml/Main.qml:72
+msgid "Dictation language"
+msgstr "xxDictation languagexx"
+
+#: src/qml/Main.qml:73
+msgid "Language supported by the selected Whisper model"
+msgstr "xxLanguage supported by the selected Whisper modelxx"
+
+#: src/qml/Main.qml:77
+msgid "Maximum recording:"
+msgstr "xxMaximum recording:xx"
+
+#: src/qml/Main.qml:81
+msgid "%1 minute"
+msgid_plural "%1 minutes"
+msgstr[0] "xx%1 minutexx"
+msgstr[1] "xx%1 minutesxx"
+
+#: src/qml/Main.qml:87
+msgid "Output:"
+msgstr "xxOutput:xx"
+
+#: src/qml/Main.qml:88
+msgid "Paste automatically"
+msgstr "xxPaste automaticallyxx"
+
+#: src/qml/Main.qml:98
+msgid ""
+"Automatic paste sends keystrokes to the focused application after a short "
+"delay. On Wayland, Kastword cannot verify that focus stayed unchanged."
+msgstr ""
+"xxAutomatic paste sends keystrokes to the focused application after a short "
+"delay. On Wayland, Kastword cannot verify that focus stayed unchanged.xx"
+
+#: src/qml/Main.qml:106
+msgid ""
+"Only open Whisper models from sources you trust. Models are parsed inside "
+"Kastword."
+msgstr ""
+"xxOnly open Whisper models from sources you trust. Models are parsed inside "
+"Kastword.xx"
+
+#: src/qml/Main.qml:110
+msgid "Shortcut:"
+msgstr "xxShortcut:xx"
+
+#: src/qml/Main.qml:118
+msgid "Offline dictation"
+msgstr "xxOffline dictationxx"
+
+#: src/qml/Main.qml:140
+msgid "Dictation status"
+msgstr "xxDictation statusxx"
+
+#: src/qml/Main.qml:149
+msgid "Stop dictation"
+msgstr "xxStop dictationxx"
+
+#: src/qml/Main.qml:151
+msgid "Start dictation"
+msgstr "xxStart dictationxx"
+
+#: src/qml/Main.qml:157
+msgid "Stop recording and begin local transcription"
+msgstr "xxStop recording and begin local transcriptionxx"
+
+#: src/qml/Main.qml:159 src/qml/Main.qml:175
+msgid "Local transcription is in progress"
+msgstr "xxLocal transcription is in progressxx"
+
+#: src/qml/Main.qml:160
+msgid "Begin recording audio for local transcription"
+msgstr "xxBegin recording audio for local transcriptionxx"
+
+#: src/qml/Main.qml:172
+msgid "Transcription progress"
+msgstr "xxTranscription progressxx"
+
+#: src/qml/Main.qml:173
+msgid "Microphone level"
+msgstr "xxMicrophone levelxx"
+
+#: src/qml/Main.qml:176
+msgid "Current microphone input level"
+msgstr "xxCurrent microphone input levelxx"
+
+#: src/qml/Main.qml:182
+msgid "Global shortcut: %1"
+msgstr "xxGlobal shortcut: %1xx"
+
+#: src/qml/Main.qml:190 src/qml/Main.qml:205
+msgid "Last transcription"
+msgstr "xxLast transcriptionxx"
+
+#: src/qml/Main.qml:206
+msgid "Read-only text from the most recent dictation"
+msgstr "xxRead-only text from the most recent dictationxx"
+
+#: src/qml/Main.qml:212
+msgid "Clear transcription"
+msgstr "xxClear transcriptionxx"
+
+#: src/qml/Main.qml:216
+msgid "Remove the transcription from Kastword and matching current clipboards"
+msgstr ""
+"xxRemove the transcription from Kastword and matching current clipboardsxx"
