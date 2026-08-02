@@ -13,9 +13,6 @@ permissions:
 
 jobs:
   build-and-validate:
-    permissions:
-      contents: read
-      id-token: write
     runs-on: ubuntu-latest
     container: archlinux@sha256:3406a568f45d68f0bef35dc80b3eacec8bda59b0292b2e50d5932ba1667f20cf
     timeout-minutes: 30
@@ -34,15 +31,36 @@ jobs:
 
       - name: Build, test, and validate
         run: >-
-          make validate install-smoke coverage
+          make validate install-smoke
           BUILD_TYPE=Debug
-          CMAKE_ARGS="-DKASTWORD_ENABLE_COVERAGE=ON -DKASTWORD_FETCH_DEFAULT_MODEL=OFF"
+          CMAKE_ARGS="-DKASTWORD_FETCH_DEFAULT_MODEL=OFF"
 
-      - name: Upload test coverage
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6
+      - name: Measure test coverage
+        run: >-
+          make coverage
+          BUILD_DIR=build-coverage
+          BUILD_TYPE=Debug
+          CMAKE_ARGS="-DKASTWORD_FETCH_DEFAULT_MODEL=OFF"
+
+      - name: Add coverage to job summary
+        if: always()
+        run: |
+          if [ -f build-coverage/coverage/summary.txt ]; then
+            {
+              echo '## Test coverage'
+              echo '```text'
+              cat build-coverage/coverage/summary.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          files: build/coverage.xml
-          use_oidc: true
+          name: coverage-report
+          path: build-coverage/coverage
+          if-no-files-found: error
 
   sanitizers:
     runs-on: ubuntu-latest

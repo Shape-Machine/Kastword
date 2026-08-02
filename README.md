@@ -6,7 +6,6 @@ SPDX-License-Identifier: GPL-3.0-or-later
 # Kastword
 
 [![Build](https://github.com/Shape-Machine/Kastword/actions/workflows/ci.yml/badge.svg)](https://github.com/Shape-Machine/Kastword/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/Shape-Machine/Kastword/branch/main/graph/badge.svg)](https://codecov.io/gh/Shape-Machine/Kastword)
 
 **Private, offline dictation built for KDE Plasma.**
 
@@ -212,20 +211,28 @@ does not change the application receiving pasted text.
 
 ```sh
 make test
-make coverage CMAKE_ARGS=-DKASTWORD_ENABLE_COVERAGE=ON
+make coverage BUILD_DIR=build-coverage CMAKE_ARGS=-DKASTWORD_FETCH_DEFAULT_MODEL=OFF
 make lint
 make install-smoke
 make format
 make validate
 ```
 
-`make test` builds and runs the deterministic test suites, and `make coverage` produces their gcovr
-report. `make lint` checks C++ formatting without changing files, while `make format` applies it.
+`make test` builds and runs the deterministic test suites. `make coverage` enables instrumentation,
+enforces the repository's line and branch thresholds, and writes a browsable report to
+`build-coverage/coverage/index.html`, a text summary, and Cobertura XML. It uses an installed
+`gcovr`, or runs it through `uvx` when available. The default gates require at least 68% line and
+55% branch coverage and can be raised explicitly with `COVERAGE_MIN_LINE` and
+`COVERAGE_MIN_BRANCH`. `make lint` checks C++ formatting without changing files, while `make format`
+applies it.
 `make install-smoke` installs into a temporary prefix and checks the installed executable and
 metadata. `make validate` runs the build, tests, formatting check, REUSE license validation, desktop
-metadata validation, and QML linting. These targets require `gcovr`, `reuse`, `appstreamcli`,
+metadata validation, and QML linting. Coverage and license checks use installed `gcovr` and `reuse`
+commands, or fetch temporary tools through `uvx`. The remaining checks require `appstreamcli`,
 `desktop-file-validate`, `clang-format`, and Qt's `qmllint`. CI invokes the same Make targets without
 downloading the model and also runs the tests under AddressSanitizer and UndefinedBehaviorSanitizer.
+Every CI run publishes the exact coverage summary on its job page and uploads the complete HTML,
+text, and XML reports as the `coverage-report` artifact.
 
 Kate users can open the repository directory and enable the Project, Build, and LSP Client
 plugins. `.kateproject` provides Build, Run, Test, and Clean targets, while CMake generates

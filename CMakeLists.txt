@@ -62,6 +62,8 @@ qt_add_executable(kastword
     src/AudioCapture.h
     src/ModelLocator.cpp
     src/ModelLocator.h
+    src/RuntimeSecurity.cpp
+    src/RuntimeSecurity.h
     src/WhisperEngine.cpp
     src/WhisperEngine.h
     src/TextOutput.cpp
@@ -119,6 +121,9 @@ endif()
 include(CTest)
 if(BUILD_TESTING)
     find_package(Qt6 6.6 REQUIRED COMPONENTS Test)
+    add_test(NAME application-smoke COMMAND kastword --smoke-test)
+    set_tests_properties(application-smoke PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
     add_executable(kastword_textoutput_test
         tests/TextOutputTest.cpp
         src/TextOutput.cpp
@@ -136,6 +141,8 @@ if(BUILD_TESTING)
         src/AudioConversion.h
         src/ModelLocator.cpp
         src/ModelLocator.h
+        src/RuntimeSecurity.cpp
+        src/RuntimeSecurity.h
         src/WhisperEngine.cpp
         src/WhisperEngine.h)
     target_include_directories(kastword_core_test PRIVATE src)

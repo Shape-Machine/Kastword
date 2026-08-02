@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "AppController.h"
+#include "RuntimeSecurity.h"
 
 #include <KDBusService>
 #include <KLocalizedQmlContext>
@@ -15,13 +16,17 @@
 #include <QQmlContext>
 #include <QQuickWindow>
 #include <cstdio>
+#include <cstring>
 #ifdef Q_OS_UNIX
 #include <unistd.h>
 #endif
 
 int main(int argc, char **argv) {
+  bool smokeTest = false;
+  for (int i = 1; i < argc; ++i)
+    smokeTest = smokeTest || std::strcmp(argv[i], "--smoke-test") == 0;
 #ifdef Q_OS_UNIX
-  if (geteuid() == 0 || geteuid() != getuid()) {
+  if (!smokeTest && shouldRefuseElevatedExecution(getuid(), geteuid())) {
     std::fputs("Kastword refuses to run with elevated privileges.\n", stderr);
     return 1;
   }
@@ -35,7 +40,6 @@ int main(int argc, char **argv) {
   QApplication::setApplicationDisplayName(QStringLiteral("Kastword"));
   QApplication::setQuitOnLastWindowClosed(false);
   KLocalizedString::setApplicationDomain("kastword");
-  KDBusService dbusService(KDBusService::Unique);
 
   AppController controller;
   QQmlApplicationEngine engine;
@@ -44,7 +48,10 @@ int main(int argc, char **argv) {
   engine.loadFromModule(QStringLiteral("io.github.shape_machine.Kastword"), QStringLiteral("Main"));
   if (engine.rootObjects().isEmpty())
     return 1;
+  if (smokeTest)
+    return 0;
 
+  KDBusService dbusService(KDBusService::Unique);
   auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
   KStatusNotifierItem tray(QStringLiteral("kastword"));
   tray.setIconByName(QStringLiteral("audio-input-microphone"));

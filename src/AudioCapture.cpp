@@ -29,6 +29,26 @@ QString captureErrorMessage(QAudio::Error error) {
 
 AudioCapture::AudioCapture(QObject *parent) : QObject(parent) {}
 
+void CapturedAudioBuffer::configure(const QAudioFormat &format, int maximumDurationSeconds) {
+  m_format = format;
+  m_maximumDurationSeconds = maximumDurationSeconds;
+  m_audio.clear();
+}
+
+bool CapturedAudioBuffer::append(const QByteArray &chunk) {
+  const qsizetype limit = maximumCaptureBytes(m_format, m_maximumDurationSeconds);
+  if (!audioAppendFitsLimit(m_audio.size(), chunk.size(), limit)) {
+    m_audio.clear();
+    return false;
+  }
+  m_audio.append(chunk);
+  return true;
+}
+
+QByteArray CapturedAudioBuffer::takeForWhisper() {
+  return convertAudioForWhisper(std::exchange(m_audio, {}), m_format);
+}
+
 bool AudioCapture::start(QString *error) {
   if (m_source)
     return true;
@@ -45,7 +65,7 @@ bool AudioCapture::start(QString *error) {
     return false;
   }
 
-  m_audio.clear();
+  m_buffer.configure(m_format, m_maximumDurationSeconds);
   m_source = std::make_unique<QAudioSource>(device, m_format);
   m_device = m_source->start();
   if (!m_device) {
@@ -64,7 +84,7 @@ bool AudioCapture::start(QString *error) {
         return;
       m_device = nullptr;
       m_source.reset();
-      m_audio.clear();
+      m_buffer.configure(m_format, m_maximumDurationSeconds);
       emit levelChanged(0.0);
       emit captureFailed(captureErrorMessage(captureError));
     });
@@ -72,17 +92,14 @@ bool AudioCapture::start(QString *error) {
 
   connect(m_device, &QIODevice::readyRead, this, [this] {
     const QByteArray chunk = m_device->readAll();
-    const qsizetype limit = maximumCaptureBytes(m_format, m_maximumDurationSeconds);
-    if (!audioAppendFitsLimit(m_audio.size(), chunk.size(), limit)) {
+    if (!m_buffer.append(chunk)) {
       m_device = nullptr;
       m_source->stop();
       m_source.reset();
-      m_audio.clear();
       emit levelChanged(0.0);
       emit captureFailed(tr("Recording stopped after reaching the configured duration limit."));
       return;
     }
-    m_audio.append(chunk);
     emit levelChanged(normalizedAudioPeak(chunk, m_format));
   });
   return true;
@@ -95,6 +112,5 @@ QByteArray AudioCapture::stop() {
   m_device = nullptr;
   m_source.reset();
   emit levelChanged(0.0);
-  const QByteArray native = std::exchange(m_audio, {});
-  return convertAudioForWhisper(native, m_format);
+  return m_buffer.takeForWhisper();
 }
