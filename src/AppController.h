@@ -4,6 +4,7 @@
 #pragma once
 
 #include "AudioCapture.h"
+#include "ModelManager.h"
 #include "TextOutput.h"
 #include "TranscriptionWorker.h"
 
@@ -29,8 +30,11 @@ class AppController final : public QObject {
   Q_PROPERTY(QString status READ status NOTIFY statusChanged)
   Q_PROPERTY(QString transcript READ transcript NOTIFY transcriptChanged)
   Q_PROPERTY(QString modelPath READ modelPath WRITE setModelPath NOTIFY modelPathChanged)
+  Q_PROPERTY(bool modelReady READ modelReady NOTIFY modelReadyChanged)
+  Q_PROPERTY(bool modelSetupRequired READ modelSetupRequired NOTIFY modelReadyChanged)
+  Q_PROPERTY(ModelManager *modelManager READ modelManager CONSTANT)
   Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
-  Q_PROPERTY(QVariantList availableLanguages READ availableLanguages CONSTANT)
+  Q_PROPERTY(QVariantList availableLanguages READ availableLanguages NOTIFY modelReadyChanged)
   Q_PROPERTY(bool autoPaste READ autoPaste WRITE setAutoPaste NOTIFY autoPasteChanged)
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
@@ -46,6 +50,9 @@ public:
   explicit AppController(QObject *parent = nullptr);
   AppController(std::unique_ptr<AudioCapture> audio, std::unique_ptr<TextOutput> output,
                 TranscribeFunction transcribe, bool desktopIntegration, QObject *parent = nullptr);
+  AppController(std::unique_ptr<AudioCapture> audio, std::unique_ptr<TextOutput> output,
+                TranscribeFunction transcribe, bool desktopIntegration, bool requireModel,
+                QObject *parent = nullptr);
   ~AppController() override;
   State state() const { return m_state; }
   bool isIdle() const { return m_state == State::Idle; }
@@ -54,6 +61,9 @@ public:
   QString status() const { return m_status; }
   QString transcript() const { return m_transcript; }
   QString modelPath() const { return m_modelPath; }
+  bool modelReady() const { return !m_requireModel || m_modelManager->modelReady(); }
+  bool modelSetupRequired() const { return m_requireModel && !m_modelManager->modelReady(); }
+  ModelManager *modelManager() const { return m_modelManager.get(); }
   QString language() const { return m_language; }
   QVariantList availableLanguages() const;
   bool autoPaste() const { return m_autoPaste; }
@@ -70,12 +80,15 @@ public:
   Q_INVOKABLE void toggle();
   Q_INVOKABLE void forgetTranscript();
   Q_INVOKABLE void setModelUrl(const QUrl &url);
+  Q_INVOKABLE bool removeModel(const QString &id);
 
 signals:
   void stateChanged();
   void statusChanged();
   void transcriptChanged();
   void modelPathChanged();
+  void modelReadyChanged();
+  void modelSetupRequested();
   void languageChanged();
   void autoPasteChanged();
   void recordingLimitMinutesChanged();
@@ -94,9 +107,11 @@ private:
 
   std::unique_ptr<AudioCapture> m_audio;
   std::unique_ptr<TextOutput> m_output;
+  std::unique_ptr<ModelManager> m_modelManager;
   QThread m_transcriptionThread;
   TranscriptionWorker *m_transcriptionWorker;
   bool m_desktopIntegration;
+  bool m_requireModel;
   KConfig m_config;
   QAction m_shortcut;
   State m_state = State::Idle;

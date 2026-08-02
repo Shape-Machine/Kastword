@@ -9,6 +9,39 @@
 #include <QVariantList>
 #include <QtQuickTest/quicktest.h>
 
+class FakeModelManager final : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(QVariantList models READ models CONSTANT)
+  Q_PROPERTY(bool busy READ busy CONSTANT)
+  Q_PROPERTY(qreal progress READ progress CONSTANT)
+  Q_PROPERTY(QString status READ status CONSTANT)
+  Q_PROPERTY(QString error READ error CONSTANT)
+  Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
+
+public:
+  QVariantList models() const {
+    return {QVariantMap{{QStringLiteral("id"), QStringLiteral("base.en")},
+                        {QStringLiteral("name"), QStringLiteral("Base English")},
+                        {QStringLiteral("sizeText"), QStringLiteral("141 MiB")},
+                        {QStringLiteral("englishOnly"), true},
+                        {QStringLiteral("languageText"), QStringLiteral("English only")},
+                        {QStringLiteral("recommended"), true},
+                        {QStringLiteral("speed"), QStringLiteral("Fast")},
+                        {QStringLiteral("accuracy"), QStringLiteral("Good accuracy")},
+                        {QStringLiteral("installed"), false},
+                        {QStringLiteral("active"), false},
+                        {QStringLiteral("downloading"), false}}};
+  }
+  bool busy() const { return false; }
+  qreal progress() const { return 0.0; }
+  QString status() const { return {}; }
+  QString error() const { return {}; }
+  QString storagePath() const { return QStringLiteral("/tmp/models"); }
+  Q_INVOKABLE void download(const QString &) {}
+  Q_INVOKABLE void cancel() {}
+  Q_INVOKABLE void selectModel(const QString &) {}
+};
+
 class FakeAppController final : public QObject {
   Q_OBJECT
   Q_PROPERTY(bool idle READ idle NOTIFY stateChanged)
@@ -17,6 +50,9 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(QString status READ status NOTIFY statusChanged)
   Q_PROPERTY(QString transcript READ transcript NOTIFY transcriptChanged)
   Q_PROPERTY(QString modelPath READ modelPath WRITE setModelPath NOTIFY modelPathChanged)
+  Q_PROPERTY(bool modelReady READ modelReady NOTIFY modelReadyChanged)
+  Q_PROPERTY(bool modelSetupRequired READ modelSetupRequired NOTIFY modelReadyChanged)
+  Q_PROPERTY(QObject *modelManager READ modelManager CONSTANT)
   Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
   Q_PROPERTY(QVariantList availableLanguages READ availableLanguages CONSTANT)
   Q_PROPERTY(bool autoPaste READ autoPaste WRITE setAutoPaste NOTIFY autoPasteChanged)
@@ -33,6 +69,9 @@ public:
   QString status() const { return m_status; }
   QString transcript() const { return QStringLiteral("Test transcription"); }
   QString modelPath() const { return m_modelPath; }
+  bool modelReady() const { return m_modelReady; }
+  bool modelSetupRequired() const { return !m_modelReady; }
+  QObject *modelManager() { return &m_modelManager; }
   QString language() const { return QStringLiteral("en"); }
   QVariantList availableLanguages() const {
     return {QVariantMap{{QStringLiteral("code"), QStringLiteral("en")},
@@ -60,6 +99,7 @@ public:
     emit toggleCountChanged();
   }
   Q_INVOKABLE void forgetTranscript() {}
+  Q_INVOKABLE bool removeModel(const QString &) { return true; }
   Q_INVOKABLE void setTestState(bool recording, bool transcribing) {
     m_recording = recording;
     m_transcribing = transcribing;
@@ -68,6 +108,14 @@ public:
                               : QStringLiteral("Ready");
     emit stateChanged();
     emit statusChanged();
+  }
+  Q_INVOKABLE void setModelReady(bool ready) {
+    if (m_modelReady == ready)
+      return;
+    m_modelReady = ready;
+    emit modelReadyChanged();
+    if (!ready)
+      emit modelSetupRequested();
   }
 
 signals:
@@ -80,6 +128,8 @@ signals:
   void recordingLimitMinutesChanged();
   void levelChanged();
   void toggleCountChanged();
+  void modelSetupRequested();
+  void modelReadyChanged();
 
 private:
   bool m_recording = false;
@@ -87,6 +137,8 @@ private:
   QString m_status = QStringLiteral("Ready");
   QString m_modelPath;
   int m_toggleCount = 0;
+  FakeModelManager m_modelManager;
+  bool m_modelReady = true;
 };
 
 class QmlTestSetup final : public QObject {

@@ -62,6 +62,7 @@ int main(int argc, char **argv) {
   QMenu trayMenu;
   QAction openAction(i18n("Open Kastword"), &trayMenu);
   QAction dictateAction(i18n("Start Dictation"), &trayMenu);
+  dictateAction.setEnabled(controller.modelReady());
   trayMenu.addAction(&openAction);
   trayMenu.addAction(&dictateAction);
   tray.setContextMenu(&trayMenu);
@@ -102,15 +103,27 @@ int main(int argc, char **argv) {
                        tray.setIconByName(QStringLiteral("audio-input-microphone"));
                        dictateAction.setText(i18n("Start Dictation"));
                      }
-                     dictateAction.setEnabled(state != AppController::State::Transcribing);
+                     dictateAction.setEnabled(controller.modelReady() &&
+                                              state != AppController::State::Transcribing);
                      tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"),
                                      controller.status());
                    });
+  QObject::connect(&controller, &AppController::modelReadyChanged, &dictateAction,
+                   [&controller, &dictateAction] {
+                     dictateAction.setEnabled(controller.modelReady() &&
+                                              !controller.isTranscribing());
+                   });
+  QObject::connect(&controller, &AppController::modelSetupRequested, window, [window] {
+    window->show();
+    window->raise();
+    window->requestActivate();
+  });
 
-  KNotification::event(
-      KNotification::Notification, i18n("Kastword is ready"),
-      i18n("Running in the system tray. Press %1 to dictate.", controller.shortcutText()),
-      QStringLiteral("audio-input-microphone"), KNotification::CloseOnTimeout);
+  if (controller.modelReady())
+    KNotification::event(
+        KNotification::Notification, i18n("Kastword is ready"),
+        i18n("Running in the system tray. Press %1 to dictate.", controller.shortcutText()),
+        QStringLiteral("audio-input-microphone"), KNotification::CloseOnTimeout);
 
   return app.exec();
 }

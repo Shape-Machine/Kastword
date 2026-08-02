@@ -11,6 +11,7 @@
 #include <QSemaphore>
 #include <QSignalSpy>
 #include <QStandardPaths>
+#include <QTemporaryFile>
 #include <QTest>
 #include <atomic>
 #include <memory>
@@ -99,6 +100,7 @@ private slots:
   void convertsModelUrlsToLocalPaths();
   void supportsMultilingualModels();
   void migratesUnsupportedLanguageSetting();
+  void disablesDictationUntilModelIsReady();
 };
 
 void AppControllerTest::initTestCase() {
@@ -549,6 +551,36 @@ void AppControllerTest::migratesUnsupportedLanguageSetting() {
   KConfig config(QStringLiteral("kastwordrc"));
   const KConfigGroup group(&config, QStringLiteral("General"));
   QCOMPARE(group.readEntry("Language", QString()), QStringLiteral("en"));
+}
+
+void AppControllerTest::disablesDictationUntilModelIsReady() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto *audioPtr = audio.get();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false, true);
+
+  QVERIFY(!controller.modelReady());
+  QVERIFY(controller.modelSetupRequired());
+  QVERIFY(!controller.shortcutAction()->isEnabled());
+  controller.toggle();
+  QVERIFY(!audioPtr->recording);
+  QCOMPARE(controller.status(), QStringLiteral("Choose a speech model before starting dictation."));
+
+  QTemporaryFile model;
+  QVERIFY(model.open());
+  QCOMPARE(model.write(QByteArray::fromHex("6c6d6767") + QByteArrayLiteral("test-model")), 14);
+  model.flush();
+  controller.setModelUrl(QUrl::fromLocalFile(model.fileName()));
+
+  QVERIFY(controller.modelReady());
+  QVERIFY(controller.shortcutAction()->isEnabled());
+  controller.toggle();
+  QVERIFY(audioPtr->recording);
 }
 
 QTEST_MAIN(AppControllerTest)

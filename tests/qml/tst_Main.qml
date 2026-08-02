@@ -20,6 +20,7 @@ TestCase {
     }
 
     function init() {
+        appController.setModelReady(true)
         const loader = createTemporaryObject(applicationComponent, testCase)
         verify(loader)
         tryCompare(loader, "status", Loader.Ready)
@@ -28,6 +29,14 @@ TestCase {
         applicationWindow.visible = true
         waitForRendering(applicationWindow.contentItem)
         appController.setTestState(false, false)
+    }
+
+    function test_missingModelOpensSetupAndDisablesDictation() {
+        appController.setModelReady(false)
+        tryCompare(applicationWindow.pageStack.currentItem, "objectName", "modelManagerPage")
+        const button = findChild(applicationWindow.contentItem, "dictationButton")
+        verify(button)
+        compare(button.enabled, false)
     }
 
     function cleanup() {
@@ -66,12 +75,13 @@ TestCase {
 
     function test_modelControlsHaveAccessibleNames() {
         applicationWindow.pageStack.currentItem.actions[0].trigger()
-        const modelPath = findChild(applicationWindow.contentItem, "modelPathField")
-        const browse = findChild(applicationWindow.contentItem, "modelBrowseButton")
-        verify(modelPath)
-        verify(browse)
-        compare(modelPath.Accessible.name, "Whisper model path")
-        compare(browse.Accessible.name, "Browse for Whisper model")
+        const manage = findChild(applicationWindow.contentItem, "manageModelsButton")
+        verify(manage)
+        compare(manage.Accessible.name, "Manage speech models")
+        manage.clicked()
+        const filter = findChild(applicationWindow.contentItem, "modelLanguageFilter")
+        verify(filter)
+        compare(filter.Accessible.name, "Filter speech models")
     }
 
     function test_primaryActionSupportsKeyboard() {
