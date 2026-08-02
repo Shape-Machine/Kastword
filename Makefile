@@ -69,7 +69,7 @@ uninstall:
 test: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure
 
-coverage: CMAKE_ARGS += -DKASTWORD_ENABLE_COVERAGE=ON
+coverage: override CMAKE_ARGS += -DKASTWORD_ENABLE_COVERAGE=ON
 coverage: test
 	COVERAGE_MIN_LINE=$(COVERAGE_MIN_LINE) COVERAGE_MIN_BRANCH=$(COVERAGE_MIN_BRANCH) \
 		./tools/coverage.sh "$(BUILD_DIR)" "$(COVERAGE_DIR)"
