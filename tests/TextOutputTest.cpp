@@ -3,6 +3,7 @@
 
 #include "TextOutput.h"
 
+#include <KLocalizedString>
 #include <QClipboard>
 #include <QFile>
 #include <QGuiApplication>
@@ -31,6 +32,7 @@ class TextOutputTest final : public QObject {
   Q_OBJECT
 
 private slots:
+  void initTestCase();
   void copiesTranscriptionToAvailableClipboards();
   void forgetsOnlyMatchingClipboardText();
   void reportsPasteHelperFailures();
@@ -44,6 +46,8 @@ private slots:
   void usesExpectedX11Arguments();
   void usesRegularClipboardShortcutOnWayland();
 };
+
+void TextOutputTest::initTestCase() { KLocalizedString::setApplicationDomain("kastword"); }
 
 void TextOutputTest::copiesTranscriptionToAvailableClipboards() {
   const QString transcription = QStringLiteral("Kastword clipboard regression test");

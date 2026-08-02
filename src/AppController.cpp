@@ -7,6 +7,7 @@
 #include "WhisperEngine.h"
 #include <KConfigGroup>
 #include <KGlobalAccel>
+#include <KLocalizedString>
 #include <KNotification>
 #include <QCoreApplication>
 #include <QFileInfo>
@@ -49,7 +50,7 @@ AppController::AppController(std::unique_ptr<AudioCapture> audio,
     : QObject(parent), m_audio(std::move(audio)), m_output(std::move(output)),
       m_transcriptionWorker(new TranscriptionWorker(std::move(transcribe))),
       m_desktopIntegration(desktopIntegration), m_config(QStringLiteral("kastwordrc")),
-      m_shortcut(tr("Toggle dictation"), this) {
+      m_shortcut(i18n("Toggle dictation"), this) {
   Q_ASSERT(m_audio);
   Q_ASSERT(m_output);
   m_transcriptionWorker->moveToThread(&m_transcriptionThread);
@@ -71,6 +72,12 @@ void AppController::initialize() {
   if (m_modelPath.isEmpty() || !QFileInfo(m_modelPath).isFile())
     m_modelPath = findDefaultModel();
   m_language = group.readEntry("Language", QStringLiteral("en"));
+  if (m_language != QStringLiteral("en")) {
+    m_language = QStringLiteral("en");
+    KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
+    writableGroup.writeEntry("Language", m_language);
+    writableGroup.sync();
+  }
   m_autoPaste = group.readEntry("AutoPaste", false);
   m_recordingLimitMinutes = qBound(1, group.readEntry("RecordingLimitMinutes", 5), 60);
   m_audio->setMaximumDurationSeconds(m_recordingLimitMinutes * 60);
@@ -108,13 +115,18 @@ void AppController::initialize() {
   connect(m_audio.get(), &AudioCapture::captureFailed, this, &AppController::handleCaptureFailure);
   connect(m_output.get(), &TextOutput::deliveryStatus, this, [this](const QString &status) {
     setStatus(status);
-    if (m_desktopIntegration && status.contains(tr("failed"), Qt::CaseInsensitive))
-      KNotification::event(KNotification::Error, tr("Automatic paste failed"), status);
+    if (m_desktopIntegration && status.contains(i18n("failed"), Qt::CaseInsensitive))
+      KNotification::event(KNotification::Error, i18n("Automatic paste failed"), status);
   });
-  setStatus(tr("Ready — press %1 to dictate.").arg(shortcutText()));
+  setStatus(i18n("Ready — press %1 to dictate.", shortcutText()));
 }
 
 QString AppController::shortcutText() const { return QString::fromLatin1(defaultShortcut); }
+
+QVariantList AppController::availableLanguages() const {
+  return {QVariantMap{{QStringLiteral("code"), QStringLiteral("en")},
+                      {QStringLiteral("name"), i18n("English")}}};
+}
 
 void AppController::setModelPath(const QString &value) {
   if (m_modelPath == value)
@@ -125,11 +137,17 @@ void AppController::setModelPath(const QString &value) {
 }
 
 void AppController::setLanguage(const QString &value) {
-  if (m_language == value)
+  const QString supportedValue = value == QStringLiteral("en") ? value : QStringLiteral("en");
+  if (m_language == supportedValue)
     return;
-  m_language = value;
+  m_language = supportedValue;
   saveSettings();
   emit languageChanged();
+}
+
+void AppController::setModelUrl(const QUrl &url) {
+  if (url.isLocalFile())
+    setModelPath(url.toLocalFile());
 }
 
 void AppController::setAutoPaste(bool value) {
@@ -156,20 +174,20 @@ void AppController::forgetTranscript() {
   m_output->forget(m_transcript);
   m_transcript.clear();
   emit transcriptChanged();
-  setStatus(tr(
+  setStatus(i18n(
       "Cleared from Kastword and matching current clipboards. Clipboard history may retain it."));
 }
 
 void AppController::toggle() {
   if (m_state == State::Transcribing) {
-    setStatus(tr("Transcription is already in progress."));
+    setStatus(i18n("Transcription is already in progress."));
     return;
   }
   if (m_audio->isRecording()) {
     QByteArray audio = m_audio->stop();
     setState(State::Transcribing);
-    setStatus(tr("Transcribing locally…"));
-    showStatusNotification(tr("Kastword"), tr("Transcribing locally…"),
+    setStatus(i18n("Transcribing locally…"));
+    showStatusNotification(i18n("Kastword"), i18n("Transcribing locally…"),
                            QStringLiteral("view-refresh"), true);
     transcribe(std::move(audio));
     return;
@@ -179,12 +197,12 @@ void AppController::toggle() {
   if (!m_audio->start(&error)) {
     setStatus(error);
     if (m_desktopIntegration)
-      KNotification::event(KNotification::Error, tr("Kastword"), error);
+      KNotification::event(KNotification::Error, i18n("Kastword"), error);
     return;
   }
   setState(State::Recording);
-  setStatus(tr("Listening — press %1 to finish.").arg(shortcutText()));
-  showStatusNotification(tr("Dictation started"), tr("Press %1 again to stop.").arg(shortcutText()),
+  setStatus(i18n("Listening — press %1 to finish.", shortcutText()));
+  showStatusNotification(i18n("Dictation started"), i18n("Press %1 again to stop.", shortcutText()),
                          QStringLiteral("media-record"), true);
 }
 
@@ -206,13 +224,13 @@ void AppController::handleTranscriptionFinished(const QString &text, const QStri
     if (m_statusNotification)
       m_statusNotification->close();
     if (m_desktopIntegration)
-      KNotification::event(KNotification::Error, tr("Transcription failed"), error);
+      KNotification::event(KNotification::Error, i18n("Transcription failed"), error);
     return;
   }
   const QString trimmedText = text.trimmed();
   if (trimmedText.isEmpty()) {
     setState(State::Idle);
-    setStatus(tr("No speech detected."));
+    setStatus(i18n("No speech detected."));
     if (m_statusNotification)
       m_statusNotification->close();
     return;
@@ -222,7 +240,7 @@ void AppController::handleTranscriptionFinished(const QString &text, const QStri
   const QString delivery = m_output->deliver(trimmedText, m_autoPaste);
   setStatus(delivery);
   setState(State::Success);
-  showStatusNotification(tr("Dictation complete"), delivery, QStringLiteral("dialog-ok-apply"));
+  showStatusNotification(i18n("Dictation complete"), delivery, QStringLiteral("dialog-ok-apply"));
   QTimer::singleShot(1200, this, [this] {
     if (m_state == State::Success)
       setState(State::Idle);
@@ -241,7 +259,7 @@ void AppController::handleCaptureFailure(const QString &error) {
   if (m_statusNotification)
     m_statusNotification->close();
   if (m_desktopIntegration)
-    KNotification::event(KNotification::Error, tr("Recording failed"), error);
+    KNotification::event(KNotification::Error, i18n("Recording failed"), error);
 }
 
 void AppController::setState(State value) {

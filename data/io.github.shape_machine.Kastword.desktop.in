@@ -8,5 +8,5 @@ Comment=Private offline dictation
 Exec="@CMAKE_INSTALL_FULL_BINDIR@/kastword"
 Icon=audio-input-microphone
 Categories=Qt;KDE;Utility;
-StartupNotify=true
+StartupNotify=false
 X-KDE-DBUS-Restricted-Interfaces=org.kde.kglobalaccel

@@ -6,6 +6,7 @@
 #include "RuntimeSecurity.h"
 #include "WhisperEngine.h"
 
+#include <KLocalizedString>
 #include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
@@ -46,6 +47,7 @@ class CoreTest final : public QObject {
   Q_OBJECT
 
 private slots:
+  void initTestCase();
   void rejectsMissingWhisperModel();
   void rejectsRecordingThatIsTooShort();
   void rejectsMisalignedAudioData();
@@ -72,6 +74,8 @@ private slots:
   void detectsElevatedExecution_data();
   void detectsElevatedExecution();
 };
+
+void CoreTest::initTestCase() { KLocalizedString::setApplicationDomain("kastword"); }
 
 void CoreTest::rejectsMissingWhisperModel() {
   WhisperEngine engine;

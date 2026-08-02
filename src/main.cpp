@@ -32,14 +32,14 @@ int main(int argc, char **argv) {
   }
 #endif
   QApplication app(argc, argv);
+  KLocalizedString::setApplicationDomain("kastword");
   QApplication::setOrganizationDomain(QStringLiteral("shape_machine.github.io"));
   // Keep the internal component name identical to the executable name. KGlobalAccel uses this
   // value as its persistent identifier, while the separately configured display name remains
   // the user-facing, capitalized "Kastword".
   QApplication::setApplicationName(QStringLiteral("kastword"));
-  QApplication::setApplicationDisplayName(QStringLiteral("Kastword"));
+  QApplication::setApplicationDisplayName(i18n("Kastword"));
   QApplication::setQuitOnLastWindowClosed(false);
-  KLocalizedString::setApplicationDomain("kastword");
 
   AppController controller;
   QQmlApplicationEngine engine;
@@ -55,13 +55,13 @@ int main(int argc, char **argv) {
   auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
   KStatusNotifierItem tray(QStringLiteral("kastword"));
   tray.setIconByName(QStringLiteral("audio-input-microphone"));
-  tray.setTitle(QStringLiteral("Kastword"));
-  tray.setToolTip(QStringLiteral("audio-input-microphone"), QStringLiteral("Kastword"),
-                  QStringLiteral("Offline dictation — %1").arg(controller.shortcutText()));
+  tray.setTitle(i18n("Kastword"));
+  tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"),
+                  i18n("Offline dictation — %1", controller.shortcutText()));
 
   QMenu trayMenu;
-  QAction openAction(QStringLiteral("Open Kastword"), &trayMenu);
-  QAction dictateAction(QStringLiteral("Start Dictation"), &trayMenu);
+  QAction openAction(i18n("Open Kastword"), &trayMenu);
+  QAction dictateAction(i18n("Start Dictation"), &trayMenu);
   trayMenu.addAction(&openAction);
   trayMenu.addAction(&dictateAction);
   tray.setContextMenu(&trayMenu);
@@ -91,26 +91,26 @@ int main(int argc, char **argv) {
                      const AppController::State state = controller.state();
                      if (state == AppController::State::Recording) {
                        tray.setIconByName(QStringLiteral("media-record"));
-                       dictateAction.setText(QStringLiteral("Stop and Transcribe"));
+                       dictateAction.setText(i18n("Stop and Transcribe"));
                      } else if (state == AppController::State::Transcribing) {
                        tray.setIconByName(QStringLiteral("view-refresh"));
-                       dictateAction.setText(QStringLiteral("Transcribing…"));
+                       dictateAction.setText(i18n("Transcribing…"));
                      } else if (state == AppController::State::Success) {
                        tray.setIconByName(QStringLiteral("dialog-ok-apply"));
-                       dictateAction.setText(QStringLiteral("Start Dictation"));
+                       dictateAction.setText(i18n("Start Dictation"));
                      } else {
                        tray.setIconByName(QStringLiteral("audio-input-microphone"));
-                       dictateAction.setText(QStringLiteral("Start Dictation"));
+                       dictateAction.setText(i18n("Start Dictation"));
                      }
                      dictateAction.setEnabled(state != AppController::State::Transcribing);
-                     tray.setToolTip(QStringLiteral("audio-input-microphone"),
-                                     QStringLiteral("Kastword"), controller.status());
+                     tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"),
+                                     controller.status());
                    });
 
-  KNotification::event(KNotification::Notification, QStringLiteral("Kastword is ready"),
-                       QStringLiteral("Running in the system tray. Press %1 to dictate.")
-                           .arg(controller.shortcutText()),
-                       QStringLiteral("audio-input-microphone"), KNotification::CloseOnTimeout);
+  KNotification::event(
+      KNotification::Notification, i18n("Kastword is ready"),
+      i18n("Running in the system tray. Press %1 to dictate.", controller.shortcutText()),
+      QStringLiteral("audio-input-microphone"), KNotification::CloseOnTimeout);
 
   return app.exec();
 }

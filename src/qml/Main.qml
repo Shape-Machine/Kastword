@@ -11,6 +11,7 @@ import org.kde.kirigami as Kirigami
 
 Kirigami.ApplicationWindow {
     id: root
+    objectName: "mainWindow"
     width: 480
     height: 280
     minimumWidth: 380
@@ -18,11 +19,15 @@ Kirigami.ApplicationWindow {
     visible: false
     title: i18n("Kastword")
 
+    function selectModel(url) {
+        appController.setModelUrl(url)
+    }
+
     FileDialog {
         id: modelDialog
         title: i18n("Select a Whisper model")
         nameFilters: [i18n("Whisper models (*.bin)"), i18n("All files (*)")]
-        onAccepted: appController.modelPath = selectedFile.toString().replace(/^file:\/\//, "")
+        onAccepted: root.selectModel(selectedFile)
     }
 
     Component {
@@ -51,11 +56,17 @@ Kirigami.ApplicationWindow {
                 }
 
                 Controls.ComboBox {
+                    id: languageComboBox
+                    objectName: "languageComboBox"
                     Kirigami.FormData.label: i18n("Language:")
                     Layout.fillWidth: true
-                    model: ["en", "auto", "de", "fr", "es", "nl", "it", "pt"]
-                    currentIndex: Math.max(0, model.indexOf(appController.language))
-                    onActivated: appController.language = currentText
+                    model: appController.availableLanguages
+                    textRole: "name"
+                    valueRole: "code"
+                    currentIndex: Math.max(0, indexOfValue(appController.language))
+                    onActivated: appController.language = currentValue
+                    Accessible.name: i18n("Dictation language")
+                    Accessible.description: i18n("Language supported by the selected Whisper model")
                 }
 
                 Controls.SpinBox {
@@ -99,7 +110,7 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    pageStack.initialPage: Kirigami.Page {
+    pageStack.initialPage: Kirigami.ScrollablePage {
         title: i18n("Offline dictation")
         actions: [
             Kirigami.Action {
@@ -116,14 +127,18 @@ Kirigami.ApplicationWindow {
             spacing: Kirigami.Units.largeSpacing
 
             Kirigami.InlineMessage {
+                objectName: "statusMessage"
                 Layout.fillWidth: true
                 visible: true
                 text: appController.status
                 type: appController.recording ? Kirigami.MessageType.Positive
                       : Kirigami.MessageType.Information
+                Accessible.name: i18n("Dictation status")
+                Accessible.description: appController.status
             }
 
             Controls.Button {
+                objectName: "dictationButton"
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 14
                 highlighted: true
@@ -133,21 +148,34 @@ Kirigami.ApplicationWindow {
                 icon.name: appController.recording ? "media-playback-stop" : "audio-input-microphone"
                 enabled: !appController.transcribing
                 onClicked: appController.toggle()
+                Accessible.name: text
+                Accessible.description: appController.recording
+                    ? i18n("Stop recording and begin local transcription")
+                    : appController.transcribing
+                    ? i18n("Local transcription is in progress")
+                    : i18n("Begin recording audio for local transcription")
             }
 
             Controls.ProgressBar {
+                objectName: "dictationProgress"
                 Layout.fillWidth: true
                 visible: appController.recording || appController.transcribing
                 from: 0
                 to: 1
                 value: appController.level
                 indeterminate: appController.transcribing
+                Accessible.name: appController.transcribing
+                    ? i18n("Transcription progress")
+                    : i18n("Microphone level")
+                Accessible.description: appController.transcribing
+                    ? i18n("Local transcription is in progress")
+                    : i18n("Current microphone input level")
             }
 
             Controls.Label {
                 Layout.alignment: Qt.AlignHCenter
                 visible: appController.idle
-                text: i18n("Global shortcut: %1").arg(appController.shortcutText)
+                text: i18n("Global shortcut: %1", appController.shortcutText)
                 opacity: 0.7
             }
 
@@ -165,10 +193,13 @@ Kirigami.ApplicationWindow {
                         Layout.preferredHeight: Kirigami.Units.gridUnit * 6
 
                         Controls.TextArea {
+                            objectName: "transcriptText"
                             text: appController.transcript
                             readOnly: true
                             wrapMode: TextEdit.Wrap
                             selectByMouse: true
+                            Accessible.name: i18n("Last transcription")
+                            Accessible.description: i18n("Read-only text from the most recent dictation")
                         }
                     }
 
@@ -177,6 +208,8 @@ Kirigami.ApplicationWindow {
                         text: i18n("Clear transcription")
                         icon.name: "edit-clear-history"
                         onClicked: appController.forgetTranscript()
+                        Accessible.name: text
+                        Accessible.description: i18n("Remove the transcription from Kastword and matching current clipboards")
                     }
                 }
             }

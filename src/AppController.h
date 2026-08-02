@@ -14,6 +14,8 @@
 #include <QPointer>
 #include <QString>
 #include <QThread>
+#include <QUrl>
+#include <QVariantList>
 #include <memory>
 
 class KNotification;
@@ -28,6 +30,7 @@ class AppController final : public QObject {
   Q_PROPERTY(QString transcript READ transcript NOTIFY transcriptChanged)
   Q_PROPERTY(QString modelPath READ modelPath WRITE setModelPath NOTIFY modelPathChanged)
   Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
+  Q_PROPERTY(QVariantList availableLanguages READ availableLanguages CONSTANT)
   Q_PROPERTY(bool autoPaste READ autoPaste WRITE setAutoPaste NOTIFY autoPasteChanged)
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
@@ -52,6 +55,7 @@ public:
   QString transcript() const { return m_transcript; }
   QString modelPath() const { return m_modelPath; }
   QString language() const { return m_language; }
+  QVariantList availableLanguages() const;
   bool autoPaste() const { return m_autoPaste; }
   int recordingLimitMinutes() const { return m_recordingLimitMinutes; }
   qreal level() const { return m_level; }
@@ -65,6 +69,7 @@ public:
 
   Q_INVOKABLE void toggle();
   Q_INVOKABLE void forgetTranscript();
+  Q_INVOKABLE void setModelUrl(const QUrl &url);
 
 signals:
   void stateChanged();

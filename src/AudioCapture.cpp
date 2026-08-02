@@ -4,6 +4,7 @@
 #include "AudioCapture.h"
 
 #include "AudioConversion.h"
+#include <KLocalizedString>
 
 #include <QAudioDevice>
 #include <QAudioFormat>
@@ -15,15 +16,15 @@ namespace {
 QString captureErrorMessage(QAudio::Error error) {
   switch (error) {
   case QAudio::OpenError:
-    return AudioCapture::tr("The microphone could not be opened.");
+    return i18n("The microphone could not be opened.");
   case QAudio::IOError:
-    return AudioCapture::tr("The microphone stopped responding.");
+    return i18n("The microphone stopped responding.");
   case QAudio::FatalError:
-    return AudioCapture::tr("The microphone backend failed.");
+    return i18n("The microphone backend failed.");
   case QAudio::NoError:
     break;
   }
-  return AudioCapture::tr("Microphone capture stopped unexpectedly.");
+  return i18n("Microphone capture stopped unexpectedly.");
 }
 } // namespace
 
@@ -55,13 +56,13 @@ bool AudioCapture::start(QString *error) {
 
   const QAudioDevice device = QMediaDevices::defaultAudioInput();
   if (device.isNull()) {
-    *error = tr("No microphone is available.");
+    *error = i18n("No microphone is available.");
     return false;
   }
 
   m_format = device.preferredFormat();
   if (!m_format.isValid() || m_format.bytesPerSample() == 0) {
-    *error = tr("The microphone reported an invalid audio format.");
+    *error = i18n("The microphone reported an invalid audio format.");
     return false;
   }
 
@@ -69,7 +70,7 @@ bool AudioCapture::start(QString *error) {
   m_source = std::make_unique<QAudioSource>(device, m_format);
   m_device = m_source->start();
   if (!m_device) {
-    *error = tr("Could not start microphone capture.");
+    *error = i18n("Could not start microphone capture.");
     m_source.reset();
     return false;
   }
@@ -97,7 +98,7 @@ bool AudioCapture::start(QString *error) {
       m_source->stop();
       m_source.reset();
       emit levelChanged(0.0);
-      emit captureFailed(tr("Recording stopped after reaching the configured duration limit."));
+      emit captureFailed(i18n("Recording stopped after reaching the configured duration limit."));
       return;
     }
     emit levelChanged(normalizedAudioPeak(chunk, m_format));

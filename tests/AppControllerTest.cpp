@@ -3,6 +3,8 @@
 
 #include "AppController.h"
 
+#include <KConfigGroup>
+#include <KLocalizedString>
 #include <QFile>
 #include <QMutex>
 #include <QScopeGuard>
@@ -94,9 +96,15 @@ private slots:
   void clampsRecordingLimit();
   void reportsAsynchronousDeliveryStatus();
   void boundsCapturedAudioBuffer();
+  void convertsModelUrlsToLocalPaths();
+  void restrictsLanguagesToEnglish();
+  void migratesUnsupportedLanguageSetting();
 };
 
-void AppControllerTest::initTestCase() { QStandardPaths::setTestModeEnabled(true); }
+void AppControllerTest::initTestCase() {
+  KLocalizedString::setApplicationDomain("kastword");
+  QStandardPaths::setTestModeEnabled(true);
+}
 
 void AppControllerTest::init() {
   QFile::remove(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) +
@@ -374,7 +382,8 @@ void AppControllerTest::emitsSettingChangesOnlyWhenValuesChange() {
   controller.setLanguage(QStringLiteral("nl"));
   controller.setAutoPaste(!controller.autoPaste());
 
-  QCOMPARE(languageChanged.count(), 1);
+  QCOMPARE(controller.language(), QStringLiteral("en"));
+  QCOMPARE(languageChanged.count(), 0);
   QCOMPARE(autoPasteChanged.count(), 1);
 }
 
@@ -472,6 +481,72 @@ void AppControllerTest::boundsCapturedAudioBuffer() {
   QVERIFY(buffer.append(QByteArray(1600 * qsizetype(sizeof(qint16)), '\0')));
   QVERIFY(!buffer.takeForWhisper().isEmpty());
   QCOMPARE(buffer.size(), qsizetype(0));
+}
+
+void AppControllerTest::convertsModelUrlsToLocalPaths() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+
+  const QStringList paths = {QStringLiteral("/tmp/My Model.bin"),
+                             QStringLiteral("/tmp/100% model.bin"),
+                             QStringLiteral("/tmp/日本語モデル.bin")};
+  for (const QString &path : paths) {
+    controller.setModelUrl(QUrl::fromLocalFile(path));
+    QCOMPARE(controller.modelPath(), path);
+  }
+
+  controller.setModelUrl(QUrl(QStringLiteral("https://example.test/model.bin")));
+  QCOMPARE(controller.modelPath(), paths.constLast());
+}
+
+void AppControllerTest::restrictsLanguagesToEnglish() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+
+  const QVariantList languages = controller.availableLanguages();
+  QCOMPARE(languages.size(), 1);
+  QCOMPARE(languages.constFirst().toMap().value(QStringLiteral("code")).toString(),
+           QStringLiteral("en"));
+  QCOMPARE(languages.constFirst().toMap().value(QStringLiteral("name")).toString(),
+           QStringLiteral("English"));
+
+  controller.setLanguage(QStringLiteral("nl"));
+  QCOMPARE(controller.language(), QStringLiteral("en"));
+}
+
+void AppControllerTest::migratesUnsupportedLanguageSetting() {
+  {
+    KConfig config(QStringLiteral("kastwordrc"));
+    KConfigGroup group(&config, QStringLiteral("General"));
+    group.writeEntry("Language", QStringLiteral("auto"));
+    group.sync();
+  }
+
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+
+  QCOMPARE(controller.language(), QStringLiteral("en"));
+  KConfig config(QStringLiteral("kastwordrc"));
+  const KConfigGroup group(&config, QStringLiteral("General"));
+  QCOMPARE(group.readEntry("Language", QString()), QStringLiteral("en"));
 }
 
 QTEST_MAIN(AppControllerTest)

@@ -117,10 +117,13 @@ install(FILES README.md LICENSES/GPL-3.0-or-later.txt
 if(KASTWORD_FETCH_DEFAULT_MODEL)
     install(FILES "${KASTWORD_DEFAULT_MODEL}" DESTINATION share/kastword/models COMPONENT Kastword)
 endif()
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME Kastword)
+ki18n_install(po)
+unset(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME)
 
 include(CTest)
 if(BUILD_TESTING)
-    find_package(Qt6 6.6 REQUIRED COMPONENTS Test)
+    find_package(Qt6 6.6 REQUIRED COMPONENTS QuickTest Test)
     add_test(NAME application-smoke COMMAND kastword --smoke-test)
     set_tests_properties(application-smoke PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
@@ -129,7 +132,8 @@ if(BUILD_TESTING)
         src/TextOutput.cpp
         src/TextOutput.h)
     target_include_directories(kastword_textoutput_test PRIVATE src)
-    target_link_libraries(kastword_textoutput_test PRIVATE Qt6::Core Qt6::DBus Qt6::Gui Qt6::Test)
+    target_link_libraries(kastword_textoutput_test PRIVATE
+        Qt6::Core Qt6::DBus Qt6::Gui Qt6::Test KF6::I18n)
     kastword_enable_coverage(kastword_textoutput_test)
     kastword_enable_sanitizers(kastword_textoutput_test)
     add_test(NAME text-output COMMAND kastword_textoutput_test)
@@ -146,7 +150,8 @@ if(BUILD_TESTING)
         src/WhisperEngine.cpp
         src/WhisperEngine.h)
     target_include_directories(kastword_core_test PRIVATE src)
-    target_link_libraries(kastword_core_test PRIVATE Qt6::Core Qt6::Multimedia Qt6::Test whisper)
+    target_link_libraries(kastword_core_test PRIVATE
+        Qt6::Core Qt6::Multimedia Qt6::Test KF6::I18n whisper)
     kastword_enable_coverage(kastword_core_test)
     kastword_enable_sanitizers(kastword_core_test)
     add_test(NAME core COMMAND kastword_core_test)
@@ -170,9 +175,22 @@ if(BUILD_TESTING)
     target_include_directories(kastword_controller_test PRIVATE src)
     target_link_libraries(kastword_controller_test PRIVATE
         Qt6::Core Qt6::DBus Qt6::Gui Qt6::Multimedia Qt6::Test Qt6::Widgets
-        KF6::ConfigCore KF6::GlobalAccel KF6::Notifications whisper)
+        KF6::ConfigCore KF6::GlobalAccel KF6::I18n KF6::Notifications whisper)
     kastword_enable_coverage(kastword_controller_test)
     kastword_enable_sanitizers(kastword_controller_test)
     add_test(NAME controller COMMAND kastword_controller_test)
     set_tests_properties(controller PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+    add_executable(kastword_qml_test tests/QmlTestSetup.cpp)
+    target_compile_definitions(kastword_qml_test PRIVATE
+        QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/qml")
+    target_link_libraries(kastword_qml_test PRIVATE
+        Qt6::Qml Qt6::Quick Qt6::QuickTest KF6::I18n KF6::I18nQml KF6::Kirigami)
+    qt_add_resources(kastword_qml_test "qml-test-resources"
+        PREFIX "/"
+        FILES src/qml/Main.qml)
+    kastword_enable_sanitizers(kastword_qml_test)
+    add_test(NAME qml COMMAND kastword_qml_test)
+    set_tests_properties(qml PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_FONT_DPI=192")
 endif()
