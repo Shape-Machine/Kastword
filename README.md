@@ -166,15 +166,24 @@ dictation and quit the application.
 ## Privacy and security model
 
 - Microphone samples live in process memory only until transcription completes.
+- Recordings stop at the configured duration limit (five minutes by default) or a 256 MiB raw
+  audio ceiling, whichever comes first.
 - Raw audio and transcription history are not written to disk.
 - Transcribed text is placed on the desktop clipboard and primary selection.
 - The selected model remains on local storage.
 - No telemetry or runtime network client is included.
 - The build downloads pinned dependencies over HTTPS and verifies the model checksum.
 - Automatic Wayland paste relies on the separately installed `ydotool`/`ydotoold` service.
+- Custom model files are trusted input parsed inside Kastword; use models from sources you trust.
+- Paste helpers are resolved from the inherited `PATH`; ensure every directory in `PATH` is
+  trusted. Kastword refuses to run with elevated privileges.
 
 Clipboard managers, target applications, desktop services, crash dumps, and the operating system
 may retain data independently of Kastword. Review their settings when dictating sensitive text.
+The clear-transcription action clears Kastword's retained text and any matching current clipboard
+or primary selection; it does not erase entries already retained by clipboard-manager history.
+Automatic paste is disabled by default. X11 focus is checked again before keys are sent; Wayland
+does not expose an equivalent global focus check, so focus can change during the short delay.
 
 ## Known limitations
 

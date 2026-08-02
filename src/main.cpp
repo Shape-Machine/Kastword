@@ -14,8 +14,18 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
+#include <cstdio>
+#ifdef Q_OS_UNIX
+#include <unistd.h>
+#endif
 
 int main(int argc, char **argv) {
+#ifdef Q_OS_UNIX
+  if (geteuid() == 0 || geteuid() != getuid()) {
+    std::fputs("Kastword refuses to run with elevated privileges.\n", stderr);
+    return 1;
+  }
+#endif
   QApplication app(argc, argv);
   QApplication::setOrganizationDomain(QStringLiteral("shape_machine.github.io"));
   // Keep the internal component name identical to the executable name. KGlobalAccel uses this

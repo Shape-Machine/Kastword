@@ -44,7 +44,7 @@ if(KASTWORD_FETCH_DEFAULT_MODEL)
         COMMAND "${CMAKE_COMMAND}"
             -DOUTPUT=${KASTWORD_DEFAULT_MODEL}
             -DURL=https://huggingface.co/ggerganov/whisper.cpp/resolve/4496f29dabb6f37d8e6c45c3ec89ccbe66a832ea/ggml-base.en.bin
-            -DSHA1=137c40403d78fd54d454da0f9bd998f78703390c
+            -DSHA256=a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/DownloadModel.cmake"
         DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/DownloadModel.cmake"
         COMMENT "Downloading checksum-verified Whisper base.en model (142 MiB)"

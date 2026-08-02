@@ -10,10 +10,12 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   build-and-validate:
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     container: archlinux@sha256:3406a568f45d68f0bef35dc80b3eacec8bda59b0292b2e50d5932ba1667f20cf
     timeout-minutes: 30

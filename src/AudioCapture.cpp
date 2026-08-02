@@ -72,6 +72,16 @@ bool AudioCapture::start(QString *error) {
 
   connect(m_device, &QIODevice::readyRead, this, [this] {
     const QByteArray chunk = m_device->readAll();
+    const qsizetype limit = maximumCaptureBytes(m_format, m_maximumDurationSeconds);
+    if (!audioAppendFitsLimit(m_audio.size(), chunk.size(), limit)) {
+      m_device = nullptr;
+      m_source->stop();
+      m_source.reset();
+      m_audio.clear();
+      emit levelChanged(0.0);
+      emit captureFailed(tr("Recording stopped after reaching the configured duration limit."));
+      return;
+    }
     m_audio.append(chunk);
     emit levelChanged(normalizedAudioPeak(chunk, m_format));
   });

@@ -18,6 +18,7 @@ public:
   virtual bool start(QString *error);
   virtual QByteArray stop();
   virtual bool isRecording() const { return m_source != nullptr; }
+  void setMaximumDurationSeconds(int seconds) { m_maximumDurationSeconds = seconds; }
 
 signals:
   void levelChanged(qreal level);
@@ -28,4 +29,5 @@ private:
   QIODevice *m_device = nullptr;
   QAudioFormat m_format;
   QByteArray m_audio;
+  int m_maximumDurationSeconds = 5 * 60;
 };

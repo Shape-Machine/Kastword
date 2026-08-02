@@ -23,6 +23,8 @@ public:
   QString transcribe(const QByteArray &audio, const QString &modelPath, const QString &language,
                      QString *error);
   bool loadModel(const QString &modelPath, QString *error);
+  static bool validateAudioSize(qsizetype byteCount, QString *error);
+  static constexpr qint64 maximumModelBytes() { return 4LL * 1024 * 1024 * 1024; }
 
 private:
   ContextLoader m_loader;

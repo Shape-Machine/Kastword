@@ -61,10 +61,12 @@ public:
     deliveredWithAutoPaste = autoPaste;
     return result;
   }
+  void forget(const QString &text) override { forgottenText = text; }
 
   QString deliveredText;
   bool deliveredWithAutoPaste = false;
   QString result = QStringLiteral("Delivered.");
+  QString forgottenText;
   bool *destroyed = nullptr;
 };
 
@@ -86,6 +88,8 @@ private slots:
   void rejectsToggleWhileTranscribing();
   void forwardsAudioLevel();
   void emitsSettingChangesOnlyWhenValuesChange();
+  void defaultsToPrivateOutputAndConfigurableRecordingLimit();
+  void forgetsTranscript();
 };
 
 void AppControllerTest::initTestCase() { QStandardPaths::setTestModeEnabled(true); }
@@ -368,6 +372,46 @@ void AppControllerTest::emitsSettingChangesOnlyWhenValuesChange() {
 
   QCOMPARE(languageChanged.count(), 1);
   QCOMPARE(autoPasteChanged.count(), 1);
+}
+
+void AppControllerTest::defaultsToPrivateOutputAndConfigurableRecordingLimit() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+  QSignalSpy limitChanged(&controller, &AppController::recordingLimitMinutesChanged);
+
+  QVERIFY(!controller.autoPaste());
+  QCOMPARE(controller.recordingLimitMinutes(), 5);
+  controller.setRecordingLimitMinutes(12);
+  QCOMPARE(controller.recordingLimitMinutes(), 12);
+  QCOMPARE(limitChanged.count(), 1);
+}
+
+void AppControllerTest::forgetsTranscript() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto *outputPtr = output.get();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return qMakePair(QStringLiteral("sensitive text"), QString());
+      },
+      false);
+  controller.toggle();
+  controller.toggle();
+  QTRY_COMPARE(controller.transcript(), QStringLiteral("sensitive text"));
+
+  controller.forgetTranscript();
+
+  QCOMPARE(outputPtr->forgottenText, QStringLiteral("sensitive text"));
+  QVERIFY(controller.transcript().isEmpty());
+  QCOMPARE(controller.status(), QStringLiteral("Cleared from Kastword and matching current "
+                                               "clipboards. Clipboard history may retain it."));
 }
 
 QTEST_MAIN(AppControllerTest)
