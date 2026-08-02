@@ -18,6 +18,14 @@
 namespace {
 constexpr auto defaultShortcut = "Meta+Z";
 
+const QStringList &supportedLanguageCodes() {
+  static const QStringList codes = {
+      QStringLiteral("en"), QStringLiteral("auto"), QStringLiteral("de"), QStringLiteral("fr"),
+      QStringLiteral("es"), QStringLiteral("nl"),   QStringLiteral("it"), QStringLiteral("pt"),
+  };
+  return codes;
+}
+
 QString findDefaultModel() {
   const QString fileName = QStringLiteral("ggml-base.en.bin");
   const QString applicationDirectory = QCoreApplication::applicationDirPath();
@@ -72,7 +80,7 @@ void AppController::initialize() {
   if (m_modelPath.isEmpty() || !QFileInfo(m_modelPath).isFile())
     m_modelPath = findDefaultModel();
   m_language = group.readEntry("Language", QStringLiteral("en"));
-  if (m_language != QStringLiteral("en")) {
+  if (!supportedLanguageCodes().contains(m_language)) {
     m_language = QStringLiteral("en");
     KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
     writableGroup.writeEntry("Language", m_language);
@@ -124,8 +132,24 @@ void AppController::initialize() {
 QString AppController::shortcutText() const { return QString::fromLatin1(defaultShortcut); }
 
 QVariantList AppController::availableLanguages() const {
-  return {QVariantMap{{QStringLiteral("code"), QStringLiteral("en")},
-                      {QStringLiteral("name"), i18n("English")}}};
+  return {
+      QVariantMap{{QStringLiteral("code"), QStringLiteral("en")},
+                  {QStringLiteral("name"), i18n("English")}},
+      QVariantMap{{QStringLiteral("code"), QStringLiteral("auto")},
+                  {QStringLiteral("name"), i18n("Automatic")}},
+      QVariantMap{{QStringLiteral("code"), QStringLiteral("de")},
+                  {QStringLiteral("name"), i18n("German")}},
+      QVariantMap{{QStringLiteral("code"), QStringLiteral("fr")},
+                  {QStringLiteral("name"), i18n("French")}},
+      QVariantMap{{QStringLiteral("code"), QStringLiteral("es")},
+                  {QStringLiteral("name"), i18n("Spanish")}},
+      QVariantMap{{QStringLiteral("code"), QStringLiteral("nl")},
+                  {QStringLiteral("name"), i18n("Dutch")}},
+      QVariantMap{{QStringLiteral("code"), QStringLiteral("it")},
+                  {QStringLiteral("name"), i18n("Italian")}},
+      QVariantMap{{QStringLiteral("code"), QStringLiteral("pt")},
+                  {QStringLiteral("name"), i18n("Portuguese")}},
+  };
 }
 
 void AppController::setModelPath(const QString &value) {
@@ -137,7 +161,8 @@ void AppController::setModelPath(const QString &value) {
 }
 
 void AppController::setLanguage(const QString &value) {
-  const QString supportedValue = value == QStringLiteral("en") ? value : QStringLiteral("en");
+  const QString supportedValue =
+      supportedLanguageCodes().contains(value) ? value : QStringLiteral("en");
   if (m_language == supportedValue)
     return;
   m_language = supportedValue;

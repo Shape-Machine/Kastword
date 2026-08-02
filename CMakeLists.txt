@@ -193,4 +193,9 @@ if(BUILD_TESTING)
     add_test(NAME qml COMMAND kastword_qml_test)
     set_tests_properties(qml PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_FONT_DPI=192")
+
+    add_test(NAME translation-catalog
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/check-translations.sh)
+    set_tests_properties(translation-catalog PROPERTIES
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()

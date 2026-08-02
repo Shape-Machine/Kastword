@@ -64,6 +64,16 @@ TestCase {
         compare(status.Accessible.description, "Transcribing")
     }
 
+    function test_modelControlsHaveAccessibleNames() {
+        applicationWindow.pageStack.currentItem.actions[0].trigger()
+        const modelPath = findChild(applicationWindow.contentItem, "modelPathField")
+        const browse = findChild(applicationWindow.contentItem, "modelBrowseButton")
+        verify(modelPath)
+        verify(browse)
+        compare(modelPath.Accessible.name, "Whisper model path")
+        compare(browse.Accessible.name, "Browse for Whisper model")
+    }
+
     function test_primaryActionSupportsKeyboard() {
         const button = findChild(applicationWindow.contentItem, "dictationButton")
         verify(button)

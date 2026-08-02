@@ -97,7 +97,7 @@ private slots:
   void reportsAsynchronousDeliveryStatus();
   void boundsCapturedAudioBuffer();
   void convertsModelUrlsToLocalPaths();
-  void restrictsLanguagesToEnglish();
+  void supportsMultilingualModels();
   void migratesUnsupportedLanguageSetting();
 };
 
@@ -382,8 +382,8 @@ void AppControllerTest::emitsSettingChangesOnlyWhenValuesChange() {
   controller.setLanguage(QStringLiteral("nl"));
   controller.setAutoPaste(!controller.autoPaste());
 
-  QCOMPARE(controller.language(), QStringLiteral("en"));
-  QCOMPARE(languageChanged.count(), 0);
+  QCOMPARE(controller.language(), QStringLiteral("nl"));
+  QCOMPARE(languageChanged.count(), 1);
   QCOMPARE(autoPasteChanged.count(), 1);
 }
 
@@ -505,7 +505,7 @@ void AppControllerTest::convertsModelUrlsToLocalPaths() {
   QCOMPARE(controller.modelPath(), paths.constLast());
 }
 
-void AppControllerTest::restrictsLanguagesToEnglish() {
+void AppControllerTest::supportsMultilingualModels() {
   auto audio = std::make_unique<FakeAudioCapture>();
   auto output = std::make_unique<FakeTextOutput>();
   AppController controller(
@@ -516,13 +516,15 @@ void AppControllerTest::restrictsLanguagesToEnglish() {
       false);
 
   const QVariantList languages = controller.availableLanguages();
-  QCOMPARE(languages.size(), 1);
+  QCOMPARE(languages.size(), 8);
   QCOMPARE(languages.constFirst().toMap().value(QStringLiteral("code")).toString(),
            QStringLiteral("en"));
   QCOMPARE(languages.constFirst().toMap().value(QStringLiteral("name")).toString(),
            QStringLiteral("English"));
 
   controller.setLanguage(QStringLiteral("nl"));
+  QCOMPARE(controller.language(), QStringLiteral("nl"));
+  controller.setLanguage(QStringLiteral("unsupported"));
   QCOMPARE(controller.language(), QStringLiteral("en"));
 }
 
@@ -530,7 +532,7 @@ void AppControllerTest::migratesUnsupportedLanguageSetting() {
   {
     KConfig config(QStringLiteral("kastwordrc"));
     KConfigGroup group(&config, QStringLiteral("General"));
-    group.writeEntry("Language", QStringLiteral("auto"));
+    group.writeEntry("Language", QStringLiteral("unsupported"));
     group.sync();
   }
 

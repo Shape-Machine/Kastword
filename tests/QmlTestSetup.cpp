@@ -36,7 +36,7 @@ public:
   QString language() const { return QStringLiteral("en"); }
   QVariantList availableLanguages() const {
     return {QVariantMap{{QStringLiteral("code"), QStringLiteral("en")},
-                        {QStringLiteral("name"), QStringLiteral("English")}}};
+                        {QStringLiteral("name"), i18n("English")}}};
   }
   bool autoPaste() const { return false; }
   int recordingLimitMinutes() const { return 5; }

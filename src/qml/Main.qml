@@ -43,15 +43,19 @@ Kirigami.ApplicationWindow {
                     Kirigami.FormData.label: i18n("Model:")
 
                     Controls.TextField {
+                        objectName: "modelPathField"
                         Layout.fillWidth: true
                         text: appController.modelPath
                         placeholderText: i18n("Path to ggml model")
                         onEditingFinished: appController.modelPath = text
+                        Accessible.name: i18n("Whisper model path")
                     }
 
                     Controls.Button {
+                        objectName: "modelBrowseButton"
                         text: i18n("Browse…")
                         onClicked: modelDialog.open()
+                        Accessible.name: i18n("Browse for Whisper model")
                     }
                 }
 
