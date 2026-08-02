@@ -1,0 +1,4 @@
+interface:
+  display_name: "Expert Code Review"
+  short_description: "Review code through project expert perspectives"
+  default_prompt: "Use $dev-review to review the current branch and let me choose which findings to implement."
