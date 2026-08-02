@@ -62,6 +62,7 @@ public:
     return result;
   }
   void forget(const QString &text) override { forgottenText = text; }
+  void reportDeliveryStatus(const QString &status) { emit deliveryStatus(status); }
 
   QString deliveredText;
   bool deliveredWithAutoPaste = false;
@@ -90,6 +91,9 @@ private slots:
   void emitsSettingChangesOnlyWhenValuesChange();
   void defaultsToPrivateOutputAndConfigurableRecordingLimit();
   void forgetsTranscript();
+  void clampsRecordingLimit();
+  void reportsAsynchronousDeliveryStatus();
+  void boundsCapturedAudioBuffer();
 };
 
 void AppControllerTest::initTestCase() { QStandardPaths::setTestModeEnabled(true); }
@@ -412,6 +416,62 @@ void AppControllerTest::forgetsTranscript() {
   QVERIFY(controller.transcript().isEmpty());
   QCOMPARE(controller.status(), QStringLiteral("Cleared from Kastword and matching current "
                                                "clipboards. Clipboard history may retain it."));
+}
+
+void AppControllerTest::clampsRecordingLimit() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+  QSignalSpy changed(&controller, &AppController::recordingLimitMinutesChanged);
+
+  controller.setRecordingLimitMinutes(0);
+  QCOMPARE(controller.recordingLimitMinutes(), 1);
+  controller.setRecordingLimitMinutes(100);
+  QCOMPARE(controller.recordingLimitMinutes(), 60);
+  controller.setRecordingLimitMinutes(60);
+  QCOMPARE(changed.count(), 2);
+}
+
+void AppControllerTest::reportsAsynchronousDeliveryStatus() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto *outputPtr = output.get();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+  QSignalSpy changed(&controller, &AppController::statusChanged);
+
+  outputPtr->reportDeliveryStatus(QStringLiteral("Automatic paste helper crashed."));
+
+  QCOMPARE(controller.status(), QStringLiteral("Automatic paste helper crashed."));
+  QCOMPARE(changed.count(), 1);
+}
+
+void AppControllerTest::boundsCapturedAudioBuffer() {
+  QAudioFormat format;
+  format.setSampleRate(16000);
+  format.setChannelCount(1);
+  format.setSampleFormat(QAudioFormat::Int16);
+  CapturedAudioBuffer buffer;
+  buffer.configure(format, 1);
+  const qsizetype limit = 16000 * qsizetype(sizeof(qint16));
+
+  QVERIFY(buffer.append(QByteArray(limit, '\0')));
+  QCOMPARE(buffer.size(), limit);
+  QVERIFY(!buffer.append(QByteArray(1, '\0')));
+  QCOMPARE(buffer.size(), qsizetype(0));
+
+  QVERIFY(buffer.append(QByteArray(1600 * qsizetype(sizeof(qint16)), '\0')));
+  QVERIFY(!buffer.takeForWhisper().isEmpty());
+  QCOMPARE(buffer.size(), qsizetype(0));
 }
 
 QTEST_MAIN(AppControllerTest)

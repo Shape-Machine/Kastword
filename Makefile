@@ -7,7 +7,9 @@ BUILD_DIR ?= build
 BUILD_TYPE ?= Release
 PREFIX ?= $(HOME)/.local
 CMAKE_ARGS ?=
-COVERAGE_FILE ?= $(BUILD_DIR)/coverage.xml
+COVERAGE_DIR ?= $(BUILD_DIR)/coverage
+COVERAGE_MIN_LINE ?= 68
+COVERAGE_MIN_BRANCH ?= 55
 
 all: build
 
@@ -67,8 +69,10 @@ uninstall:
 test: build
 	ctest --test-dir $(BUILD_DIR) --output-on-failure
 
+coverage: CMAKE_ARGS += -DKASTWORD_ENABLE_COVERAGE=ON
 coverage: test
-	gcovr --root . --filter src/ --xml-pretty --output $(COVERAGE_FILE) --print-summary
+	COVERAGE_MIN_LINE=$(COVERAGE_MIN_LINE) COVERAGE_MIN_BRANCH=$(COVERAGE_MIN_BRANCH) \
+		./tools/coverage.sh "$(BUILD_DIR)" "$(COVERAGE_DIR)"
 
 clean:
 	cmake -E remove_directory $(BUILD_DIR)

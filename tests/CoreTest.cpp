@@ -3,6 +3,7 @@
 
 #include "AudioConversion.h"
 #include "ModelLocator.h"
+#include "RuntimeSecurity.h"
 #include "WhisperEngine.h"
 
 #include <QFile>
@@ -50,6 +51,7 @@ private slots:
   void rejectsMisalignedAudioData();
   void rejectsInvalidWhisperModel();
   void rejectsOversizedWhisperModel();
+  void rejectsNonRegularWhisperModel();
   void rejectsWhisperSampleCountOverflow();
   void reusesAndReloadsWhisperModels();
   void convertsEmptyAudio();
@@ -67,6 +69,8 @@ private slots:
   void clampsAudioPeak();
   void selectsFirstReadableModel();
   void returnsEmptyWhenNoModelExists();
+  void detectsElevatedExecution_data();
+  void detectsElevatedExecution();
 };
 
 void CoreTest::rejectsMissingWhisperModel() {
@@ -131,6 +135,14 @@ void CoreTest::rejectsOversizedWhisperModel() {
 
   QVERIFY(!engine.loadModel(model.fileName(), &error));
   QCOMPARE(error, QStringLiteral("The selected Whisper model is too large."));
+}
+
+void CoreTest::rejectsNonRegularWhisperModel() {
+  WhisperEngine engine;
+  QString error;
+
+  QVERIFY(!engine.loadModel(QStringLiteral("/dev/null"), &error));
+  QCOMPARE(error, QStringLiteral("Select a regular Whisper model file."));
 }
 
 void CoreTest::rejectsWhisperSampleCountOverflow() {
@@ -210,6 +222,8 @@ void CoreTest::enforcesCaptureAppendBoundary() {
   QVERIFY(!audioAppendFitsLimit(90, 11, limit));
   QVERIFY(!audioAppendFitsLimit(101, 0, limit));
   QVERIFY(!audioAppendFitsLimit(0, 1, 0));
+  QVERIFY(!audioAppendFitsLimit(-1, 1, limit));
+  QVERIFY(!audioAppendFitsLimit(1, -1, limit));
 }
 
 void CoreTest::rejectsResamplingArithmeticOverflow() {
@@ -217,6 +231,9 @@ void CoreTest::rejectsResamplingArithmeticOverflow() {
   QVERIFY(resampledFrameCount(48000, 48000, &outputFrames));
   QCOMPARE(outputFrames, qsizetype(16000));
   QVERIFY(!resampledFrameCount(std::numeric_limits<qsizetype>::max(), 1, &outputFrames));
+  QVERIFY(!resampledFrameCount(0, 16000, &outputFrames));
+  QVERIFY(!resampledFrameCount(1, 0, &outputFrames));
+  QVERIFY(!resampledFrameCount(1, 16000, nullptr));
 }
 
 void CoreTest::convertsSampleFormats_data() {
@@ -327,6 +344,24 @@ void CoreTest::returnsEmptyWhenNoModelExists() {
 
   QVERIFY(firstReadableModel({directory.filePath(QStringLiteral("missing.bin")), directory.path()})
               .isEmpty());
+}
+
+void CoreTest::detectsElevatedExecution_data() {
+  QTest::addColumn<quint64>("realUserId");
+  QTest::addColumn<quint64>("effectiveUserId");
+  QTest::addColumn<bool>("refused");
+
+  QTest::newRow("regular user") << quint64(1000) << quint64(1000) << false;
+  QTest::newRow("setuid root") << quint64(1000) << quint64(0) << true;
+  QTest::newRow("root") << quint64(0) << quint64(0) << true;
+  QTest::newRow("changed identity") << quint64(1000) << quint64(1001) << true;
+}
+
+void CoreTest::detectsElevatedExecution() {
+  QFETCH(quint64, realUserId);
+  QFETCH(quint64, effectiveUserId);
+  QFETCH(bool, refused);
+  QCOMPARE(shouldRefuseElevatedExecution(realUserId, effectiveUserId), refused);
 }
 
 QTEST_APPLESS_MAIN(CoreTest)

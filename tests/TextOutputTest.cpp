@@ -4,11 +4,28 @@
 #include "TextOutput.h"
 
 #include <QClipboard>
+#include <QFile>
 #include <QGuiApplication>
+#include <QScopeGuard>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QTest>
 
 Q_DECLARE_METATYPE(TextOutput::PasteMethod)
+
+namespace {
+QString createHelper(const QTemporaryDir &directory, const QString &name, const QByteArray &body) {
+  const QString path = directory.filePath(name);
+  QFile helper(path);
+  if (!helper.open(QIODevice::WriteOnly) || helper.write(body) != body.size())
+    return {};
+  helper.close();
+  if (!QFile::setPermissions(path, QFileDevice::ReadOwner | QFileDevice::WriteOwner |
+                                       QFileDevice::ExeOwner))
+    return {};
+  return path;
+}
+} // namespace
 
 class TextOutputTest final : public QObject {
   Q_OBJECT
@@ -17,6 +34,9 @@ private slots:
   void copiesTranscriptionToAvailableClipboards();
   void forgetsOnlyMatchingClipboardText();
   void reportsPasteHelperFailures();
+  void deliversThroughX11Helper();
+  void deliversThroughWaylandHelper();
+  void reportsMissingAutomaticPasteHelper();
   void cancelsX11PasteWhenFocusChanges();
   void pastesOnX11WhenFocusIsUnchanged();
   void choosesPasteMethod_data();
@@ -65,6 +85,79 @@ void TextOutputTest::reportsPasteHelperFailures() {
   QTRY_COMPARE(status.count(), 1);
   QCOMPARE(status.takeFirst().at(0).toString(),
            QStringLiteral("Automatic paste helper could not be started."));
+
+  output.startPaste(QStringLiteral("/bin/sh"),
+                    {QStringLiteral("-c"), QStringLiteral("kill -SEGV $$")},
+                    QStringLiteral("unexpected success"));
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.takeFirst().at(0).toString(), QStringLiteral("Automatic paste helper crashed."));
+}
+
+void TextOutputTest::deliversThroughX11Helper() {
+  QTemporaryDir directory;
+  QVERIFY(directory.isValid());
+  QVERIFY(
+      !createHelper(directory, QStringLiteral("xdotool"),
+                    QByteArrayLiteral(
+                        "#!/bin/sh\nif [ \"$1\" = getwindowfocus ]; then echo 42; fi\nexit 0\n"))
+           .isEmpty());
+  const QByteArray oldPath = qgetenv("PATH");
+  const QByteArray oldSession = qgetenv("XDG_SESSION_TYPE");
+  const auto restore = qScopeGuard([oldPath, oldSession] {
+    qputenv("PATH", oldPath);
+    qputenv("XDG_SESSION_TYPE", oldSession);
+  });
+  qputenv("PATH", directory.path().toUtf8());
+  qputenv("XDG_SESSION_TYPE", QByteArrayLiteral("x11"));
+  TextOutput output;
+  QSignalSpy status(&output, &TextOutput::deliveryStatus);
+
+  QCOMPARE(output.deliver(QStringLiteral("x11 text"), true),
+           QStringLiteral("Copied to clipboard; automatic paste scheduled."));
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.takeFirst().at(0).toString(),
+           QStringLiteral("Pasted into the focused application."));
+}
+
+void TextOutputTest::deliversThroughWaylandHelper() {
+  QTemporaryDir directory;
+  QVERIFY(directory.isValid());
+  QVERIFY(
+      !createHelper(directory, QStringLiteral("ydotool"), QByteArrayLiteral("#!/bin/sh\nexit 0\n"))
+           .isEmpty());
+  const QByteArray oldPath = qgetenv("PATH");
+  const QByteArray oldSession = qgetenv("XDG_SESSION_TYPE");
+  const auto restore = qScopeGuard([oldPath, oldSession] {
+    qputenv("PATH", oldPath);
+    qputenv("XDG_SESSION_TYPE", oldSession);
+  });
+  qputenv("PATH", directory.path().toUtf8());
+  qputenv("XDG_SESSION_TYPE", QByteArrayLiteral("wayland"));
+  TextOutput output;
+  QSignalSpy status(&output, &TextOutput::deliveryStatus);
+
+  QCOMPARE(output.deliver(QStringLiteral("wayland text"), true),
+           QStringLiteral("Copied to clipboard; automatic paste scheduled."));
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.takeFirst().at(0).toString(),
+           QStringLiteral("Sent paste to the focused application."));
+}
+
+void TextOutputTest::reportsMissingAutomaticPasteHelper() {
+  QTemporaryDir directory;
+  QVERIFY(directory.isValid());
+  const QByteArray oldPath = qgetenv("PATH");
+  const QByteArray oldSession = qgetenv("XDG_SESSION_TYPE");
+  const auto restore = qScopeGuard([oldPath, oldSession] {
+    qputenv("PATH", oldPath);
+    qputenv("XDG_SESSION_TYPE", oldSession);
+  });
+  qputenv("PATH", directory.path().toUtf8());
+  qputenv("XDG_SESSION_TYPE", QByteArrayLiteral("wayland"));
+  TextOutput output;
+
+  QCOMPARE(output.deliver(QStringLiteral("manual text"), true),
+           QStringLiteral("Copied to clipboard; install ydotool for automatic paste."));
 }
 
 void TextOutputTest::cancelsX11PasteWhenFocusChanges() {
