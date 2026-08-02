@@ -28,7 +28,7 @@ install:
 		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 		-DCMAKE_INSTALL_PREFIX="$(PREFIX)" \
 		-DKASTWORD_FETCH_WHISPER=ON \
-		-DKASTWORD_FETCH_DEFAULT_MODEL=ON \
+		-DKASTWORD_FETCH_DEFAULT_MODEL=OFF \
 		$(CMAKE_ARGS)
 	cmake --build $(BUILD_DIR)
 	cmake --install $(BUILD_DIR) --component Kastword
@@ -49,7 +49,8 @@ install-smoke: build
 		"$$smoke_prefix/share/applications/io.github.shape_machine.Kastword.desktop"; \
 	appstreamcli validate --no-net \
 		"$$smoke_prefix/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml"; \
-	test -f "$$smoke_prefix/share/locale/x-test/LC_MESSAGES/kastword.mo"
+	test -f "$$smoke_prefix/share/locale/x-test/LC_MESSAGES/kastword.mo"; \
+	test ! -e "$$smoke_prefix/share/kastword/models/ggml-base.en.bin"
 
 uninstall:
 	cmake -E rm -f \

@@ -3,7 +3,6 @@
 
 #include "AppController.h"
 
-#include "ModelLocator.h"
 #include "WhisperEngine.h"
 #include <KConfigGroup>
 #include <KGlobalAccel>
@@ -26,19 +25,6 @@ const QStringList &supportedLanguageCodes() {
   return codes;
 }
 
-QString findDefaultModel() {
-  const QString fileName = QStringLiteral("ggml-base.en.bin");
-  const QString applicationDirectory = QCoreApplication::applicationDirPath();
-  const QStringList candidates = {
-      applicationDirectory + QStringLiteral("/models/") + fileName,
-      applicationDirectory + QStringLiteral("/../share/kastword/models/") + fileName,
-      QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) +
-          QStringLiteral("/models/") + fileName,
-      QStringLiteral("/usr/share/kastword/models/") + fileName,
-      QStringLiteral("/usr/local/share/kastword/models/") + fileName,
-  };
-  return firstReadableModel(candidates);
-}
 } // namespace
 
 AppController::AppController(QObject *parent)
@@ -50,15 +36,23 @@ AppController::AppController(QObject *parent)
             const QString text = engine->transcribe(audio, model, language, &error);
             return qMakePair(text, error);
           },
-          true, parent) {}
+          true, true, parent) {}
 
 AppController::AppController(std::unique_ptr<AudioCapture> audio,
                              std::unique_ptr<TextOutput> output, TranscribeFunction transcribe,
                              bool desktopIntegration, QObject *parent)
+    : AppController(std::move(audio), std::move(output), std::move(transcribe), desktopIntegration,
+                    false, parent) {}
+
+AppController::AppController(std::unique_ptr<AudioCapture> audio,
+                             std::unique_ptr<TextOutput> output, TranscribeFunction transcribe,
+                             bool desktopIntegration, bool requireModel, QObject *parent,
+                             std::unique_ptr<ModelManager> modelManager)
     : QObject(parent), m_audio(std::move(audio)), m_output(std::move(output)),
+      m_modelManager(modelManager ? std::move(modelManager) : std::make_unique<ModelManager>()),
       m_transcriptionWorker(new TranscriptionWorker(std::move(transcribe))),
-      m_desktopIntegration(desktopIntegration), m_config(QStringLiteral("kastwordrc")),
-      m_shortcut(i18n("Toggle dictation"), this) {
+      m_desktopIntegration(desktopIntegration), m_requireModel(requireModel),
+      m_config(QStringLiteral("kastwordrc")), m_shortcut(i18n("Toggle dictation"), this) {
   Q_ASSERT(m_audio);
   Q_ASSERT(m_output);
   m_transcriptionWorker->moveToThread(&m_transcriptionThread);
@@ -77,8 +71,6 @@ AppController::~AppController() {
 void AppController::initialize() {
   const KConfigGroup group(&m_config, QStringLiteral("General"));
   m_modelPath = group.readEntry("ModelPath", QString());
-  if (m_modelPath.isEmpty() || !QFileInfo(m_modelPath).isFile())
-    m_modelPath = findDefaultModel();
   m_language = group.readEntry("Language", QStringLiteral("en"));
   if (!supportedLanguageCodes().contains(m_language)) {
     m_language = QStringLiteral("en");
@@ -89,6 +81,49 @@ void AppController::initialize() {
   m_autoPaste = group.readEntry("AutoPaste", false);
   m_recordingLimitMinutes = qBound(1, group.readEntry("RecordingLimitMinutes", 5), 60);
   m_audio->setMaximumDurationSeconds(m_recordingLimitMinutes * 60);
+
+  connect(m_modelManager.get(), &ModelManager::activeModelPathChanged, this, [this] {
+    const QString path = m_modelManager->activeModelPath();
+    if (m_modelManager->activeModelEnglishOnly() && m_language != QStringLiteral("en")) {
+      m_language = QStringLiteral("en");
+      saveSettings();
+      emit languageChanged();
+    }
+    if (m_modelPath != path) {
+      m_modelPath = path;
+      saveSettings();
+      emit modelPathChanged();
+    }
+    bool recordingStopped = false;
+    if (!modelReady() && m_audio->isRecording()) {
+      m_audio->stop();
+      setState(State::Idle);
+      setStatus(i18n("Recording stopped because the speech model is no longer available."));
+      recordingStopped = true;
+    }
+    if (modelReady())
+      setStatus(i18n("Ready — press %1 to dictate.", shortcutText()));
+    else if (m_modelManager->verificationPending() && !recordingStopped)
+      setStatus(i18n("Verifying the speech model…"));
+    m_shortcut.setEnabled(modelReady());
+    emit modelReadyChanged();
+  });
+  connect(m_modelManager.get(), &ModelManager::changed, this, [this] {
+    if (!modelReady() && m_modelManager->verificationPending())
+      setStatus(i18n("Verifying the speech model…"));
+  });
+  connect(m_modelManager.get(), &ModelManager::setupRequired, this, [this] {
+    if (!m_modelPath.isEmpty()) {
+      m_modelPath.clear();
+      saveSettings();
+      emit modelPathChanged();
+    }
+    setStatus(i18n("Choose a speech model to enable dictation."));
+    emit modelReadyChanged();
+    emit modelSetupRequested();
+  });
+  if (m_requireModel)
+    m_modelManager->restoreActiveModel(m_modelPath);
 
   if (m_desktopIntegration) {
     m_shortcut.setObjectName(QStringLiteral("toggle-dictation"));
@@ -116,6 +151,7 @@ void AppController::initialize() {
     }
     connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
   }
+  m_shortcut.setEnabled(modelReady());
   connect(m_audio.get(), &AudioCapture::levelChanged, this, [this](qreal value) {
     m_level = value;
     emit levelChanged();
@@ -126,13 +162,18 @@ void AppController::initialize() {
     if (m_desktopIntegration && status.contains(i18n("failed"), Qt::CaseInsensitive))
       KNotification::event(KNotification::Error, i18n("Automatic paste failed"), status);
   });
-  setStatus(i18n("Ready — press %1 to dictate.", shortcutText()));
+  if (modelReady())
+    setStatus(i18n("Ready — press %1 to dictate.", shortcutText()));
+  else if (m_modelManager->verificationPending())
+    setStatus(i18n("Verifying the speech model…"));
+  else
+    setStatus(i18n("Choose a speech model to enable dictation."));
 }
 
 QString AppController::shortcutText() const { return QString::fromLatin1(defaultShortcut); }
 
 QVariantList AppController::availableLanguages() const {
-  return {
+  QVariantList languages = {
       QVariantMap{{QStringLiteral("code"), QStringLiteral("en")},
                   {QStringLiteral("name"), i18n("English")}},
       QVariantMap{{QStringLiteral("code"), QStringLiteral("auto")},
@@ -150,6 +191,9 @@ QVariantList AppController::availableLanguages() const {
       QVariantMap{{QStringLiteral("code"), QStringLiteral("pt")},
                   {QStringLiteral("name"), i18n("Portuguese")}},
   };
+  if (m_requireModel && m_modelManager->activeModelEnglishOnly())
+    languages = {languages.constFirst()};
+  return languages;
 }
 
 void AppController::setModelPath(const QString &value) {
@@ -171,8 +215,16 @@ void AppController::setLanguage(const QString &value) {
 }
 
 void AppController::setModelUrl(const QUrl &url) {
-  if (url.isLocalFile())
+  if (m_requireModel)
+    m_modelManager->selectLocalModel(url);
+  else if (url.isLocalFile())
     setModelPath(url.toLocalFile());
+}
+
+bool AppController::removeModel(const QString &id) {
+  if (m_state != State::Idle)
+    return false;
+  return m_modelManager->removeModel(id);
 }
 
 void AppController::setAutoPaste(bool value) {
@@ -204,12 +256,14 @@ void AppController::forgetTranscript() {
 }
 
 void AppController::toggle() {
-  if (m_state == State::Transcribing) {
-    setStatus(i18n("Transcription is already in progress."));
-    return;
-  }
   if (m_audio->isRecording()) {
     QByteArray audio = m_audio->stop();
+    if (!modelReady()) {
+      setState(State::Idle);
+      setStatus(i18n("Recording stopped because the speech model is no longer available."));
+      emit modelSetupRequested();
+      return;
+    }
     setState(State::Transcribing);
     setStatus(i18n("Transcribing locally…"));
     showStatusNotification(i18n("Kastword"), i18n("Transcribing locally…"),
@@ -217,7 +271,15 @@ void AppController::toggle() {
     transcribe(std::move(audio));
     return;
   }
-
+  if (!modelReady()) {
+    setStatus(i18n("Choose a speech model before starting dictation."));
+    emit modelSetupRequested();
+    return;
+  }
+  if (m_state == State::Transcribing) {
+    setStatus(i18n("Transcription is already in progress."));
+    return;
+  }
   QString error;
   if (!m_audio->start(&error)) {
     setStatus(error);

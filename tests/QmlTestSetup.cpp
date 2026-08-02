@@ -9,6 +9,77 @@
 #include <QVariantList>
 #include <QtQuickTest/quicktest.h>
 
+class FakeModelManager final : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(QVariantList models READ models NOTIFY changed)
+  Q_PROPERTY(bool busy READ busy CONSTANT)
+  Q_PROPERTY(qreal progress READ progress CONSTANT)
+  Q_PROPERTY(QString status READ status CONSTANT)
+  Q_PROPERTY(QString error READ error CONSTANT)
+  Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
+  Q_PROPERTY(bool verificationPending READ verificationPending NOTIFY changed)
+
+public:
+  QVariantList models() const {
+    const auto model = [this](const QString &id, bool englishOnly, bool recommended) {
+      return QVariantMap{{QStringLiteral("id"), id},
+                         {QStringLiteral("name"), id},
+                         {QStringLiteral("sizeText"), QStringLiteral("141 MiB")},
+                         {QStringLiteral("englishOnly"), englishOnly},
+                         {QStringLiteral("languageText"), englishOnly
+                                                              ? QStringLiteral("English only")
+                                                              : QStringLiteral("Multilingual")},
+                         {QStringLiteral("recommended"), recommended},
+                         {QStringLiteral("speed"), QStringLiteral("Fast")},
+                         {QStringLiteral("accuracy"), QStringLiteral("Good accuracy")},
+                         {QStringLiteral("installed"), false},
+                         {QStringLiteral("partial"), m_partialId == id},
+                         {QStringLiteral("partialSizeText"), QStringLiteral("42 MiB")},
+                         {QStringLiteral("active"), false},
+                         {QStringLiteral("downloading"), false},
+                         {QStringLiteral("verifying"), m_verifyingId == id}};
+    };
+    return {model(QStringLiteral("base.en"), true, true),
+            model(QStringLiteral("small"), false, true),
+            model(QStringLiteral("tiny"), false, false)};
+  }
+  bool busy() const { return false; }
+  qreal progress() const { return 0.0; }
+  QString status() const { return {}; }
+  QString error() const { return {}; }
+  QString storagePath() const { return QStringLiteral("/tmp/models"); }
+  bool verificationPending() const { return m_verificationPending; }
+  void setVerificationPending(bool pending) {
+    if (m_verificationPending == pending)
+      return;
+    m_verificationPending = pending;
+    emit changed();
+  }
+  Q_INVOKABLE void download(const QString &) {}
+  Q_INVOKABLE void cancel() {}
+  Q_INVOKABLE void selectModel(const QString &) {}
+  Q_INVOKABLE void setVerifyingId(const QString &id) {
+    if (m_verifyingId == id)
+      return;
+    m_verifyingId = id;
+    emit changed();
+  }
+  Q_INVOKABLE void setPartialId(const QString &id) {
+    if (m_partialId == id)
+      return;
+    m_partialId = id;
+    emit changed();
+  }
+
+signals:
+  void changed();
+
+private:
+  bool m_verificationPending = false;
+  QString m_verifyingId;
+  QString m_partialId;
+};
+
 class FakeAppController final : public QObject {
   Q_OBJECT
   Q_PROPERTY(bool idle READ idle NOTIFY stateChanged)
@@ -17,6 +88,9 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(QString status READ status NOTIFY statusChanged)
   Q_PROPERTY(QString transcript READ transcript NOTIFY transcriptChanged)
   Q_PROPERTY(QString modelPath READ modelPath WRITE setModelPath NOTIFY modelPathChanged)
+  Q_PROPERTY(bool modelReady READ modelReady NOTIFY modelReadyChanged)
+  Q_PROPERTY(bool modelSetupRequired READ modelSetupRequired NOTIFY modelReadyChanged)
+  Q_PROPERTY(QObject *modelManager READ modelManager CONSTANT)
   Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
   Q_PROPERTY(QVariantList availableLanguages READ availableLanguages CONSTANT)
   Q_PROPERTY(bool autoPaste READ autoPaste WRITE setAutoPaste NOTIFY autoPasteChanged)
@@ -33,6 +107,9 @@ public:
   QString status() const { return m_status; }
   QString transcript() const { return QStringLiteral("Test transcription"); }
   QString modelPath() const { return m_modelPath; }
+  bool modelReady() const { return m_modelReady; }
+  bool modelSetupRequired() const { return !m_modelReady && !m_restoringModel; }
+  QObject *modelManager() { return &m_modelManager; }
   QString language() const { return QStringLiteral("en"); }
   QVariantList availableLanguages() const {
     return {QVariantMap{{QStringLiteral("code"), QStringLiteral("en")},
@@ -60,6 +137,7 @@ public:
     emit toggleCountChanged();
   }
   Q_INVOKABLE void forgetTranscript() {}
+  Q_INVOKABLE bool removeModel(const QString &) { return true; }
   Q_INVOKABLE void setTestState(bool recording, bool transcribing) {
     m_recording = recording;
     m_transcribing = transcribing;
@@ -68,6 +146,23 @@ public:
                               : QStringLiteral("Ready");
     emit stateChanged();
     emit statusChanged();
+  }
+  Q_INVOKABLE void setModelReady(bool ready) {
+    if (m_modelReady == ready)
+      return;
+    m_modelReady = ready;
+    emit modelReadyChanged();
+    if (!ready && !m_restoringModel)
+      emit modelSetupRequested();
+  }
+  Q_INVOKABLE void setRestoringModel(bool restoring) {
+    if (m_restoringModel == restoring)
+      return;
+    m_restoringModel = restoring;
+    m_modelManager.setVerificationPending(restoring);
+    emit modelReadyChanged();
+    if (!restoring && !m_modelReady)
+      emit modelSetupRequested();
   }
 
 signals:
@@ -80,6 +175,8 @@ signals:
   void recordingLimitMinutesChanged();
   void levelChanged();
   void toggleCountChanged();
+  void modelSetupRequested();
+  void modelReadyChanged();
 
 private:
   bool m_recording = false;
@@ -87,6 +184,9 @@ private:
   QString m_status = QStringLiteral("Ready");
   QString m_modelPath;
   int m_toggleCount = 0;
+  FakeModelManager m_modelManager;
+  bool m_modelReady = true;
+  bool m_restoringModel = false;
 };
 
 class QmlTestSetup final : public QObject {

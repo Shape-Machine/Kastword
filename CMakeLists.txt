@@ -15,11 +15,11 @@ include(FetchContent)
 include(GNUInstallDirs)
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
-find_package(Qt6 6.6 REQUIRED COMPONENTS Core DBus Gui Widgets Quick QuickControls2 Multimedia)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Concurrent Core DBus Gui Multimedia Network Quick QuickControls2 Widgets)
 find_package(KF6 REQUIRED COMPONENTS Config CoreAddons DBusAddons GlobalAccel I18n Kirigami Notifications StatusNotifierItem)
 
 option(KASTWORD_FETCH_WHISPER "Download the pinned whisper.cpp dependency" ON)
-option(KASTWORD_FETCH_DEFAULT_MODEL "Download the default English Whisper model" ON)
+option(KASTWORD_FETCH_DEFAULT_MODEL "Download the legacy default English Whisper model" OFF)
 option(KASTWORD_ENABLE_COVERAGE "Instrument Kastword targets for test coverage" OFF)
 option(KASTWORD_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 if(KASTWORD_FETCH_WHISPER)
@@ -62,6 +62,10 @@ qt_add_executable(kastword
     src/AudioCapture.h
     src/ModelLocator.cpp
     src/ModelLocator.h
+    src/ModelCatalog.cpp
+    src/ModelCatalog.h
+    src/ModelManager.cpp
+    src/ModelManager.h
     src/RuntimeSecurity.cpp
     src/RuntimeSecurity.h
     src/WhisperEngine.cpp
@@ -82,7 +86,8 @@ qt_add_qml_module(kastword
 )
 
 target_link_libraries(kastword PRIVATE
-    Qt6::Core Qt6::DBus Qt6::Gui Qt6::Widgets Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia
+    Qt6::Concurrent Qt6::Core Qt6::DBus Qt6::Gui Qt6::Widgets Qt6::Quick Qt6::QuickControls2
+    Qt6::Multimedia Qt6::Network
     KF6::ConfigCore KF6::CoreAddons KF6::DBusAddons KF6::GlobalAccel KF6::I18n
     KF6::I18nQml KF6::Kirigami KF6::Notifications KF6::StatusNotifierItem whisper)
 
@@ -156,6 +161,19 @@ if(BUILD_TESTING)
     kastword_enable_sanitizers(kastword_core_test)
     add_test(NAME core COMMAND kastword_core_test)
 
+    add_executable(kastword_model_manager_test
+        tests/ModelManagerTest.cpp
+        src/ModelCatalog.cpp
+        src/ModelCatalog.h
+        src/ModelManager.cpp
+        src/ModelManager.h)
+    target_include_directories(kastword_model_manager_test PRIVATE src)
+    target_link_libraries(kastword_model_manager_test PRIVATE
+        Qt6::Concurrent Qt6::Core Qt6::Network Qt6::Test KF6::I18n whisper)
+    kastword_enable_coverage(kastword_model_manager_test)
+    kastword_enable_sanitizers(kastword_model_manager_test)
+    add_test(NAME model-manager COMMAND kastword_model_manager_test)
+
     add_executable(kastword_controller_test
         tests/AppControllerTest.cpp
         src/AppController.cpp
@@ -166,6 +184,10 @@ if(BUILD_TESTING)
         src/AudioConversion.h
         src/ModelLocator.cpp
         src/ModelLocator.h
+        src/ModelCatalog.cpp
+        src/ModelCatalog.h
+        src/ModelManager.cpp
+        src/ModelManager.h
         src/TextOutput.cpp
         src/TextOutput.h
         src/TranscriptionWorker.cpp
@@ -174,7 +196,7 @@ if(BUILD_TESTING)
         src/WhisperEngine.h)
     target_include_directories(kastword_controller_test PRIVATE src)
     target_link_libraries(kastword_controller_test PRIVATE
-        Qt6::Core Qt6::DBus Qt6::Gui Qt6::Multimedia Qt6::Test Qt6::Widgets
+        Qt6::Concurrent Qt6::Core Qt6::DBus Qt6::Gui Qt6::Multimedia Qt6::Network Qt6::Test Qt6::Widgets
         KF6::ConfigCore KF6::GlobalAccel KF6::I18n KF6::Notifications whisper)
     kastword_enable_coverage(kastword_controller_test)
     kastword_enable_sanitizers(kastword_controller_test)

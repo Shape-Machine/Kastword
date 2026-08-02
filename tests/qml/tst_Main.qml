@@ -20,6 +20,8 @@ TestCase {
     }
 
     function init() {
+        appController.setRestoringModel(false)
+        appController.setModelReady(true)
         const loader = createTemporaryObject(applicationComponent, testCase)
         verify(loader)
         tryCompare(loader, "status", Loader.Ready)
@@ -30,7 +32,30 @@ TestCase {
         appController.setTestState(false, false)
     }
 
+    function test_missingModelOpensSetupAndDisablesDictation() {
+        appController.setModelReady(false)
+        tryCompare(applicationWindow.pageStack.currentItem, "objectName", "modelManagerPage")
+        const button = findChild(applicationWindow.contentItem, "dictationButton")
+        verify(button)
+        compare(button.enabled, false)
+    }
+
+    function test_savedModelVerificationDoesNotOpenSetup() {
+        appController.setRestoringModel(true)
+        appController.setModelReady(false)
+        verify(applicationWindow.pageStack.currentItem.objectName !== "modelManagerPage")
+        applicationWindow.openModelManager()
+        const warning = findChild(applicationWindow.contentItem, "modelSetupWarning")
+        verify(warning)
+        compare(warning.visible, false)
+
+        appController.setRestoringModel(false)
+        tryCompare(applicationWindow.pageStack.currentItem, "objectName", "modelManagerPage")
+    }
+
     function cleanup() {
+        appController.modelManager.setVerifyingId("")
+        appController.modelManager.setPartialId("")
         if (applicationWindow) {
             applicationWindow.visible = false
             wait(50)
@@ -66,12 +91,69 @@ TestCase {
 
     function test_modelControlsHaveAccessibleNames() {
         applicationWindow.pageStack.currentItem.actions[0].trigger()
-        const modelPath = findChild(applicationWindow.contentItem, "modelPathField")
-        const browse = findChild(applicationWindow.contentItem, "modelBrowseButton")
-        verify(modelPath)
-        verify(browse)
-        compare(modelPath.Accessible.name, "Whisper model path")
-        compare(browse.Accessible.name, "Browse for Whisper model")
+        const manage = findChild(applicationWindow.contentItem, "manageModelsButton")
+        verify(manage)
+        compare(manage.Accessible.name, "Manage speech models")
+        manage.clicked()
+        const filter = findChild(applicationWindow.contentItem, "modelLanguageFilter")
+        verify(filter)
+        compare(filter.Accessible.name, "Filter speech models")
+    }
+
+    function test_modelFiltersDefaultToRecommendedAndSeparateCapabilities() {
+        applicationWindow.openModelManager()
+        const filter = findChild(applicationWindow.contentItem, "modelLanguageFilter")
+        const english = findChild(applicationWindow.contentItem, "modelCard-base.en")
+        const recommendedMultilingual = findChild(applicationWindow.contentItem, "modelCard-small")
+        const otherMultilingual = findChild(applicationWindow.contentItem, "modelCard-tiny")
+        verify(filter)
+        verify(english)
+        verify(recommendedMultilingual)
+        verify(otherMultilingual)
+
+        compare(filter.currentValue, "recommended")
+        compare(english.visible, true)
+        compare(recommendedMultilingual.visible, true)
+        compare(otherMultilingual.visible, false)
+
+        filter.currentIndex = filter.indexOfValue("multilingual")
+        compare(english.visible, false)
+        compare(recommendedMultilingual.visible, true)
+        compare(otherMultilingual.visible, true)
+
+        filter.currentIndex = filter.indexOfValue("english")
+        compare(english.visible, true)
+        compare(recommendedMultilingual.visible, false)
+        compare(otherMultilingual.visible, false)
+    }
+
+    function test_verificationCanBeCancelled() {
+        applicationWindow.openModelManager()
+        const filter = findChild(applicationWindow.contentItem, "modelLanguageFilter")
+        verify(filter)
+        filter.currentIndex = filter.indexOfValue("all")
+        appController.modelManager.setVerifyingId("tiny")
+
+        const cancel = findChild(applicationWindow.contentItem, "cancelModel-tiny")
+        verify(cancel)
+        tryCompare(cancel, "visible", true)
+        compare(cancel.text, "Cancel")
+    }
+
+    function test_partialDownloadCanBeRemoved() {
+        applicationWindow.openModelManager()
+        const filter = findChild(applicationWindow.contentItem, "modelLanguageFilter")
+        verify(filter)
+        filter.currentIndex = filter.indexOfValue("all")
+        appController.modelManager.setPartialId("tiny")
+
+        const partial = findChild(applicationWindow.contentItem, "partialModel-tiny")
+        const remove = findChild(applicationWindow.contentItem, "removeModel-tiny")
+        verify(partial)
+        verify(remove)
+        tryCompare(partial, "visible", true)
+        compare(partial.text, "Partial download: 42 MiB")
+        compare(remove.visible, true)
     }
 
     function test_primaryActionSupportsKeyboard() {

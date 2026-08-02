@@ -25,11 +25,11 @@ project or endorsed by KDE e.V.
 - KDE global push-to-talk shortcut
 - tray-first operation with recording, transcription, and success indicators
 - responsive Qt Multimedia recording with microphone downmixing and resampling
-- completely local English transcription using a bundled `base.en` model
+- completely local transcription using a user-selected official Whisper model
 - clipboard output with optional automatic paste
 - X11 paste through `xdotool`
 - Plasma Wayland paste through `ydotool`
-- no saved recordings, transcription history, telemetry, or runtime network client
+- no saved recordings, transcription history, or telemetry
 
 ## Current status
 
@@ -105,19 +105,17 @@ the helper is unavailable, transcription is still copied to the clipboard for ma
 
 ## Build and run
 
-The first default build downloads two immutable, pinned dependencies:
+The first default build downloads one immutable, pinned dependency:
 
 - `whisper.cpp` source at commit `a91dd3be72f70dd1b3cb6e252f35fa17b93f596c`
-- the checksum-verified English `base.en` model, approximately 142 MiB
 
 ```sh
 make
 make run
 ```
 
-The model is automatically selected from `build/models/ggml-base.en.bin`. Later builds reuse the
-verified file. The build needs network access for missing dependencies; the running application
-does not.
+No speech model is downloaded or packaged during a normal build. The build needs network access
+only when the pinned Whisper.cpp source is not already available.
 
 To install for the current user:
 
@@ -125,9 +123,9 @@ To install for the current user:
 make install
 ```
 
-This installs the application, desktop launcher, and default model below `~/.local`, then refreshes
-Plasma's application database. Launch Kastword from the application menu; `make run` is not needed.
-Set `PREFIX` explicitly to install somewhere else.
+This installs the application and desktop launcher below `~/.local`, then refreshes Plasma's
+application database. Launch Kastword from the application menu; `make run` is not needed. Set
+`PREFIX` explicitly to install somewhere else.
 
 To uninstall:
 
@@ -138,26 +136,31 @@ make uninstall
 The application ID is `io.github.shape_machine.Kastword`; the underscore follows D-Bus guidance
 for the hyphen in the `Shape-Machine` organization name.
 
-### Build without downloads
+### Distribution builds
 
-Distribution packagers and UI contributors can provide system dependencies or skip the model:
+Distribution packagers can provide the Whisper.cpp dependency without any build-time downloads:
 
 ```sh
 cmake -S . -B build -G Ninja \
-  -DKASTWORD_FETCH_WHISPER=OFF \
-  -DKASTWORD_FETCH_DEFAULT_MODEL=OFF
+  -DKASTWORD_FETCH_WHISPER=OFF
 ```
 
-Disabling the Whisper fetch requires a compatible system `whisper` CMake package. Disabling only
-the model download is useful for CI and UI development.
+This requires a compatible system `whisper` CMake package. Kastword packages must not include a
+speech model; users choose models after installation. The legacy
+`KASTWORD_FETCH_DEFAULT_MODEL=ON` option remains available only for development compatibility.
 
 ## Using Kastword
 
-1. Start Kastword. It launches hidden in the system tray.
-2. Focus the text field or terminal where the result should go.
-3. Press **Meta+Z** and speak.
-4. Press **Meta+Z** again.
+1. Start Kastword. On first run, choose an English-only or multilingual speech model.
+2. Explicitly download a recommended model or select an existing compatible `.bin` file.
+3. Focus the text field or terminal where the result should go.
+4. Press **Meta+Z** and speak, then press **Meta+Z** again.
 5. Kastword transcribes locally, updates the clipboard, and pastes when a helper is available.
+
+Downloaded models are checksum-verified and stored per user under
+`~/.local/share/kastword/models/`. Settings can switch models, show their disk usage, resume or
+retry downloads, and remove managed models. Dictation remains disabled whenever no valid model is
+selected.
 
 Click the tray icon to open or hide the settings window. The tray menu can start or stop
 dictation and quit the application.
@@ -169,9 +172,10 @@ dictation and quit the application.
   audio ceiling, whichever comes first.
 - Raw audio and transcription history are not written to disk.
 - Transcribed text is placed on the desktop clipboard and primary selection.
-- The selected model remains on local storage.
-- No telemetry or runtime network client is included.
-- The build downloads pinned dependencies over HTTPS and verifies the model checksum.
+- The selected model remains in per-user local storage.
+- No telemetry is included. Network access is used only after an explicit model-download action.
+- Model downloads use immutable HTTPS URLs and are activated only after size, format, and SHA-256
+  verification. Transcription remains offline.
 - Automatic Wayland paste relies on the separately installed `ydotool`/`ydotoold` service.
 - Custom model files are trusted input parsed inside Kastword; use models from sources you trust.
 - Paste helpers are resolved from the inherited `PATH`; ensure every directory in `PATH` is
@@ -187,7 +191,7 @@ does not expose an equivalent global focus check, so focus can change during the
 ## Known limitations
 
 - The shortcut is currently fixed to Meta+Z in Kastword's UI, though KDE can manage it.
-- English `base.en` is the only model fetched automatically.
+- Full-size Large models require substantial disk space and memory.
 - Paste reliability depends on the session, helper, and target application.
 - `ydotool` requires privileged input-device access configured outside Kastword.
 - There are no supported binary packages or release builds yet.
@@ -201,6 +205,7 @@ Global shortcut / tray
  AppController state machine
     ├── AudioCapture ─── Qt Multimedia
     ├── WhisperEngine ── worker thread / whisper.cpp
+    ├── ModelManager ─── explicit verified downloads + per-user storage
     └── TextOutput ───── clipboard + optional paste helper
 ```
 
@@ -242,7 +247,6 @@ plugins. `.kateproject` provides Build, Run, Test, and Clean targets, while CMak
 
 - broader Plasma Wayland/X11 and application compatibility testing
 - configurable shortcut and microphone selection
-- improved model management and multilingual workflows
 - reproducible distribution packages and signed binary releases
 
 Roadmap items are intentions, not promised dates.

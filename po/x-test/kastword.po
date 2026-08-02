@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kastword\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-02 14:19+0200\n"
+"POT-Creation-Date: 2026-08-02 21:43+0200\n"
 "PO-Revision-Date: 2026-08-02 00:00+0000\n"
 "Last-Translator: KDE Test Language <null@kde.org>\n"
 "Language-Team: KDE Test Language <kde-i18n-doc@kde.org>\n"
@@ -15,55 +15,68 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
-#: src/AppController.cpp:61
+#: src/AppController.cpp:55
 msgid "Toggle dictation"
 msgstr "xxToggle dictationxx"
 
-#: src/AppController.cpp:126
-msgid "failed"
-msgstr "xxfailedxx"
+#: src/AppController.cpp:101 src/AppController.cpp:263
+msgid "Recording stopped because the speech model is no longer available."
+msgstr "xxRecording stopped because the speech model is no longer available.xx"
 
-#: src/AppController.cpp:127
-msgid "Automatic paste failed"
-msgstr "xxAutomatic paste failedxx"
-
-#: src/AppController.cpp:129
+#: src/AppController.cpp:105 src/AppController.cpp:166
 msgid "Ready — press %1 to dictate."
 msgstr "xxReady — press %1 to dictate.xx"
 
-#: src/AppController.cpp:137
+#: src/AppController.cpp:107 src/AppController.cpp:113
+#: src/AppController.cpp:168
+msgid "Verifying the speech model…"
+msgstr "xxVerifying the speech model…xx"
+
+#: src/AppController.cpp:121 src/AppController.cpp:170
+msgid "Choose a speech model to enable dictation."
+msgstr "xxChoose a speech model to enable dictation.xx"
+
+#: src/AppController.cpp:162
+msgid "failed"
+msgstr "xxfailedxx"
+
+#: src/AppController.cpp:163
+msgid "Automatic paste failed"
+msgstr "xxAutomatic paste failedxx"
+
+#: src/AppController.cpp:178
 msgid "English"
 msgstr "xxEnglishxx"
 
-#: src/AppController.cpp:139
+#: src/AppController.cpp:180
 msgid "Automatic"
 msgstr "xxAutomaticxx"
 
-#: src/AppController.cpp:141
+#: src/AppController.cpp:182
 msgid "German"
 msgstr "xxGermanxx"
 
-#: src/AppController.cpp:143
+#: src/AppController.cpp:184
 msgid "French"
 msgstr "xxFrenchxx"
 
-#: src/AppController.cpp:145
+#: src/AppController.cpp:186
 msgid "Spanish"
 msgstr "xxSpanishxx"
 
-#: src/AppController.cpp:147
+#: src/AppController.cpp:188
 msgid "Dutch"
 msgstr "xxDutchxx"
 
-#: src/AppController.cpp:149
+#: src/AppController.cpp:190
 msgid "Italian"
 msgstr "xxItalianxx"
 
-#: src/AppController.cpp:151
+#: src/AppController.cpp:192
 msgid "Portuguese"
 msgstr "xxPortuguesexx"
 
-#: src/AppController.cpp:203
+#: src/AppController.cpp:255
 msgid ""
 "Cleared from Kastword and matching current clipboards. Clipboard history may "
 "retain it."
@@ -71,44 +84,49 @@ msgstr ""
 "xxCleared from Kastword and matching current clipboards. Clipboard history "
 "may retain it.xx"
 
-#: src/AppController.cpp:208
-msgid "Transcription is already in progress."
-msgstr "xxTranscription is already in progress.xx"
-
-#: src/AppController.cpp:214 src/AppController.cpp:215
+#: src/AppController.cpp:268 src/AppController.cpp:269
 msgid "Transcribing locally…"
 msgstr "xxTranscribing locally…xx"
 
-#: src/AppController.cpp:215 src/AppController.cpp:225 src/main.cpp:41
-#: src/main.cpp:58 src/main.cpp:59 src/main.cpp:106 src/qml/Main.qml:20
+#: src/AppController.cpp:269 src/AppController.cpp:287 src/main.cpp:41
+#: src/main.cpp:58 src/main.cpp:59 src/main.cpp:107 src/main.cpp:116
+#: src/qml/Main.qml:20
 msgid "Kastword"
 msgstr "xxKastwordxx"
 
-#: src/AppController.cpp:229
+#: src/AppController.cpp:275
+msgid "Choose a speech model before starting dictation."
+msgstr "xxChoose a speech model before starting dictation.xx"
+
+#: src/AppController.cpp:280
+msgid "Transcription is already in progress."
+msgstr "xxTranscription is already in progress.xx"
+
+#: src/AppController.cpp:291
 msgid "Listening — press %1 to finish."
 msgstr "xxListening — press %1 to finish.xx"
 
-#: src/AppController.cpp:230
+#: src/AppController.cpp:292
 msgid "Dictation started"
 msgstr "xxDictation startedxx"
 
-#: src/AppController.cpp:230
+#: src/AppController.cpp:292
 msgid "Press %1 again to stop."
 msgstr "xxPress %1 again to stop.xx"
 
-#: src/AppController.cpp:252
+#: src/AppController.cpp:314
 msgid "Transcription failed"
 msgstr "xxTranscription failedxx"
 
-#: src/AppController.cpp:258
+#: src/AppController.cpp:320
 msgid "No speech detected."
 msgstr "xxNo speech detected.xx"
 
-#: src/AppController.cpp:268
+#: src/AppController.cpp:330
 msgid "Dictation complete"
 msgstr "xxDictation completexx"
 
-#: src/AppController.cpp:287
+#: src/AppController.cpp:349
 msgid "Recording failed"
 msgstr "xxRecording failedxx"
 
@@ -143,6 +161,206 @@ msgstr "xxCould not start microphone capture.xx"
 #: src/AudioCapture.cpp:101
 msgid "Recording stopped after reaching the configured duration limit."
 msgstr "xxRecording stopped after reaching the configured duration limit.xx"
+
+#: src/ModelManager.cpp:20
+msgid "Tiny English"
+msgstr "xxTiny Englishxx"
+
+#: src/ModelManager.cpp:22
+msgid "Base English"
+msgstr "xxBase Englishxx"
+
+#: src/ModelManager.cpp:24
+msgid "Small English"
+msgstr "xxSmall Englishxx"
+
+#: src/ModelManager.cpp:26
+msgid "Medium English"
+msgstr "xxMedium Englishxx"
+
+#: src/ModelManager.cpp:28
+msgid "Tiny Multilingual"
+msgstr "xxTiny Multilingualxx"
+
+#: src/ModelManager.cpp:30
+msgid "Base Multilingual"
+msgstr "xxBase Multilingualxx"
+
+#: src/ModelManager.cpp:32
+msgid "Small Multilingual"
+msgstr "xxSmall Multilingualxx"
+
+#: src/ModelManager.cpp:34
+msgid "Medium Multilingual"
+msgstr "xxMedium Multilingualxx"
+
+#: src/ModelManager.cpp:36
+msgid "Large v1 Multilingual"
+msgstr "xxLarge v1 Multilingualxx"
+
+#: src/ModelManager.cpp:38
+msgid "Large v2 Multilingual"
+msgstr "xxLarge v2 Multilingualxx"
+
+#: src/ModelManager.cpp:40
+msgid "Large v3 Multilingual"
+msgstr "xxLarge v3 Multilingualxx"
+
+#: src/ModelManager.cpp:42
+msgid "Large v3 Turbo Multilingual"
+msgstr "xxLarge v3 Turbo Multilingualxx"
+
+#: src/ModelManager.cpp:43
+msgid "Unknown model"
+msgstr "xxUnknown modelxx"
+
+#: src/ModelManager.cpp:48
+msgid "Fastest"
+msgstr "xxFastestxx"
+
+#: src/ModelManager.cpp:50
+msgid "Fast"
+msgstr "xxFastxx"
+
+#: src/ModelManager.cpp:52
+msgid "Moderate"
+msgstr "xxModeratexx"
+
+#: src/ModelManager.cpp:54
+msgid "Slow"
+msgstr "xxSlowxx"
+
+#: src/ModelManager.cpp:56
+msgid "Slowest"
+msgstr "xxSlowestxx"
+
+#: src/ModelManager.cpp:57
+msgid "Unknown speed"
+msgstr "xxUnknown speedxx"
+
+#: src/ModelManager.cpp:62
+msgid "Basic accuracy"
+msgstr "xxBasic accuracyxx"
+
+#: src/ModelManager.cpp:64
+msgid "Good accuracy"
+msgstr "xxGood accuracyxx"
+
+#: src/ModelManager.cpp:66
+msgid "Better accuracy"
+msgstr "xxBetter accuracyxx"
+
+#: src/ModelManager.cpp:68
+msgid "High accuracy"
+msgstr "xxHigh accuracyxx"
+
+#: src/ModelManager.cpp:70
+msgid "Highest accuracy"
+msgstr "xxHighest accuracyxx"
+
+#: src/ModelManager.cpp:71
+msgid "Unknown accuracy"
+msgstr "xxUnknown accuracyxx"
+
+#: src/ModelManager.cpp:126
+msgid "English only"
+msgstr "xxEnglish onlyxx"
+
+#: src/ModelManager.cpp:126
+msgid "Multilingual"
+msgstr "xxMultilingualxx"
+
+#: src/ModelManager.cpp:179
+msgid "The selected model is not available."
+msgstr "xxThe selected model is not available.xx"
+
+#: src/ModelManager.cpp:191
+msgid "There is not enough free disk space for this model."
+msgstr "xxThere is not enough free disk space for this model.xx"
+
+#: src/ModelManager.cpp:216
+msgid "The model download file could not be created."
+msgstr "xxThe model download file could not be created.xx"
+
+#: src/ModelManager.cpp:225
+msgid "Downloading %1…"
+msgstr "xxDownloading %1…xx"
+
+#: src/ModelManager.cpp:256
+msgid "The model download could not be saved safely."
+msgstr "xxThe model download could not be saved safely.xx"
+
+#: src/ModelManager.cpp:271
+msgid "Download cancelled. You can resume it later."
+msgstr "xxDownload cancelled. You can resume it later.xx"
+
+#: src/ModelManager.cpp:279
+msgid "The model download failed. Check the connection and try again."
+msgstr "xxThe model download failed. Check the connection and try again.xx"
+
+#: src/ModelManager.cpp:284
+msgid "The downloaded model has an unexpected size."
+msgstr "xxThe downloaded model has an unexpected size.xx"
+
+#: src/ModelManager.cpp:295
+msgid "Verifying %1…"
+msgstr "xxVerifying %1…xx"
+
+#: src/ModelManager.cpp:309
+msgid "Model verification cancelled. You can resume it later."
+msgstr "xxModel verification cancelled. You can resume it later.xx"
+
+#: src/ModelManager.cpp:322
+msgid "The model could not be read for verification."
+msgstr "xxThe model could not be read for verification.xx"
+
+#: src/ModelManager.cpp:331
+msgid "The downloaded model failed verification and was removed."
+msgstr "xxThe downloaded model failed verification and was removed.xx"
+
+#: src/ModelManager.cpp:341
+msgid "The verified model could not be installed."
+msgstr "xxThe verified model could not be installed.xx"
+
+#: src/ModelManager.cpp:348
+msgid "%1 is ready for offline dictation."
+msgstr "xx%1 is ready for offline dictation.xx"
+
+#: src/ModelManager.cpp:367
+msgid "Download this model before selecting it."
+msgstr "xxDownload this model before selecting it.xx"
+
+#: src/ModelManager.cpp:375
+msgid "Select a valid local Whisper model file."
+msgstr "xxSelect a valid local Whisper model file.xx"
+
+#: src/ModelManager.cpp:386
+msgid "Verifying the saved speech model…"
+msgstr "xxVerifying the saved speech model…xx"
+
+#: src/ModelManager.cpp:387
+msgid "Verifying the selected speech model…"
+msgstr "xxVerifying the selected speech model…xx"
+
+#: src/ModelManager.cpp:399
+msgid "The selected file is not a compatible Whisper model."
+msgstr "xxThe selected file is not a compatible Whisper model.xx"
+
+#: src/ModelManager.cpp:405
+msgid "The local model is ready for offline dictation."
+msgstr "xxThe local model is ready for offline dictation.xx"
+
+#: src/ModelManager.cpp:424
+msgid "Model removed."
+msgstr "xxModel removed.xx"
+
+#: src/ModelManager.cpp:429
+msgid "The model could not be removed."
+msgstr "xxThe model could not be removed.xx"
+
+#: src/ModelManager.cpp:505
+msgid "The active speech model is no longer valid."
+msgstr "xxThe active speech model is no longer valid.xx"
 
 #: src/TextOutput.cpp:77
 msgid "Copied to clipboard."
@@ -224,15 +442,11 @@ msgstr "xxThe recording is too long to transcribe safely.xx"
 msgid "Whisper could not transcribe the recording."
 msgstr "xxWhisper could not transcribe the recording.xx"
 
-#: src/main.cpp:60
-msgid "Offline dictation — %1"
-msgstr "xxOffline dictation — %1xx"
-
-#: src/main.cpp:63
+#: src/main.cpp:62
 msgid "Open Kastword"
 msgstr "xxOpen Kastwordxx"
 
-#: src/main.cpp:64 src/main.cpp:100 src/main.cpp:103
+#: src/main.cpp:63 src/main.cpp:100 src/main.cpp:103
 msgid "Start Dictation"
 msgstr "xxStart Dictationxx"
 
@@ -240,85 +454,193 @@ msgstr "xxStart Dictationxx"
 msgid "Stop and Transcribe"
 msgstr "xxStop and Transcribexx"
 
-#: src/main.cpp:97 src/qml/Main.qml:150
+#: src/main.cpp:97 src/qml/Main.qml:359
 msgid "Transcribing…"
 msgstr "xxTranscribing…xx"
 
-#: src/main.cpp:111
+#: src/main.cpp:127
 msgid "Kastword is ready"
 msgstr "xxKastword is readyxx"
 
-#: src/main.cpp:112
+#: src/main.cpp:128
 msgid "Running in the system tray. Press %1 to dictate."
 msgstr "xxRunning in the system tray. Press %1 to dictate.xx"
 
-#: src/qml/Main.qml:28
+#: src/qml/Main.qml:48
 msgid "Select a Whisper model"
 msgstr "xxSelect a Whisper modelxx"
 
-#: src/qml/Main.qml:29
+#: src/qml/Main.qml:49
 msgid "Whisper models (*.bin)"
 msgstr "xxWhisper models (*.bin)xx"
 
-#: src/qml/Main.qml:29
+#: src/qml/Main.qml:49
 msgid "All files (*)"
 msgstr "xxAll files (*)xx"
 
-#: src/qml/Main.qml:37 src/qml/Main.qml:121
+#: src/qml/Main.qml:55
+msgid "Remove speech model?"
+msgstr "xxRemove speech model?xx"
+
+#: src/qml/Main.qml:56
+msgid "The model file will be deleted from this user account."
+msgstr "xxThe model file will be deleted from this user account.xx"
+
+#: src/qml/Main.qml:70
+msgid "Speech models"
+msgstr "xxSpeech modelsxx"
+
+#: src/qml/Main.qml:82
+msgid "Choose and download a model before using dictation."
+msgstr "xxChoose and download a model before using dictation.xx"
+
+#: src/qml/Main.qml:88
+msgid ""
+"Models are downloaded only when you request them. Transcription remains "
+"offline after the download."
+msgstr ""
+"xxModels are downloaded only when you request them. Transcription remains "
+"offline after the download.xx"
+
+#: src/qml/Main.qml:98
+msgid "Recommended"
+msgstr "xxRecommendedxx"
+
+#: src/qml/Main.qml:99
+msgid "English-only models"
+msgstr "xxEnglish-only modelsxx"
+
+#: src/qml/Main.qml:100
+msgid "Multilingual models"
+msgstr "xxMultilingual modelsxx"
+
+#: src/qml/Main.qml:101
+msgid "All models"
+msgstr "xxAll modelsxx"
+
+#: src/qml/Main.qml:103
+msgid "Filter speech models"
+msgstr "xxFilter speech modelsxx"
+
+#: src/qml/Main.qml:129
+msgid " — Recommended"
+msgstr "xx — Recommendedxx"
+
+#: src/qml/Main.qml:140
+msgid "%1 · %2 · %3"
+msgstr "xx%1 · %2 · %3xx"
+
+#: src/qml/Main.qml:147
+msgid "Partial download: %1"
+msgstr "xxPartial download: %1xx"
+
+#: src/qml/Main.qml:156
+msgid "Model download progress"
+msgstr "xxModel download progressxx"
+
+#: src/qml/Main.qml:163
+msgid "Model verification progress"
+msgstr "xxModel verification progressxx"
+
+#: src/qml/Main.qml:164
+msgid "The model is being verified"
+msgstr "xxThe model is being verifiedxx"
+
+#: src/qml/Main.qml:173
+msgid "Cancel"
+msgstr "xxCancelxx"
+
+#: src/qml/Main.qml:180
+msgid "Download"
+msgstr "xxDownloadxx"
+
+#: src/qml/Main.qml:182
+msgid "Download %1"
+msgstr "xxDownload %1xx"
+
+#: src/qml/Main.qml:188
+msgid "Use"
+msgstr "xxUsexx"
+
+#: src/qml/Main.qml:190
+msgid "Use %1"
+msgstr "xxUse %1xx"
+
+#: src/qml/Main.qml:195
+msgid "In use"
+msgstr "xxIn usexx"
+
+#: src/qml/Main.qml:202
+msgid "Remove"
+msgstr "xxRemovexx"
+
+#: src/qml/Main.qml:207
+msgid "Remove %1"
+msgstr "xxRemove %1xx"
+
+#: src/qml/Main.qml:229
+msgid "Use an existing model…"
+msgstr "xxUse an existing model…xx"
+
+#: src/qml/Main.qml:232
+msgid "Select an existing compatible Whisper model file"
+msgstr "xxSelect an existing compatible Whisper model filexx"
+
+#: src/qml/Main.qml:239
+msgid "Model storage: %1"
+msgstr "xxModel storage: %1xx"
+
+#: src/qml/Main.qml:249 src/qml/Main.qml:330
 msgid "Settings"
 msgstr "xxSettingsxx"
 
-#: src/qml/Main.qml:43
+#: src/qml/Main.qml:255
 msgid "Model:"
 msgstr "xxModel:xx"
 
-#: src/qml/Main.qml:49
-msgid "Path to ggml model"
-msgstr "xxPath to ggml modelxx"
+#: src/qml/Main.qml:260
+msgid "No model selected"
+msgstr "xxNo model selectedxx"
 
-#: src/qml/Main.qml:51
-msgid "Whisper model path"
-msgstr "xxWhisper model pathxx"
+#: src/qml/Main.qml:265
+msgid "Manage…"
+msgstr "xxManage…xx"
 
-#: src/qml/Main.qml:56
-msgid "Browse…"
-msgstr "xxBrowse…xx"
+#: src/qml/Main.qml:267
+msgid "Manage speech models"
+msgstr "xxManage speech modelsxx"
 
-#: src/qml/Main.qml:58
-msgid "Browse for Whisper model"
-msgstr "xxBrowse for Whisper modelxx"
-
-#: src/qml/Main.qml:65
+#: src/qml/Main.qml:274
 msgid "Language:"
 msgstr "xxLanguage:xx"
 
-#: src/qml/Main.qml:72
+#: src/qml/Main.qml:281
 msgid "Dictation language"
 msgstr "xxDictation languagexx"
 
-#: src/qml/Main.qml:73
+#: src/qml/Main.qml:282
 msgid "Language supported by the selected Whisper model"
 msgstr "xxLanguage supported by the selected Whisper modelxx"
 
-#: src/qml/Main.qml:77
+#: src/qml/Main.qml:286
 msgid "Maximum recording:"
 msgstr "xxMaximum recording:xx"
 
-#: src/qml/Main.qml:81
+#: src/qml/Main.qml:290
 msgid "%1 minute"
 msgid_plural "%1 minutes"
 msgstr[0] "xx%1 minutexx"
 msgstr[1] "xx%1 minutesxx"
 
-#: src/qml/Main.qml:87
+#: src/qml/Main.qml:296
 msgid "Output:"
 msgstr "xxOutput:xx"
 
-#: src/qml/Main.qml:88
+#: src/qml/Main.qml:297
 msgid "Paste automatically"
 msgstr "xxPaste automaticallyxx"
 
-#: src/qml/Main.qml:98
+#: src/qml/Main.qml:307
 msgid ""
 "Automatic paste sends keystrokes to the focused application after a short "
 "delay. On Wayland, Kastword cannot verify that focus stayed unchanged."
@@ -326,7 +648,7 @@ msgstr ""
 "xxAutomatic paste sends keystrokes to the focused application after a short "
 "delay. On Wayland, Kastword cannot verify that focus stayed unchanged.xx"
 
-#: src/qml/Main.qml:106
+#: src/qml/Main.qml:315
 msgid ""
 "Only open Whisper models from sources you trust. Models are parsed inside "
 "Kastword."
@@ -334,67 +656,89 @@ msgstr ""
 "xxOnly open Whisper models from sources you trust. Models are parsed inside "
 "Kastword.xx"
 
-#: src/qml/Main.qml:110
+#: src/qml/Main.qml:319
 msgid "Shortcut:"
 msgstr "xxShortcut:xx"
 
-#: src/qml/Main.qml:118
+#: src/qml/Main.qml:327
 msgid "Offline dictation"
 msgstr "xxOffline dictationxx"
 
-#: src/qml/Main.qml:140
+#: src/qml/Main.qml:349
 msgid "Dictation status"
 msgstr "xxDictation statusxx"
 
-#: src/qml/Main.qml:149
+#: src/qml/Main.qml:358
 msgid "Stop dictation"
 msgstr "xxStop dictationxx"
 
-#: src/qml/Main.qml:151
+#: src/qml/Main.qml:360
 msgid "Start dictation"
 msgstr "xxStart dictationxx"
 
-#: src/qml/Main.qml:157
+#: src/qml/Main.qml:366
 msgid "Stop recording and begin local transcription"
 msgstr "xxStop recording and begin local transcriptionxx"
 
-#: src/qml/Main.qml:159 src/qml/Main.qml:175
+#: src/qml/Main.qml:368 src/qml/Main.qml:386
 msgid "Local transcription is in progress"
 msgstr "xxLocal transcription is in progressxx"
 
-#: src/qml/Main.qml:160
+#: src/qml/Main.qml:370
+msgid "Choose a speech model before starting dictation"
+msgstr "xxChoose a speech model before starting dictationxx"
+
+#: src/qml/Main.qml:371
 msgid "Begin recording audio for local transcription"
 msgstr "xxBegin recording audio for local transcriptionxx"
 
-#: src/qml/Main.qml:172
+#: src/qml/Main.qml:383
 msgid "Transcription progress"
 msgstr "xxTranscription progressxx"
 
-#: src/qml/Main.qml:173
+#: src/qml/Main.qml:384
 msgid "Microphone level"
 msgstr "xxMicrophone levelxx"
 
-#: src/qml/Main.qml:176
+#: src/qml/Main.qml:387
 msgid "Current microphone input level"
 msgstr "xxCurrent microphone input levelxx"
 
-#: src/qml/Main.qml:182
+#: src/qml/Main.qml:393
 msgid "Global shortcut: %1"
 msgstr "xxGlobal shortcut: %1xx"
 
-#: src/qml/Main.qml:190 src/qml/Main.qml:205
+#: src/qml/Main.qml:401 src/qml/Main.qml:416
 msgid "Last transcription"
 msgstr "xxLast transcriptionxx"
 
-#: src/qml/Main.qml:206
+#: src/qml/Main.qml:417
 msgid "Read-only text from the most recent dictation"
 msgstr "xxRead-only text from the most recent dictationxx"
 
-#: src/qml/Main.qml:212
+#: src/qml/Main.qml:423
 msgid "Clear transcription"
 msgstr "xxClear transcriptionxx"
 
-#: src/qml/Main.qml:216
+#: src/qml/Main.qml:427
 msgid "Remove the transcription from Kastword and matching current clipboards"
 msgstr ""
 "xxRemove the transcription from Kastword and matching current clipboardsxx"
+
+#~ msgid "English (English-only)"
+#~ msgstr "xxEnglish (English-only)xx"
+
+#~ msgid "Offline dictation — %1"
+#~ msgstr "xxOffline dictation — %1xx"
+
+#~ msgid "Path to ggml model"
+#~ msgstr "xxPath to ggml modelxx"
+
+#~ msgid "Whisper model path"
+#~ msgstr "xxWhisper model pathxx"
+
+#~ msgid "Browse…"
+#~ msgstr "xxBrowse…xx"
+
+#~ msgid "Browse for Whisper model"
+#~ msgstr "xxBrowse for Whisper modelxx"

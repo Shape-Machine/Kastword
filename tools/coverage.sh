@@ -20,8 +20,10 @@ fi
 
 mkdir -p "${report_dir}"
 "${gcovr_command[@]}" \
+    "${build_dir}" \
     --root . \
     --filter src/ \
+    --gcov-exclude '.*(qrc_|qmlcache|qmltyperegistrations|mocs_compilation|Main_qml).*' \
     --exclude-unreachable-branches \
     --exclude-throw-branches \
     --html-details "${report_dir}/index.html" \
