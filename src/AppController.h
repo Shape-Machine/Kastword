@@ -29,6 +29,8 @@ class AppController final : public QObject {
   Q_PROPERTY(QString modelPath READ modelPath WRITE setModelPath NOTIFY modelPathChanged)
   Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
   Q_PROPERTY(bool autoPaste READ autoPaste WRITE setAutoPaste NOTIFY autoPasteChanged)
+  Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
+                 NOTIFY recordingLimitMinutesChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText CONSTANT)
 
@@ -51,15 +53,18 @@ public:
   QString modelPath() const { return m_modelPath; }
   QString language() const { return m_language; }
   bool autoPaste() const { return m_autoPaste; }
+  int recordingLimitMinutes() const { return m_recordingLimitMinutes; }
   qreal level() const { return m_level; }
   QString shortcutText() const;
 
   void setModelPath(const QString &value);
   void setLanguage(const QString &value);
   void setAutoPaste(bool value);
+  void setRecordingLimitMinutes(int value);
   QAction *shortcutAction() { return &m_shortcut; }
 
   Q_INVOKABLE void toggle();
+  Q_INVOKABLE void forgetTranscript();
 
 signals:
   void stateChanged();
@@ -68,6 +73,7 @@ signals:
   void modelPathChanged();
   void languageChanged();
   void autoPasteChanged();
+  void recordingLimitMinutesChanged();
   void levelChanged();
 
 private:
@@ -93,7 +99,8 @@ private:
   QString m_transcript;
   QString m_modelPath;
   QString m_language = QStringLiteral("en");
-  bool m_autoPaste = true;
+  bool m_autoPaste = false;
+  int m_recordingLimitMinutes = 5;
   qreal m_level = 0.0;
   QPointer<KNotification> m_statusNotification;
 };

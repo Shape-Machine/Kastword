@@ -28,13 +28,11 @@ Kirigami.ApplicationWindow {
     Component {
         id: settingsPage
 
-        Kirigami.Page {
+        Kirigami.ScrollablePage {
             title: i18n("Settings")
 
             Kirigami.FormLayout {
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
+                width: parent.width
 
                 RowLayout {
                     Kirigami.FormData.label: i18n("Model:")
@@ -60,11 +58,37 @@ Kirigami.ApplicationWindow {
                     onActivated: appController.language = currentText
                 }
 
+                Controls.SpinBox {
+                    Kirigami.FormData.label: i18n("Maximum recording:")
+                    from: 1
+                    to: 60
+                    value: appController.recordingLimitMinutes
+                    textFromValue: function(value) { return i18np("%1 minute", "%1 minutes", value) }
+                    onValueModified: appController.recordingLimitMinutes = value
+                }
+
                 Controls.CheckBox {
+                    id: autoPasteCheckBox
                     Kirigami.FormData.label: i18n("Output:")
                     text: i18n("Paste automatically")
                     checked: appController.autoPaste
                     onToggled: appController.autoPaste = checked
+                }
+
+                Kirigami.InlineMessage {
+                    Kirigami.FormData.isSection: true
+                    Layout.fillWidth: true
+                    visible: autoPasteCheckBox.checked
+                    type: Kirigami.MessageType.Warning
+                    text: i18n("Automatic paste sends keystrokes to the focused application after a short delay. On Wayland, Kastword cannot verify that focus stayed unchanged.")
+                }
+
+                Kirigami.InlineMessage {
+                    Kirigami.FormData.isSection: true
+                    Layout.fillWidth: true
+                    visible: true
+                    type: Kirigami.MessageType.Information
+                    text: i18n("Only open Whisper models from sources you trust. Models are parsed inside Kastword.")
                 }
 
                 Controls.Label {
@@ -133,15 +157,26 @@ Kirigami.ApplicationWindow {
                 visible: appController.transcript.length > 0
                 title: i18n("Last transcription")
 
-                Controls.ScrollView {
+                ColumnLayout {
                     anchors.fill: parent
-                    implicitHeight: Kirigami.Units.gridUnit * 6
 
-                    Controls.TextArea {
-                        text: appController.transcript
-                        readOnly: true
-                        wrapMode: TextEdit.Wrap
-                        selectByMouse: true
+                    Controls.ScrollView {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Kirigami.Units.gridUnit * 6
+
+                        Controls.TextArea {
+                            text: appController.transcript
+                            readOnly: true
+                            wrapMode: TextEdit.Wrap
+                            selectByMouse: true
+                        }
+                    }
+
+                    Controls.Button {
+                        Layout.alignment: Qt.AlignRight
+                        text: i18n("Clear transcription")
+                        icon.name: "edit-clear-history"
+                        onClicked: appController.forgetTranscript()
                     }
                 }
             }

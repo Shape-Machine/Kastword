@@ -3,13 +3,18 @@
 
 #include "WhisperEngine.h"
 
+#include <QFile>
 #include <QFileInfo>
 #include <algorithm>
 #include <cstring>
+#include <limits>
 #include <thread>
 #include <utility>
 #include <vector>
 #include <whisper.h>
+#ifdef Q_OS_LINUX
+#include <sys/stat.h>
+#endif
 
 WhisperEngine::WhisperEngine()
     : WhisperEngine(
@@ -28,14 +33,45 @@ WhisperEngine::~WhisperEngine() {
 }
 
 bool WhisperEngine::loadModel(const QString &modelPath, QString *error) {
-  if (!QFileInfo(modelPath).isFile()) {
+  QFile model(modelPath);
+  if (!model.open(QIODevice::ReadOnly)) {
     *error = QStringLiteral("Select a valid Whisper model file.");
+    return false;
+  }
+#ifdef Q_OS_LINUX
+  struct stat modelStat{};
+  if (model.handle() < 0 || fstat(model.handle(), &modelStat) != 0 || !S_ISREG(modelStat.st_mode)) {
+    *error = QStringLiteral("Select a regular Whisper model file.");
+    return false;
+  }
+  const qint64 modelSize = modelStat.st_size;
+#else
+  const QFileInfo modelInfo(model);
+  if (!modelInfo.isFile()) {
+    *error = QStringLiteral("Select a regular Whisper model file.");
+    return false;
+  }
+  const qint64 modelSize = modelInfo.size();
+#endif
+  if (modelSize > maximumModelBytes()) {
+    *error = QStringLiteral("The selected Whisper model is too large.");
+    return false;
+  }
+  if (model.read(4) != QByteArray::fromHex("6c6d6767")) {
+    *error = QStringLiteral("The selected file is not a supported Whisper model.");
     return false;
   }
   if (m_context && m_modelPath == modelPath)
     return true;
 
-  whisper_context *context = m_loader(modelPath);
+#ifdef Q_OS_LINUX
+  // Keep this descriptor open while Whisper reopens it through procfs. This pins the validated
+  // inode even if the original path or a symlink is replaced between validation and parsing.
+  const QString loaderPath = QStringLiteral("/proc/self/fd/%1").arg(model.handle());
+#else
+  const QString loaderPath = modelPath;
+#endif
+  whisper_context *context = m_loader(loaderPath);
   if (!context) {
     *error = QStringLiteral("Could not load the Whisper model.");
     return false;
@@ -48,16 +84,26 @@ bool WhisperEngine::loadModel(const QString &modelPath, QString *error) {
   return true;
 }
 
+bool WhisperEngine::validateAudioSize(qsizetype byteCount, QString *error) {
+  if (byteCount < qsizetype(sizeof(float) * 1600)) {
+    *error = QStringLiteral("The recording was too short.");
+    return false;
+  }
+  if (byteCount % qsizetype(sizeof(float)) != 0) {
+    *error = QStringLiteral("The recording contains invalid audio data.");
+    return false;
+  }
+  if (byteCount / qsizetype(sizeof(float)) > std::numeric_limits<int>::max()) {
+    *error = QStringLiteral("The recording is too long to transcribe safely.");
+    return false;
+  }
+  return true;
+}
+
 QString WhisperEngine::transcribe(const QByteArray &audio, const QString &modelPath,
                                   const QString &language, QString *error) {
-  if (audio.size() < int(sizeof(float) * 1600)) {
-    *error = QStringLiteral("The recording was too short.");
+  if (!validateAudioSize(audio.size(), error))
     return {};
-  }
-  if (audio.size() % int(sizeof(float)) != 0) {
-    *error = QStringLiteral("The recording contains invalid audio data.");
-    return {};
-  }
   if (!loadModel(modelPath, error))
     return {};
 

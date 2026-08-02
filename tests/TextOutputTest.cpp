@@ -5,6 +5,7 @@
 
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QSignalSpy>
 #include <QTest>
 
 Q_DECLARE_METATYPE(TextOutput::PasteMethod)
@@ -14,6 +15,10 @@ class TextOutputTest final : public QObject {
 
 private slots:
   void copiesTranscriptionToAvailableClipboards();
+  void forgetsOnlyMatchingClipboardText();
+  void reportsPasteHelperFailures();
+  void cancelsX11PasteWhenFocusChanges();
+  void pastesOnX11WhenFocusIsUnchanged();
   void choosesPasteMethod_data();
   void choosesPasteMethod();
   void usesExpectedX11Arguments();
@@ -28,6 +33,70 @@ void TextOutputTest::copiesTranscriptionToAvailableClipboards() {
   QCOMPARE(QGuiApplication::clipboard()->text(QClipboard::Clipboard), transcription);
   if (QGuiApplication::clipboard()->supportsSelection())
     QCOMPARE(QGuiApplication::clipboard()->text(QClipboard::Selection), transcription);
+}
+
+void TextOutputTest::forgetsOnlyMatchingClipboardText() {
+  TextOutput output;
+  QClipboard *clipboard = QGuiApplication::clipboard();
+  const QString transcription = QStringLiteral("private transcription");
+  output.deliver(transcription, false);
+
+  clipboard->setText(QStringLiteral("new clipboard text"), QClipboard::Clipboard);
+  output.forget(transcription);
+  QCOMPARE(clipboard->text(QClipboard::Clipboard), QStringLiteral("new clipboard text"));
+
+  clipboard->setText(transcription, QClipboard::Clipboard);
+  output.forget(transcription);
+  QVERIFY(clipboard->text(QClipboard::Clipboard).isEmpty());
+}
+
+void TextOutputTest::reportsPasteHelperFailures() {
+  TextOutput output;
+  QSignalSpy status(&output, &TextOutput::deliveryStatus);
+
+  output.startPaste(QStringLiteral("/bin/sh"), {QStringLiteral("-c"), QStringLiteral("exit 7")},
+                    QStringLiteral("unexpected success"));
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.takeFirst().at(0).toString(),
+           QStringLiteral("Automatic paste helper failed with exit code 7."));
+
+  output.startPaste(QStringLiteral("/missing/kastword-paste-helper"), {},
+                    QStringLiteral("unexpected success"));
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.takeFirst().at(0).toString(),
+           QStringLiteral("Automatic paste helper could not be started."));
+}
+
+void TextOutputTest::cancelsX11PasteWhenFocusChanges() {
+  int reads = 0;
+  TextOutput output([&reads](const QString &) {
+    ++reads;
+    return QString::number(reads);
+  });
+  QSignalSpy status(&output, &TextOutput::deliveryStatus);
+
+  output.scheduleX11Paste(QStringLiteral("/bin/true"));
+
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.takeFirst().at(0).toString(),
+           QStringLiteral("Automatic paste was cancelled because focus changed."));
+  QCOMPARE(reads, 2);
+}
+
+void TextOutputTest::pastesOnX11WhenFocusIsUnchanged() {
+  int reads = 0;
+  TextOutput output([&reads](const QString &) {
+    ++reads;
+    return QStringLiteral("42");
+  });
+  QSignalSpy status(&output, &TextOutput::deliveryStatus);
+
+  output.scheduleX11Paste(QStringLiteral("/bin/true"));
+
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.takeFirst().at(0).toString(),
+           QStringLiteral("Pasted into the focused application."));
+  QCOMPARE(reads, 2);
 }
 
 void TextOutputTest::choosesPasteMethod_data() {

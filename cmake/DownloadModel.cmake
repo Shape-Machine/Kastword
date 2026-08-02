@@ -1,16 +1,16 @@
 # SPDX-FileCopyrightText: 2026 Sri Rang
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-if(NOT DEFINED OUTPUT OR NOT DEFINED URL OR NOT DEFINED SHA1)
-    message(FATAL_ERROR "OUTPUT, URL, and SHA1 are required")
+if(NOT DEFINED OUTPUT OR NOT DEFINED URL OR NOT DEFINED SHA256)
+    message(FATAL_ERROR "OUTPUT, URL, and SHA256 are required")
 endif()
 
 get_filename_component(output_directory "${OUTPUT}" DIRECTORY)
 file(MAKE_DIRECTORY "${output_directory}")
 
 if(EXISTS "${OUTPUT}")
-    file(SHA1 "${OUTPUT}" existing_sha1)
-    if(existing_sha1 STREQUAL SHA1)
+    file(SHA256 "${OUTPUT}" existing_sha256)
+    if(existing_sha256 STREQUAL SHA256)
         message(STATUS "Whisper model already downloaded and verified")
         return()
     endif()
@@ -20,8 +20,8 @@ endif()
 
 set(partial "${OUTPUT}.part")
 if(EXISTS "${partial}")
-    file(SHA1 "${partial}" partial_sha1)
-    if(partial_sha1 STREQUAL SHA1)
+    file(SHA256 "${partial}" partial_sha256)
+    if(partial_sha256 STREQUAL SHA256)
         file(RENAME "${partial}" "${OUTPUT}")
         message(STATUS "Verified the completed Whisper model download")
         return()
@@ -29,7 +29,7 @@ if(EXISTS "${partial}")
 endif()
 file(REMOVE "${partial}")
 file(DOWNLOAD "${URL}" "${partial}"
-    EXPECTED_HASH "SHA1=${SHA1}"
+    EXPECTED_HASH "SHA256=${SHA256}"
     SHOW_PROGRESS
     STATUS download_status
     TLS_VERIFY ON)

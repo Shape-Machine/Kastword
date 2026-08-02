@@ -71,7 +71,9 @@ void AppController::initialize() {
   if (m_modelPath.isEmpty() || !QFileInfo(m_modelPath).isFile())
     m_modelPath = findDefaultModel();
   m_language = group.readEntry("Language", QStringLiteral("en"));
-  m_autoPaste = group.readEntry("AutoPaste", true);
+  m_autoPaste = group.readEntry("AutoPaste", false);
+  m_recordingLimitMinutes = qBound(1, group.readEntry("RecordingLimitMinutes", 5), 60);
+  m_audio->setMaximumDurationSeconds(m_recordingLimitMinutes * 60);
 
   if (m_desktopIntegration) {
     m_shortcut.setObjectName(QStringLiteral("toggle-dictation"));
@@ -104,6 +106,11 @@ void AppController::initialize() {
     emit levelChanged();
   });
   connect(m_audio.get(), &AudioCapture::captureFailed, this, &AppController::handleCaptureFailure);
+  connect(m_output.get(), &TextOutput::deliveryStatus, this, [this](const QString &status) {
+    setStatus(status);
+    if (m_desktopIntegration && status.contains(tr("failed"), Qt::CaseInsensitive))
+      KNotification::event(KNotification::Error, tr("Automatic paste failed"), status);
+  });
   setStatus(tr("Ready — press %1 to dictate.").arg(shortcutText()));
 }
 
@@ -131,6 +138,26 @@ void AppController::setAutoPaste(bool value) {
   m_autoPaste = value;
   saveSettings();
   emit autoPasteChanged();
+}
+
+void AppController::setRecordingLimitMinutes(int value) {
+  value = qBound(1, value, 60);
+  if (m_recordingLimitMinutes == value)
+    return;
+  m_recordingLimitMinutes = value;
+  m_audio->setMaximumDurationSeconds(value * 60);
+  saveSettings();
+  emit recordingLimitMinutesChanged();
+}
+
+void AppController::forgetTranscript() {
+  if (m_transcript.isEmpty())
+    return;
+  m_output->forget(m_transcript);
+  m_transcript.clear();
+  emit transcriptChanged();
+  setStatus(tr(
+      "Cleared from Kastword and matching current clipboards. Clipboard history may retain it."));
 }
 
 void AppController::toggle() {
@@ -245,5 +272,6 @@ void AppController::saveSettings() {
   group.writeEntry("ModelPath", m_modelPath);
   group.writeEntry("Language", m_language);
   group.writeEntry("AutoPaste", m_autoPaste);
+  group.writeEntry("RecordingLimitMinutes", m_recordingLimitMinutes);
   group.sync();
 }

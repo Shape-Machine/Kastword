@@ -11,6 +11,7 @@
 #include <QTemporaryFile>
 #include <QTest>
 #include <cstring>
+#include <limits>
 
 namespace {
 QAudioFormat audioFormat(int sampleRate, int channels, QAudioFormat::SampleFormat sampleFormat) {
@@ -48,8 +49,13 @@ private slots:
   void rejectsRecordingThatIsTooShort();
   void rejectsMisalignedAudioData();
   void rejectsInvalidWhisperModel();
+  void rejectsOversizedWhisperModel();
+  void rejectsWhisperSampleCountOverflow();
   void reusesAndReloadsWhisperModels();
   void convertsEmptyAudio();
+  void calculatesCaptureLimit();
+  void enforcesCaptureAppendBoundary();
+  void rejectsResamplingArithmeticOverflow();
   void convertsSampleFormats_data();
   void convertsSampleFormats();
   void downmixesStereoAudio();
@@ -112,7 +118,28 @@ void CoreTest::rejectsInvalidWhisperModel() {
                                          QStringLiteral("en"), &error);
 
   QVERIFY(text.isEmpty());
-  QCOMPARE(error, QStringLiteral("Could not load the Whisper model."));
+  QCOMPARE(error, QStringLiteral("The selected file is not a supported Whisper model."));
+}
+
+void CoreTest::rejectsOversizedWhisperModel() {
+  QTemporaryFile model;
+  QVERIFY(model.open());
+  QVERIFY(model.resize(WhisperEngine::maximumModelBytes() + 1));
+  model.flush();
+  WhisperEngine engine;
+  QString error;
+
+  QVERIFY(!engine.loadModel(model.fileName(), &error));
+  QCOMPARE(error, QStringLiteral("The selected Whisper model is too large."));
+}
+
+void CoreTest::rejectsWhisperSampleCountOverflow() {
+  QString error;
+  const qsizetype excessive =
+      (qsizetype(std::numeric_limits<int>::max()) + 1) * qsizetype(sizeof(float));
+
+  QVERIFY(!WhisperEngine::validateAudioSize(excessive, &error));
+  QCOMPARE(error, QStringLiteral("The recording is too long to transcribe safely."));
 }
 
 void CoreTest::reusesAndReloadsWhisperModels() {
@@ -122,13 +149,23 @@ void CoreTest::reusesAndReloadsWhisperModels() {
   QVERIFY(firstModel.open());
   QVERIFY(secondModel.open());
   QVERIFY(invalidModel.open());
+  QCOMPARE(firstModel.write(QByteArray::fromHex("6c6d6767")), 4);
+  QCOMPARE(secondModel.write(QByteArray::fromHex("6c6d6767")), 4);
+  QCOMPARE(invalidModel.write(QByteArray::fromHex("6c6d6767")), 4);
+  firstModel.flush();
+  secondModel.flush();
+  invalidModel.flush();
   int loads = 0;
   int frees = 0;
   {
     WhisperEngine engine(
-        [&loads, &invalidModel](const QString &path) {
+        [&loads](const QString &path) {
           ++loads;
-          if (path == invalidModel.fileName())
+          if (loads == 2)
+            return static_cast<whisper_context *>(nullptr);
+          QFile validatedModel(path);
+          if (!validatedModel.open(QIODevice::ReadOnly) ||
+              validatedModel.read(4) != QByteArray::fromHex("6c6d6767"))
             return static_cast<whisper_context *>(nullptr);
           return reinterpret_cast<whisper_context *>(quintptr(loads));
         },
@@ -156,6 +193,30 @@ void CoreTest::reusesAndReloadsWhisperModels() {
 void CoreTest::convertsEmptyAudio() {
   QVERIFY(convertAudioForWhisper({}, audioFormat(48000, 1, QAudioFormat::Float)).isEmpty());
   QVERIFY(convertAudioForWhisper(floatBytes({1.0F}), {}).isEmpty());
+}
+
+void CoreTest::calculatesCaptureLimit() {
+  const QAudioFormat format = audioFormat(48000, 2, QAudioFormat::Int16);
+  QCOMPARE(maximumCaptureBytes(format, 300), qsizetype(48000 * 2 * 2 * 300));
+  const QAudioFormat largeFormat = audioFormat(192000, 8, QAudioFormat::Float);
+  QCOMPARE(maximumCaptureBytes(largeFormat, 300), maximumCapturedAudioBytes());
+  QCOMPARE(maximumCaptureBytes(format, 0), qsizetype(0));
+  QCOMPARE(maximumCaptureBytes({}, 300), qsizetype(0));
+}
+
+void CoreTest::enforcesCaptureAppendBoundary() {
+  constexpr qsizetype limit = 100;
+  QVERIFY(audioAppendFitsLimit(90, 10, limit));
+  QVERIFY(!audioAppendFitsLimit(90, 11, limit));
+  QVERIFY(!audioAppendFitsLimit(101, 0, limit));
+  QVERIFY(!audioAppendFitsLimit(0, 1, 0));
+}
+
+void CoreTest::rejectsResamplingArithmeticOverflow() {
+  qsizetype outputFrames = 0;
+  QVERIFY(resampledFrameCount(48000, 48000, &outputFrames));
+  QCOMPARE(outputFrames, qsizetype(16000));
+  QVERIFY(!resampledFrameCount(std::numeric_limits<qsizetype>::max(), 1, &outputFrames));
 }
 
 void CoreTest::convertsSampleFormats_data() {

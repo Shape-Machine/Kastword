@@ -5,12 +5,28 @@
 
 #include <QClipboard>
 #include <QDBusInterface>
+#include <QDBusReply>
 #include <QGuiApplication>
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTimer>
+#include <utility>
 
-TextOutput::TextOutput(QObject *parent) : QObject(parent) {}
+namespace {
+QString x11FocusedWindow(const QString &xdotool) {
+  QProcess process;
+  process.start(xdotool, {QStringLiteral("getwindowfocus")});
+  if (!process.waitForFinished(1000) || process.exitStatus() != QProcess::NormalExit ||
+      process.exitCode() != 0)
+    return {};
+  return QString::fromUtf8(process.readAllStandardOutput()).trimmed();
+}
+} // namespace
+
+TextOutput::TextOutput(QObject *parent) : TextOutput(x11FocusedWindow, parent) {}
+
+TextOutput::TextOutput(FocusReader focusReader, QObject *parent)
+    : QObject(parent), m_focusReader(std::move(focusReader)) {}
 
 TextOutput::PasteMethod TextOutput::choosePasteMethod(bool autoPaste, const QString &session,
                                                       bool xdotoolAvailable,
@@ -62,18 +78,71 @@ QString TextOutput::deliver(const QString &text, bool autoPaste) {
   if (method == PasteMethod::Xdotool) {
     // Defer the synthetic key press until Qt has advertised the new clipboard owner to the window
     // system. Pasting in this same event-loop turn can read the previous clipboard.
-    QTimer::singleShot(150, this,
-                       [xdotool] { QProcess::startDetached(xdotool, x11PasteArguments()); });
-    return tr("Pasted into the focused application.");
+    scheduleX11Paste(xdotool);
+    return tr("Copied to clipboard; automatic paste scheduled.");
   }
   if (method == PasteMethod::Ydotool) {
     // Konsole's Ctrl+Shift+V action reads the regular clipboard; Shift+Insert can instead read a
     // stale primary selection on Wayland. Allow the compositor to receive the new clipboard first.
-    QTimer::singleShot(150, this,
-                       [ydotool] { QProcess::startDetached(ydotool, waylandPasteArguments()); });
-    return tr("Sent paste to the focused application.");
+    QTimer::singleShot(150, this, [this, ydotool] {
+      startPaste(ydotool, waylandPasteArguments(), tr("Sent paste to the focused application."));
+    });
+    return tr("Copied to clipboard; automatic paste scheduled.");
   }
   return tr("Copied to clipboard; install %1 for automatic paste.")
       .arg(session == QStringLiteral("x11") ? QStringLiteral("xdotool")
                                             : QStringLiteral("ydotool"));
+}
+
+void TextOutput::scheduleX11Paste(const QString &xdotool) {
+  const QString originalWindow = m_focusReader(xdotool);
+  QTimer::singleShot(150, this, [this, xdotool, originalWindow] {
+    if (originalWindow.isEmpty() || m_focusReader(xdotool) != originalWindow) {
+      emit deliveryStatus(tr("Automatic paste was cancelled because focus changed."));
+      return;
+    }
+    startPaste(xdotool, x11PasteArguments(), tr("Pasted into the focused application."));
+  });
+}
+
+void TextOutput::startPaste(const QString &program, const QStringList &arguments,
+                            const QString &success) {
+  auto *process = new QProcess(this);
+  connect(process, &QProcess::errorOccurred, this, [this, process](QProcess::ProcessError error) {
+    if (error == QProcess::FailedToStart) {
+      emit deliveryStatus(tr("Automatic paste helper could not be started."));
+      process->deleteLater();
+    } else if (error == QProcess::Crashed) {
+      emit deliveryStatus(tr("Automatic paste helper crashed."));
+      process->deleteLater();
+    }
+  });
+  connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+          [this, process, success](int exitCode, QProcess::ExitStatus exitStatus) {
+            if (exitStatus == QProcess::NormalExit && exitCode == 0)
+              emit deliveryStatus(success);
+            else if (exitStatus == QProcess::NormalExit)
+              emit deliveryStatus(
+                  tr("Automatic paste helper failed with exit code %1.").arg(exitCode));
+            process->deleteLater();
+          });
+  process->start(program, arguments);
+}
+
+void TextOutput::forget(const QString &text) {
+  if (text.isEmpty())
+    return;
+  QClipboard *clipboard = QGuiApplication::clipboard();
+  if (clipboard->text(QClipboard::Clipboard) == text)
+    clipboard->clear(QClipboard::Clipboard);
+  if (clipboard->supportsSelection() && clipboard->text(QClipboard::Selection) == text)
+    clipboard->clear(QClipboard::Selection);
+
+  QDBusInterface klipper(QStringLiteral("org.kde.klipper"), QStringLiteral("/klipper"),
+                         QStringLiteral("org.kde.klipper.klipper"));
+  if (klipper.isValid()) {
+    const QDBusReply<QString> current = klipper.call(QStringLiteral("getClipboardContents"));
+    if (current.isValid() && current.value() == text)
+      klipper.call(QStringLiteral("setClipboardContents"), QString());
+  }
 }
