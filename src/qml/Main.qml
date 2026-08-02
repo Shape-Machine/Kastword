@@ -161,7 +161,8 @@ Kirigami.ApplicationWindow {
                                 Layout.alignment: Qt.AlignRight
 
                                 Controls.Button {
-                                    visible: modelData.downloading
+                                    objectName: "cancelModel-" + modelData.id
+                                    visible: modelData.downloading || modelData.verifying
                                     text: i18n("Cancel")
                                     onClicked: appController.modelManager.cancel()
                                 }

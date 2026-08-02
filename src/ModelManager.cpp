@@ -38,7 +38,9 @@ QString localizedModelName(const QString &id) {
     return i18n("Large v2 Multilingual");
   if (id == QStringLiteral("large-v3"))
     return i18n("Large v3 Multilingual");
-  return i18n("Large v3 Turbo Multilingual");
+  if (id == QStringLiteral("large-v3-turbo"))
+    return i18n("Large v3 Turbo Multilingual");
+  return i18n("Unknown model");
 }
 
 QString localizedSpeed(const QString &speed) {
@@ -50,7 +52,9 @@ QString localizedSpeed(const QString &speed) {
     return i18n("Moderate");
   if (speed == QStringLiteral("Slow"))
     return i18n("Slow");
-  return i18n("Slowest");
+  if (speed == QStringLiteral("Slowest"))
+    return i18n("Slowest");
+  return i18n("Unknown speed");
 }
 
 QString localizedAccuracy(const QString &accuracy) {
@@ -62,7 +66,9 @@ QString localizedAccuracy(const QString &accuracy) {
     return i18n("Better accuracy");
   if (accuracy == QStringLiteral("High"))
     return i18n("High accuracy");
-  return i18n("Highest accuracy");
+  if (accuracy == QStringLiteral("Highest"))
+    return i18n("Highest accuracy");
+  return i18n("Unknown accuracy");
 }
 } // namespace
 
@@ -175,7 +181,7 @@ void ModelManager::download(const QString &id) {
   QDir().mkpath(m_storagePath);
   const QString partial = partialPath(*item);
   qint64 partialSize = QFileInfo(partial).size();
-  if (partialSize < 0 || partialSize >= item->size) {
+  if (partialSize < 0 || partialSize > item->size) {
     QFile::remove(partial);
     partialSize = 0;
   }
@@ -186,6 +192,10 @@ void ModelManager::download(const QString &id) {
   }
   m_error.clear();
   m_currentModelId = id;
+  if (partialSize == item->size) {
+    verifyFile(*item, partial, true);
+    return;
+  }
   const QString installedPath = modelPath(*item);
   if (QFileInfo(installedPath).size() == item->size) {
     verifyFile(*item, installedPath, false);
@@ -283,13 +293,28 @@ void ModelManager::verifyFile(const ModelCatalogEntry &item, const QString &path
   m_installAfterVerify = installAfterVerify;
   m_status = i18n("Verifying %1…", localizedModelName(item.id));
   m_progress = 1.0;
-  m_hashWatcher.setFuture(QtConcurrent::run(m_hasher, path));
+  m_hashCancelled = std::make_shared<std::atomic_bool>(false);
+  m_hashWatcher.setFuture(QtConcurrent::run(m_hasher, path, m_hashCancelled));
   emit changed();
 }
 
 void ModelManager::finishVerification() {
   const ModelCatalogEntry *item = entry(m_currentModelId);
   const HashResult result = m_hashWatcher.result();
+  if (m_hashCancelled && m_hashCancelled->load()) {
+    const bool restoring = m_restoringActiveModel;
+    m_restoringActiveModel = false;
+    m_hashCancelled.reset();
+    m_status = i18n("Model verification cancelled. You can resume it later.");
+    m_error.clear();
+    m_currentModelId.clear();
+    m_progress = 0.0;
+    emit changed();
+    if (restoring)
+      emit setupRequired();
+    return;
+  }
+  m_hashCancelled.reset();
   if (!item || !result) {
     const bool restoring = m_restoringActiveModel;
     m_restoringActiveModel = false;
@@ -329,6 +354,8 @@ void ModelManager::finishVerification() {
 void ModelManager::cancel() {
   if (m_reply)
     m_reply->abort();
+  if (m_hashCancelled)
+    m_hashCancelled->store(true);
 }
 
 void ModelManager::selectModel(const QString &id) {
@@ -477,12 +504,19 @@ void ModelManager::revalidateActiveModel() {
     validateLocalModel(path, true);
 }
 
-ModelManager::HashResult ModelManager::hashFile(const QString &path) {
+ModelManager::HashResult ModelManager::hashFile(const QString &path,
+                                                const CancellationFlag &cancelled) {
   QFile file(path);
   if (!file.open(QIODevice::ReadOnly))
     return std::nullopt;
   QCryptographicHash hash(QCryptographicHash::Sha256);
-  if (!hash.addData(&file))
-    return std::nullopt;
+  while (!file.atEnd()) {
+    if (cancelled->load())
+      return std::nullopt;
+    const QByteArray data = file.read(1024 * 1024);
+    if (data.isEmpty() && file.error() != QFileDevice::NoError)
+      return std::nullopt;
+    hash.addData(data);
+  }
   return hash.result();
 }

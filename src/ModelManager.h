@@ -13,6 +13,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QVariantList>
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -35,7 +36,8 @@ class ModelManager final : public QObject {
 public:
   using ModelValidationFunction = std::function<bool(const QString &)>;
   using HashResult = std::optional<QByteArray>;
-  using HashFunction = std::function<HashResult(const QString &)>;
+  using CancellationFlag = std::shared_ptr<std::atomic_bool>;
+  using HashFunction = std::function<HashResult(const QString &, const CancellationFlag &)>;
 
   explicit ModelManager(QObject *parent = nullptr);
   ModelManager(QList<ModelCatalogEntry> catalog, QString storagePath,
@@ -90,7 +92,7 @@ private:
   void setFailure(const QString &message);
   void watchActiveModel();
   void revalidateActiveModel();
-  static HashResult hashFile(const QString &path);
+  static HashResult hashFile(const QString &path, const CancellationFlag &cancelled);
 
   QList<ModelCatalogEntry> m_catalog;
   QString m_storagePath;
@@ -111,6 +113,7 @@ private:
   QFileSystemWatcher m_watcher;
   ModelValidationFunction m_validator;
   HashFunction m_hasher;
+  CancellationFlag m_hashCancelled;
   QString m_pendingLocalModelPath;
   bool m_restoringActiveModel = false;
 };

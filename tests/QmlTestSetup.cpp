@@ -11,7 +11,7 @@
 
 class FakeModelManager final : public QObject {
   Q_OBJECT
-  Q_PROPERTY(QVariantList models READ models CONSTANT)
+  Q_PROPERTY(QVariantList models READ models NOTIFY changed)
   Q_PROPERTY(bool busy READ busy CONSTANT)
   Q_PROPERTY(qreal progress READ progress CONSTANT)
   Q_PROPERTY(QString status READ status CONSTANT)
@@ -21,7 +21,7 @@ class FakeModelManager final : public QObject {
 
 public:
   QVariantList models() const {
-    const auto model = [](const QString &id, bool englishOnly, bool recommended) {
+    const auto model = [this](const QString &id, bool englishOnly, bool recommended) {
       return QVariantMap{{QStringLiteral("id"), id},
                          {QStringLiteral("name"), id},
                          {QStringLiteral("sizeText"), QStringLiteral("141 MiB")},
@@ -35,7 +35,7 @@ public:
                          {QStringLiteral("installed"), false},
                          {QStringLiteral("active"), false},
                          {QStringLiteral("downloading"), false},
-                         {QStringLiteral("verifying"), false}};
+                         {QStringLiteral("verifying"), m_verifyingId == id}};
     };
     return {model(QStringLiteral("base.en"), true, true),
             model(QStringLiteral("small"), false, true),
@@ -56,12 +56,19 @@ public:
   Q_INVOKABLE void download(const QString &) {}
   Q_INVOKABLE void cancel() {}
   Q_INVOKABLE void selectModel(const QString &) {}
+  Q_INVOKABLE void setVerifyingId(const QString &id) {
+    if (m_verifyingId == id)
+      return;
+    m_verifyingId = id;
+    emit changed();
+  }
 
 signals:
   void changed();
 
 private:
   bool m_verificationPending = false;
+  QString m_verifyingId;
 };
 
 class FakeAppController final : public QObject {

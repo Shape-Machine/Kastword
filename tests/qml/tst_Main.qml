@@ -54,6 +54,7 @@ TestCase {
     }
 
     function cleanup() {
+        appController.modelManager.setVerifyingId("")
         if (applicationWindow) {
             applicationWindow.visible = false
             wait(50)
@@ -123,6 +124,19 @@ TestCase {
         compare(english.visible, true)
         compare(recommendedMultilingual.visible, false)
         compare(otherMultilingual.visible, false)
+    }
+
+    function test_verificationCanBeCancelled() {
+        applicationWindow.openModelManager()
+        const filter = findChild(applicationWindow.contentItem, "modelLanguageFilter")
+        verify(filter)
+        filter.currentIndex = filter.indexOfValue("all")
+        appController.modelManager.setVerifyingId("tiny")
+
+        const cancel = findChild(applicationWindow.contentItem, "cancelModel-tiny")
+        verify(cancel)
+        tryCompare(cancel, "visible", true)
+        compare(cancel.text, "Cancel")
     }
 
     function test_primaryActionSupportsKeyboard() {

@@ -11,7 +11,6 @@
 struct ModelCatalogEntry {
   QString id;
   QString fileName;
-  QString displayName;
   QUrl url;
   QByteArray sha256;
   qint64 size = 0;
