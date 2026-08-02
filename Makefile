@@ -84,7 +84,7 @@ lint:
 	clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp
 
 license:
-	reuse lint
+	./tools/reuse-lint.sh
 
 validate: license
 	$(MAKE) test lint

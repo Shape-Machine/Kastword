@@ -227,7 +227,8 @@ enforces the repository's line and branch thresholds, and writes a browsable rep
 applies it.
 `make install-smoke` installs into a temporary prefix and checks the installed executable and
 metadata. `make validate` runs the build, tests, formatting check, REUSE license validation, desktop
-metadata validation, and QML linting. These targets require `gcovr`, `reuse`, `appstreamcli`,
+metadata validation, and QML linting. Coverage and license checks use installed `gcovr` and `reuse`
+commands, or fetch temporary tools through `uvx`. The remaining checks require `appstreamcli`,
 `desktop-file-validate`, `clang-format`, and Qt's `qmllint`. CI invokes the same Make targets without
 downloading the model and also runs the tests under AddressSanitizer and UndefinedBehaviorSanitizer.
 Every CI run publishes the exact coverage summary on its job page and uploads the complete HTML,
