@@ -233,14 +233,17 @@ enforces the repository's line and branch thresholds, and writes a browsable rep
 55% branch coverage and can be raised explicitly with `COVERAGE_MIN_LINE` and
 `COVERAGE_MIN_BRANCH`. `make lint` checks C++ formatting without changing files, while `make format`
 applies it.
-`make install-smoke` installs into a temporary prefix and checks the installed executable and
-metadata. `make validate` runs the build, tests, formatting check, REUSE license validation, desktop
-metadata validation, and QML linting. Coverage and license checks use installed `gcovr` and `reuse`
-commands, or fetch temporary tools through `uvx`. The remaining checks require `appstreamcli`,
-`desktop-file-validate`, `clang-format`, and Qt's `qmllint`. CI invokes the same Make targets without
-downloading the model and also runs the tests under AddressSanitizer and UndefinedBehaviorSanitizer.
-Every CI run publishes the exact coverage summary on its job page and uploads the complete HTML,
-text, and XML reports as the `coverage-report` artifact.
+`make install-smoke` installs into a temporary prefix, resolves and executes the application through
+the installed desktop entry, validates the metadata, and verifies that uninstall removes every
+installed file. `make validate` runs the build, tests, formatting check, REUSE license validation,
+desktop metadata validation, and QML linting. QML linting uses Qt's CMake target, so it follows the
+configured Qt toolchain and `BUILD_DIR` instead of assuming a distribution-specific executable
+path. Coverage and license checks use installed `gcovr` and `reuse` commands, or fetch temporary
+tools through `uvx`. The remaining checks require `appstreamcli`, `desktop-file-validate`, and
+`clang-format`. CI invokes the same Make targets without downloading the model, installs packages
+from a dated Arch Linux Archive snapshot, and also runs the tests under AddressSanitizer and
+UndefinedBehaviorSanitizer. Every CI run publishes the exact coverage summary on its job page and
+uploads the complete HTML, text, and XML reports as the `coverage-report` artifact.
 
 Kate users can open the repository directory and enable the Project, Build, and LSP Client
 plugins. `.kateproject` provides Build, Run, Test, and Clean targets, while CMake generates
