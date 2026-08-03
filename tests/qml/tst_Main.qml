@@ -210,6 +210,7 @@ TestCase {
     }
 
     function test_compactTranscriptActionsAreAccessible() {
+        const page = applicationWindow.pageStack.currentItem
         const preview = findChild(applicationWindow.contentItem, "transcriptText")
         const copy = findChild(applicationWindow.contentItem, "copyTranscriptButton")
         const expand = findChild(applicationWindow.contentItem, "expandTranscriptButton")
@@ -227,6 +228,14 @@ TestCase {
         compare(copy.Accessible.name, "Copy")
         compare(expand.Accessible.name, "Show full transcription")
         compare(clear.Accessible.name, "Clear transcription")
+        for (const action of [copy, expand, clear]) {
+            const topLeft = action.mapToItem(page, 0, 0)
+            const bottomRight = action.mapToItem(page, action.width, action.height)
+            verify(topLeft.x >= 0)
+            verify(topLeft.y >= 0)
+            verify(bottomRight.x <= page.width)
+            verify(bottomRight.y <= page.height)
+        }
 
         expand.clicked()
         tryCompare(dialog, "visible", true)

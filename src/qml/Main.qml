@@ -15,7 +15,11 @@ Kirigami.ApplicationWindow {
     width: 480
     height: 280
     minimumWidth: 380
-    minimumHeight: 280
+    minimumHeight: Math.max(280,
+                            mainContent.implicitHeight
+                            + mainPage.topPadding
+                            + mainPage.bottomPadding
+                            + root.pageStack.globalToolBar.height)
     visible: false
     title: i18n("Kastword")
 
@@ -383,6 +387,7 @@ Kirigami.ApplicationWindow {
     }
 
     pageStack.initialPage: Kirigami.Page {
+        id: mainPage
         title: i18n("Offline dictation")
         actions: [
             Kirigami.Action {
@@ -393,6 +398,7 @@ Kirigami.ApplicationWindow {
         ]
 
         ColumnLayout {
+            id: mainContent
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
