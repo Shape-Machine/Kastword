@@ -114,6 +114,9 @@ make
 make run
 ```
 
+`make run` shows the application window immediately for local development. A normal installed
+launch continues to start Kastword in the system tray.
+
 No speech model is downloaded or packaged during a normal build. The build needs network access
 only when the pinned Whisper.cpp source is not already available.
 

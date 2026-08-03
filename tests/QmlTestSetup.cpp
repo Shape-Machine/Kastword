@@ -137,6 +137,7 @@ public:
     emit toggleCountChanged();
   }
   Q_INVOKABLE void forgetTranscript() {}
+  Q_INVOKABLE void copyTranscript() {}
   Q_INVOKABLE bool removeModel(const QString &) { return true; }
   Q_INVOKABLE void setTestState(bool recording, bool transcribing) {
     m_recording = recording;

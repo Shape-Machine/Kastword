@@ -21,7 +21,7 @@ build: configure
 	cmake --build $(BUILD_DIR)
 
 run: build
-	./$(BUILD_DIR)/kastword
+	./$(BUILD_DIR)/kastword --show-window
 
 install:
 	cmake -S . -B $(BUILD_DIR) -G Ninja \

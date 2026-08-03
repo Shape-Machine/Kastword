@@ -23,8 +23,11 @@
 
 int main(int argc, char **argv) {
   bool smokeTest = false;
-  for (int i = 1; i < argc; ++i)
+  bool showWindow = false;
+  for (int i = 1; i < argc; ++i) {
     smokeTest = smokeTest || std::strcmp(argv[i], "--smoke-test") == 0;
+    showWindow = showWindow || std::strcmp(argv[i], "--show-window") == 0;
+  }
 #ifdef Q_OS_UNIX
   if (!smokeTest && shouldRefuseElevatedExecution(getuid(), geteuid())) {
     std::fputs("Kastword refuses to run with elevated privileges.\n", stderr);
@@ -121,6 +124,12 @@ int main(int argc, char **argv) {
     window->raise();
     window->requestActivate();
   });
+
+  if (showWindow) {
+    window->show();
+    window->raise();
+    window->requestActivate();
+  }
 
   if (controller.modelReady())
     KNotification::event(
