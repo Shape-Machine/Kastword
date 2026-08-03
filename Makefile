@@ -42,15 +42,23 @@ install:
 
 install-smoke: build
 	@smoke_prefix="$$(mktemp -d)"; \
-	trap 'cmake -E remove_directory "$$smoke_prefix"' EXIT; \
+	installed_files="$$(mktemp)"; \
+	trap 'cmake -E remove_directory "$$smoke_prefix"; cmake -E rm -f "$$installed_files"' EXIT; \
 	cmake --install "$(BUILD_DIR)" --prefix "$$smoke_prefix" --component Kastword; \
 	test -x "$$smoke_prefix/bin/kastword"; \
-	desktop-file-validate \
-		"$$smoke_prefix/share/applications/io.github.shape_machine.Kastword.desktop"; \
+	desktop_file="$$smoke_prefix/share/applications/io.github.shape_machine.Kastword.desktop"; \
+	desktop-file-validate "$$desktop_file"; \
+	test "$$(sed -n 's/^Exec=//p' "$$desktop_file")" = "kastword"; \
+	resolved_binary="$$(PATH="$$smoke_prefix/bin:$$PATH" command -v kastword)"; \
+	test "$$resolved_binary" = "$$smoke_prefix/bin/kastword"; \
+	QT_QPA_PLATFORM=offscreen "$$resolved_binary" --smoke-test; \
 	appstreamcli validate --no-net \
 		"$$smoke_prefix/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml"; \
 	test -f "$$smoke_prefix/share/locale/x-test/LC_MESSAGES/kastword.mo"; \
-	test ! -e "$$smoke_prefix/share/kastword/models/ggml-base.en.bin"
+	test ! -e "$$smoke_prefix/share/kastword/models/ggml-base.en.bin"; \
+	find "$$smoke_prefix" -type f -print > "$$installed_files"; \
+	$(MAKE) uninstall PREFIX="$$smoke_prefix" BUILD_DIR="$(BUILD_DIR)"; \
+	while IFS= read -r installed_file; do test ! -e "$$installed_file"; done < "$$installed_files"
 
 uninstall:
 	cmake -E rm -f \
@@ -93,4 +101,4 @@ validate: license
 	$(MAKE) test lint
 	appstreamcli validate --no-net data/io.github.shape_machine.Kastword.metainfo.xml
 	desktop-file-validate $(BUILD_DIR)/io.github.shape_machine.Kastword.desktop
-	/usr/lib/qt6/bin/qmllint -I $(BUILD_DIR) -I /usr/lib/qt6/qml src/qml/Main.qml
+	cmake --build $(BUILD_DIR) --target kastword_qmllint
