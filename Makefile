@@ -41,22 +41,31 @@ install:
 	@echo "Kastword is installed. Launch it from the application menu."
 
 install-smoke: build
-	@smoke_prefix="$$(mktemp -d)"; \
+	@set -eu; \
+	smoke_prefix="$$(mktemp -d)"; \
+	installed_files=""; \
+	broken_fixture_dir=""; \
+	trap 'cmake -E remove_directory "$$smoke_prefix"; \
+		test -z "$$installed_files" || cmake -E rm -f "$$installed_files"; \
+		test -z "$$broken_fixture_dir" || cmake -E remove_directory "$$broken_fixture_dir"' EXIT; \
 	installed_files="$$(mktemp)"; \
-	trap 'cmake -E remove_directory "$$smoke_prefix"; cmake -E rm -f "$$installed_files"' EXIT; \
+	broken_fixture_dir="$$(mktemp -d)"; \
+	broken_desktop="$$broken_fixture_dir/broken.desktop"; \
 	cmake --install "$(BUILD_DIR)" --prefix "$$smoke_prefix" --component Kastword; \
 	test -x "$$smoke_prefix/bin/kastword"; \
 	desktop_file="$$smoke_prefix/share/applications/io.github.shape_machine.Kastword.desktop"; \
-	desktop-file-validate "$$desktop_file"; \
-	test "$$(sed -n 's/^Exec=//p' "$$desktop_file")" = "kastword"; \
-	resolved_binary="$$(PATH="$$smoke_prefix/bin:$$PATH" command -v kastword)"; \
-	test "$$resolved_binary" = "$$smoke_prefix/bin/kastword"; \
-	QT_QPA_PLATFORM=offscreen "$$resolved_binary" --smoke-test; \
+	./tools/check-desktop-launcher.sh "$$smoke_prefix" "$$desktop_file"; \
+	sed 's/^Exec=.*/Exec=missing-kastword/' "$$desktop_file" > "$$broken_desktop"; \
+	if ./tools/check-desktop-launcher.sh "$$smoke_prefix" "$$broken_desktop"; then \
+		echo "Broken desktop launcher unexpectedly passed smoke testing" >&2; \
+		exit 1; \
+	fi; \
 	appstreamcli validate --no-net \
 		"$$smoke_prefix/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml"; \
 	test -f "$$smoke_prefix/share/locale/x-test/LC_MESSAGES/kastword.mo"; \
 	test ! -e "$$smoke_prefix/share/kastword/models/ggml-base.en.bin"; \
 	find "$$smoke_prefix" -type f -print > "$$installed_files"; \
+	case "$$smoke_prefix" in ""|/) echo "Refusing unsafe uninstall prefix" >&2; exit 1;; esac; \
 	$(MAKE) uninstall PREFIX="$$smoke_prefix" BUILD_DIR="$(BUILD_DIR)"; \
 	while IFS= read -r installed_file; do test ! -e "$$installed_file"; done < "$$installed_files"
 
