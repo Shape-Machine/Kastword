@@ -16,7 +16,7 @@ include(GNUInstallDirs)
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 find_package(Qt6 6.6 REQUIRED COMPONENTS Concurrent Core DBus Gui Multimedia Network Quick QuickControls2 Widgets)
-find_package(KF6 REQUIRED COMPONENTS Config CoreAddons DBusAddons GlobalAccel I18n Kirigami Notifications StatusNotifierItem)
+find_package(KF6 6.20 REQUIRED COMPONENTS Config CoreAddons DBusAddons GlobalAccel I18n Kirigami Notifications StatusNotifierItem)
 
 option(KASTWORD_FETCH_WHISPER "Download the pinned whisper.cpp dependency" ON)
 option(KASTWORD_FETCH_DEFAULT_MODEL "Download the legacy default English Whisper model" OFF)
