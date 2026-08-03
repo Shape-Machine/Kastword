@@ -102,7 +102,7 @@ void AppController::initialize() {
       recordingStopped = true;
     }
     if (modelReady())
-      setStatus(i18n("Ready — press %1 to dictate.", shortcutText()));
+      setStatus(i18n("Ready"));
     else if (m_modelManager->verificationPending() && !recordingStopped)
       setStatus(i18n("Verifying the speech model…"));
     m_shortcut.setEnabled(modelReady());
@@ -163,7 +163,7 @@ void AppController::initialize() {
       KNotification::event(KNotification::Error, i18n("Automatic paste failed"), status);
   });
   if (modelReady())
-    setStatus(i18n("Ready — press %1 to dictate.", shortcutText()));
+    setStatus(i18n("Ready"));
   else if (m_modelManager->verificationPending())
     setStatus(i18n("Verifying the speech model…"));
   else
@@ -253,6 +253,12 @@ void AppController::forgetTranscript() {
   emit transcriptChanged();
   setStatus(i18n(
       "Cleared from Kastword and matching current clipboards. Clipboard history may retain it."));
+}
+
+void AppController::copyTranscript() {
+  if (m_transcript.isEmpty())
+    return;
+  setStatus(m_output->deliver(m_transcript, false));
 }
 
 void AppController::toggle() {

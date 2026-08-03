@@ -15,8 +15,12 @@ Kirigami.ApplicationWindow {
     width: 480
     height: 280
     minimumWidth: 380
-    minimumHeight: 280
-    visible: appController.modelSetupRequired
+    minimumHeight: Math.max(280,
+                            mainContent.implicitHeight
+                            + mainPage.topPadding
+                            + mainPage.bottomPadding
+                            + root.pageStack.globalToolBar.height)
+    visible: false
     title: i18n("Kastword")
 
     function selectModel(url) {
@@ -24,11 +28,36 @@ Kirigami.ApplicationWindow {
     }
 
     function openModelManager() {
-        if (!root.pageStack.currentItem || root.pageStack.currentItem.objectName !== "modelManagerPage")
-            root.pageStack.push(modelManagerPage)
+        if (root.modelManagerDialog)
+            return
+        const page = modelManagerPage.createObject(root.contentItem)
+        root.modelManagerDialog = root.pageStack.pushDialogLayer(page, {}, {
+            width: Kirigami.Units.gridUnit * 32,
+            height: Kirigami.Units.gridUnit * 30,
+            minimumWidth: Kirigami.Units.gridUnit * 24,
+            minimumHeight: Kirigami.Units.gridUnit * 20
+        })
+        if (!root.modelManagerDialog)
+            page.destroy()
+    }
+
+    function openSettings() {
+        if (root.settingsDialog)
+            return
+        const page = settingsPage.createObject(root.contentItem)
+        root.settingsDialog = root.pageStack.pushDialogLayer(page, {}, {
+            width: Kirigami.Units.gridUnit * 32,
+            height: Kirigami.Units.gridUnit * 30,
+            minimumWidth: Kirigami.Units.gridUnit * 24,
+            minimumHeight: Kirigami.Units.gridUnit * 20
+        })
+        if (!root.settingsDialog)
+            page.destroy()
     }
 
     property string pendingRemovalId: ""
+    property var modelManagerDialog: null
+    property var settingsDialog: null
 
     Connections {
         target: appController
@@ -39,8 +68,10 @@ Kirigami.ApplicationWindow {
     }
 
     Component.onCompleted: {
-        if (appController.modelSetupRequired)
+        if (appController.modelSetupRequired) {
+            root.show()
             root.openModelManager()
+        }
     }
 
     FileDialog {
@@ -62,12 +93,38 @@ Kirigami.ApplicationWindow {
         onRejected: root.pendingRemovalId = ""
     }
 
+    Kirigami.Dialog {
+        id: transcriptDialog
+        objectName: "transcriptDialog"
+        title: i18n("Last transcription")
+        preferredWidth: Kirigami.Units.gridUnit * 24
+        standardButtons: Kirigami.Dialog.Close
+
+        Controls.ScrollView {
+            implicitWidth: Kirigami.Units.gridUnit * 22
+            implicitHeight: Math.min(fullTranscriptText.contentHeight
+                                     + fullTranscriptText.topPadding
+                                     + fullTranscriptText.bottomPadding,
+                                     Kirigami.Units.gridUnit * 16)
+
+            Controls.TextArea {
+                id: fullTranscriptText
+                text: appController.transcript
+                readOnly: true
+                wrapMode: TextEdit.Wrap
+                selectByMouse: true
+                Accessible.name: i18n("Full transcription")
+            }
+        }
+    }
+
     Component {
         id: modelManagerPage
 
         Kirigami.ScrollablePage {
             objectName: "modelManagerPage"
             title: i18n("Speech models")
+            Component.onDestruction: root.modelManagerDialog = null
 
             ColumnLayout {
                 width: parent.width
@@ -246,7 +303,10 @@ Kirigami.ApplicationWindow {
         id: settingsPage
 
         Kirigami.ScrollablePage {
+            id: settingsPageRoot
+            objectName: "settingsPage"
             title: i18n("Settings")
+            Component.onDestruction: root.settingsDialog = null
 
             Kirigami.FormLayout {
                 width: parent.width
@@ -263,7 +323,10 @@ Kirigami.ApplicationWindow {
                     Controls.Button {
                         objectName: "manageModelsButton"
                         text: i18n("Manage…")
-                        onClicked: root.pageStack.push(modelManagerPage)
+                        onClicked: {
+                            settingsPageRoot.Kirigami.PageStack.closeDialog()
+                            root.openModelManager()
+                        }
                         Accessible.name: i18n("Manage speech models")
                     }
                 }
@@ -323,17 +386,19 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    pageStack.initialPage: Kirigami.ScrollablePage {
+    pageStack.initialPage: Kirigami.Page {
+        id: mainPage
         title: i18n("Offline dictation")
         actions: [
             Kirigami.Action {
                 text: i18n("Settings")
                 icon.name: "settings-configure"
-                onTriggered: root.pageStack.push(settingsPage)
+                onTriggered: root.openSettings()
             }
         ]
 
         ColumnLayout {
+            id: mainContent
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
@@ -371,60 +436,100 @@ Kirigami.ApplicationWindow {
                     : i18n("Begin recording audio for local transcription")
             }
 
-            Controls.ProgressBar {
-                objectName: "dictationProgress"
+            Item {
+                id: activitySlot
+                objectName: "activitySlot"
                 Layout.fillWidth: true
-                visible: appController.recording || appController.transcribing
-                from: 0
-                to: 1
-                value: appController.level
-                indeterminate: appController.transcribing
-                Accessible.name: appController.transcribing
-                    ? i18n("Transcription progress")
-                    : i18n("Microphone level")
-                Accessible.description: appController.transcribing
-                    ? i18n("Local transcription is in progress")
-                    : i18n("Current microphone input level")
+                Layout.preferredHeight: Math.max(dictationProgress.implicitHeight,
+                                                 shortcutLabel.implicitHeight)
+
+                Controls.ProgressBar {
+                    id: dictationProgress
+                    objectName: "dictationProgress"
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: appController.recording || appController.transcribing
+                    from: 0
+                    to: 1
+                    value: appController.level
+                    indeterminate: appController.transcribing
+                    Accessible.name: appController.transcribing
+                        ? i18n("Transcription progress")
+                        : i18n("Microphone level")
+                    Accessible.description: appController.transcribing
+                        ? i18n("Local transcription is in progress")
+                        : i18n("Current microphone input level")
+                }
+
+                Controls.Label {
+                    id: shortcutLabel
+                    anchors.centerIn: parent
+                    visible: appController.idle
+                    text: i18n("Global shortcut: %1", appController.shortcutText)
+                    opacity: 0.7
+                }
             }
 
-            Controls.Label {
-                Layout.alignment: Qt.AlignHCenter
-                visible: appController.idle
-                text: i18n("Global shortcut: %1", appController.shortcutText)
-                opacity: 0.7
-            }
-
-            Controls.GroupBox {
+            ColumnLayout {
                 id: transcriptPanel
                 Layout.fillWidth: true
                 visible: appController.transcript.length > 0
-                title: i18n("Last transcription")
+                spacing: Kirigami.Units.smallSpacing
 
-                ColumnLayout {
-                    anchors.fill: parent
+                Controls.Label {
+                    Layout.fillWidth: true
+                    font.bold: true
+                    text: i18n("Last transcription")
+                }
 
-                    Controls.ScrollView {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Kirigami.Units.gridUnit * 6
+                Controls.Label {
+                    objectName: "transcriptText"
+                    Layout.fillWidth: true
+                    text: appController.transcript
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 3
+                    elide: Text.ElideRight
+                    Accessible.name: i18n("Last transcription")
+                    Accessible.description: i18n("Preview of the most recent dictation")
+                }
 
-                        Controls.TextArea {
-                            objectName: "transcriptText"
-                            text: appController.transcript
-                            readOnly: true
-                            wrapMode: TextEdit.Wrap
-                            selectByMouse: true
-                            Accessible.name: i18n("Last transcription")
-                            Accessible.description: i18n("Read-only text from the most recent dictation")
-                        }
+                RowLayout {
+                    Layout.alignment: Qt.AlignRight
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Controls.ToolButton {
+                        objectName: "copyTranscriptButton"
+                        icon.name: "edit-copy"
+                        text: i18n("Copy")
+                        display: Controls.AbstractButton.TextBesideIcon
+                        onClicked: appController.copyTranscript()
+                        Accessible.name: text
+                        Controls.ToolTip.visible: hovered
+                        Controls.ToolTip.text: text
                     }
 
-                    Controls.Button {
-                        Layout.alignment: Qt.AlignRight
-                        text: i18n("Clear transcription")
+                    Controls.ToolButton {
+                        objectName: "expandTranscriptButton"
+                        icon.name: "view-fullscreen"
+                        text: i18n("View")
+                        display: Controls.AbstractButton.TextBesideIcon
+                        onClicked: transcriptDialog.open()
+                        Accessible.name: i18n("Show full transcription")
+                        Controls.ToolTip.visible: hovered
+                        Controls.ToolTip.text: Accessible.name
+                    }
+
+                    Controls.ToolButton {
+                        objectName: "clearTranscriptButton"
                         icon.name: "edit-clear-history"
+                        text: i18n("Clear")
+                        display: Controls.AbstractButton.TextBesideIcon
                         onClicked: appController.forgetTranscript()
-                        Accessible.name: text
+                        Accessible.name: i18n("Clear transcription")
                         Accessible.description: i18n("Remove the transcription from Kastword and matching current clipboards")
+                        Controls.ToolTip.visible: hovered
+                        Controls.ToolTip.text: Accessible.name
                     }
                 }
             }

@@ -330,10 +330,10 @@ void ModelManagerTest::cancelsVerificationWithoutDiscardingPartial() {
   manager.cancel();
   hashGate.release();
 
-  QTRY_VERIFY_WITH_TIMEOUT(!manager.busy(), 3000);
+  QTRY_VERIFY_WITH_TIMEOUT(manager.status().contains(QStringLiteral("cancelled")), 3000);
+  QVERIFY(!manager.busy());
   QVERIFY(!manager.modelReady());
   QVERIFY(QFileInfo::exists(partialPath));
-  QVERIFY(manager.status().contains(QStringLiteral("cancelled")));
   QCOMPARE(network.requestCount, 0);
 }
 

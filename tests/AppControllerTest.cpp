@@ -93,6 +93,7 @@ private slots:
   void forwardsAudioLevel();
   void emitsSettingChangesOnlyWhenValuesChange();
   void defaultsToPrivateOutputAndConfigurableRecordingLimit();
+  void copiesTranscript();
   void forgetsTranscript();
   void clampsRecordingLimit();
   void reportsAsynchronousDeliveryStatus();
@@ -432,6 +433,28 @@ void AppControllerTest::forgetsTranscript() {
                                                "clipboards. Clipboard history may retain it."));
 }
 
+void AppControllerTest::copiesTranscript() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto *outputPtr = output.get();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return qMakePair(QStringLiteral("copy me"), QString());
+      },
+      false);
+  controller.toggle();
+  controller.toggle();
+  QTRY_COMPARE(controller.transcript(), QStringLiteral("copy me"));
+  outputPtr->deliveredText.clear();
+
+  controller.copyTranscript();
+
+  QCOMPARE(outputPtr->deliveredText, QStringLiteral("copy me"));
+  QVERIFY(!outputPtr->deliveredWithAutoPaste);
+  QCOMPARE(controller.status(), QStringLiteral("Delivered."));
+}
+
 void AppControllerTest::clampsRecordingLimit() {
   auto audio = std::make_unique<FakeAudioCapture>();
   auto output = std::make_unique<FakeTextOutput>();
@@ -690,8 +713,7 @@ void AppControllerTest::reportsModelVerificationAndReadiness() {
   QVERIFY(!controller.modelReady());
   validationGate.release();
   QTRY_VERIFY(controller.modelReady());
-  QCOMPARE(controller.status(),
-           QStringLiteral("Ready — press %1 to dictate.").arg(controller.shortcutText()));
+  QCOMPARE(controller.status(), QStringLiteral("Ready"));
 }
 
 QTEST_MAIN(AppControllerTest)

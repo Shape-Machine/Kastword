@@ -21,7 +21,7 @@ build: configure
 	cmake --build $(BUILD_DIR)
 
 run: build
-	./$(BUILD_DIR)/kastword
+	./$(BUILD_DIR)/kastword --show-window
 
 install:
 	cmake -S . -B $(BUILD_DIR) -G Ninja \
@@ -93,4 +93,4 @@ validate: license
 	$(MAKE) test lint
 	appstreamcli validate --no-net data/io.github.shape_machine.Kastword.metainfo.xml
 	desktop-file-validate $(BUILD_DIR)/io.github.shape_machine.Kastword.desktop
-	/usr/lib/qt6/bin/qmllint -I build -I /usr/lib/qt6/qml src/qml/Main.qml
+	/usr/lib/qt6/bin/qmllint -I $(BUILD_DIR) -I /usr/lib/qt6/qml src/qml/Main.qml
