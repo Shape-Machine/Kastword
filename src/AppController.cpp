@@ -209,10 +209,8 @@ bool AppController::setShortcut(const QKeySequence &value) {
     m_shortcutSequence = effective;
     emit shortcutChanged();
   }
-  if (!accepted || effective != value) {
-    setStatus(i18n("The global shortcut could not be changed. Choose another shortcut."));
+  if (!accepted || effective != value)
     return false;
-  }
   return true;
 }
 

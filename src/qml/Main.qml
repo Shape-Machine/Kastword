@@ -339,7 +339,6 @@ Kirigami.ApplicationWindow {
                     id: shortcutEditor
                     objectName: "shortcutEditor"
                     Kirigami.FormData.label: i18n("Shortcut:")
-                    keySequence: appController.shortcut
                     multiKeyShortcutsAllowed: false
                     onKeySequenceModified: {
                         root.shortcutChangeFailed = !appController.setShortcut(keySequence)
@@ -347,6 +346,12 @@ Kirigami.ApplicationWindow {
                             keySequence = appController.shortcut
                     }
                     Accessible.name: i18n("Global dictation shortcut")
+
+                    Binding {
+                        target: shortcutEditor
+                        property: "keySequence"
+                        value: appController.shortcut
+                    }
                 }
 
                 Kirigami.InlineMessage {
