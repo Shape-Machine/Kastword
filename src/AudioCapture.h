@@ -3,11 +3,13 @@
 
 #pragma once
 
+#include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSource>
 #include <QByteArray>
 #include <QMediaDevices>
 #include <QObject>
+#include <functional>
 #include <memory>
 
 class CapturedAudioBuffer {
@@ -26,12 +28,15 @@ private:
 class AudioCapture : public QObject {
   Q_OBJECT
 public:
+  using DeviceProvider = std::function<QAudioDevice()>;
   explicit AudioCapture(QObject *parent = nullptr);
+  AudioCapture(DeviceProvider deviceProvider, QObject *parent = nullptr);
 
   virtual bool start(QString *error);
   virtual QByteArray stop();
   virtual bool isRecording() const { return m_source != nullptr; }
   void setMaximumDurationSeconds(int seconds) { m_maximumDurationSeconds = seconds; }
+  static QString errorMessageFor(QAudio::Error error);
 
 signals:
   void levelChanged(qreal level);
@@ -43,4 +48,5 @@ private:
   QAudioFormat m_format;
   CapturedAudioBuffer m_buffer;
   int m_maximumDurationSeconds = 5 * 60;
+  DeviceProvider m_deviceProvider;
 };

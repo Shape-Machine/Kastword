@@ -74,6 +74,41 @@ public:
   bool *destroyed = nullptr;
 };
 
+class FakeDesktopIntegration final : public DesktopIntegration {
+public:
+  void configureShortcut(QAction *action, const QList<QKeySequence> &shortcuts) override {
+    configuredAction = action;
+    configuredShortcuts = shortcuts;
+  }
+  QList<QKeySequence> shortcuts(QAction *) const override { return currentShortcuts; }
+  void setShortcuts(QAction *, const QList<QKeySequence> &shortcuts, bool autoload) override {
+    migratedShortcuts = shortcuts;
+    migratedWithAutoload = autoload;
+  }
+  void cleanShortcutComponent(const QString &component) override { cleanedComponent = component; }
+  void showNotification(NotificationKind kind, const QString &title, const QString &text,
+                        const QString &iconName, bool persistent) override {
+    notifications.append({kind, title, text, iconName, persistent});
+  }
+  void closeStatusNotification() override { ++closeCount; }
+
+  struct Notification {
+    NotificationKind kind;
+    QString title;
+    QString text;
+    QString iconName;
+    bool persistent;
+  };
+  QAction *configuredAction = nullptr;
+  QList<QKeySequence> configuredShortcuts;
+  QList<QKeySequence> currentShortcuts;
+  QList<QKeySequence> migratedShortcuts;
+  bool migratedWithAutoload = true;
+  QString cleanedComponent;
+  QList<Notification> notifications;
+  int closeCount = 0;
+};
+
 class AppControllerTest final : public QObject {
   Q_OBJECT
 
@@ -105,6 +140,12 @@ private slots:
   void restrictsLanguageForLocalEnglishOnlyModel();
   void stopsRecordingWhenActiveModelDisappears();
   void reportsModelVerificationAndReadiness();
+  void configuresDesktopIntegrationAndReportsFailures();
+  void presentsTrayStates_data();
+  void presentsTrayStates();
+  void reportsInjectedAudioDiscoveryAndBackendErrors_data();
+  void reportsInjectedAudioDiscoveryAndBackendErrors();
+  void activatesAndTogglesApplicationWindow();
 };
 
 void AppControllerTest::initTestCase() {
@@ -345,7 +386,8 @@ void AppControllerTest::rejectsToggleWhileTranscribing() {
 
   controller.toggle();
   controller.toggle();
-  QVERIFY(transcriptionStarted.tryAcquire(1, 1000));
+  QTRY_VERIFY(transcriptionStarted.available() > 0);
+  transcriptionStarted.acquire();
   controller.toggle();
 
   QCOMPARE(controller.state(), AppController::State::Transcribing);
@@ -714,6 +756,132 @@ void AppControllerTest::reportsModelVerificationAndReadiness() {
   validationGate.release();
   QTRY_VERIFY(controller.modelReady());
   QCOMPARE(controller.status(), QStringLiteral("Ready"));
+}
+
+void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto *audioPtr = audio.get();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto desktop = std::make_unique<FakeDesktopIntegration>();
+  auto *desktopPtr = desktop.get();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      true, false, nullptr, {}, std::move(desktop));
+
+  QCOMPARE(desktopPtr->configuredAction, controller.shortcutAction());
+  QCOMPARE(desktopPtr->configuredShortcuts,
+           QList<QKeySequence>{QKeySequence(QStringLiteral("Meta+Z"))});
+  QCOMPARE(desktopPtr->cleanedComponent, QStringLiteral("Kastword"));
+
+  controller.toggle();
+  QCOMPARE(desktopPtr->notifications.size(), 1);
+  QCOMPARE(desktopPtr->notifications.constLast().title, QStringLiteral("Dictation started"));
+  QVERIFY(desktopPtr->notifications.constLast().persistent);
+
+  audioPtr->fail(QStringLiteral("Deterministic backend failure."));
+  QCOMPARE(desktopPtr->closeCount, 2);
+  QCOMPARE(desktopPtr->notifications.size(), 2);
+  QCOMPARE(desktopPtr->notifications.constLast().kind, DesktopIntegration::NotificationKind::Error);
+  QCOMPARE(desktopPtr->notifications.constLast().text,
+           QStringLiteral("Deterministic backend failure."));
+}
+
+void AppControllerTest::presentsTrayStates_data() {
+  QTest::addColumn<int>("state");
+  QTest::addColumn<bool>("modelReady");
+  QTest::addColumn<QString>("icon");
+  QTest::addColumn<QString>("text");
+  QTest::addColumn<bool>("enabled");
+
+  using State = AppController::State;
+  QTest::newRow("idle ready") << int(State::Idle) << true
+                              << QStringLiteral("audio-input-microphone")
+                              << QStringLiteral("Start Dictation") << true;
+  QTest::newRow("idle unavailable")
+      << int(State::Idle) << false << QStringLiteral("audio-input-microphone")
+      << QStringLiteral("Start Dictation") << false;
+  QTest::newRow("recording") << int(State::Recording) << true << QStringLiteral("media-record")
+                             << QStringLiteral("Stop and Transcribe") << true;
+  QTest::newRow("transcribing") << int(State::Transcribing) << true
+                                << QStringLiteral("view-refresh") << QStringLiteral("Transcribing…")
+                                << false;
+  QTest::newRow("success") << int(State::Success) << true << QStringLiteral("dialog-ok-apply")
+                           << QStringLiteral("Start Dictation") << true;
+}
+
+void AppControllerTest::presentsTrayStates() {
+  QFETCH(int, state);
+  QFETCH(bool, modelReady);
+  QFETCH(QString, icon);
+  QFETCH(QString, text);
+  QFETCH(bool, enabled);
+
+  const TrayPresentation presentation = trayPresentation(state, modelReady);
+  QCOMPARE(presentation.iconName, icon);
+  QCOMPARE(presentation.actionText, text);
+  QCOMPARE(presentation.actionEnabled, enabled);
+}
+
+void AppControllerTest::reportsInjectedAudioDiscoveryAndBackendErrors_data() {
+  QTest::addColumn<QAudio::Error>("error");
+  QTest::addColumn<QString>("message");
+  QTest::newRow("open") << QAudio::OpenError
+                        << QStringLiteral("The microphone could not be opened.");
+  QTest::newRow("io") << QAudio::IOError << QStringLiteral("The microphone stopped responding.");
+  QTest::newRow("fatal") << QAudio::FatalError << QStringLiteral("The microphone backend failed.");
+  QTest::newRow("unknown") << QAudio::NoError
+                           << QStringLiteral("Microphone capture stopped unexpectedly.");
+}
+
+void AppControllerTest::reportsInjectedAudioDiscoveryAndBackendErrors() {
+  QFETCH(QAudio::Error, error);
+  QFETCH(QString, message);
+  QCOMPARE(AudioCapture::errorMessageFor(error), message);
+
+  AudioCapture capture([] { return QAudioDevice(); });
+  QString startError;
+  QVERIFY(!capture.start(&startError));
+  QCOMPARE(startError, QStringLiteral("No microphone is available."));
+}
+
+void AppControllerTest::activatesAndTogglesApplicationWindow() {
+  bool visible = false;
+  int showCount = 0;
+  int hideCount = 0;
+  int raiseCount = 0;
+  int requestCount = 0;
+  const WindowActivation window = {
+      [&visible] { return visible; },
+      [&visible, &hideCount] {
+        visible = false;
+        ++hideCount;
+      },
+      [&visible, &showCount] {
+        visible = true;
+        ++showCount;
+      },
+      [&raiseCount] { ++raiseCount; },
+      [&requestCount] { ++requestCount; },
+  };
+
+  activateWindow(window, false);
+  QVERIFY(visible);
+  QCOMPARE(showCount, 1);
+  QCOMPARE(raiseCount, 1);
+  QCOMPARE(requestCount, 1);
+
+  activateWindow(window, true);
+  QVERIFY(!visible);
+  QCOMPARE(hideCount, 1);
+
+  activateWindow(window, true);
+  QVERIFY(visible);
+  QCOMPARE(showCount, 2);
+  QCOMPARE(raiseCount, 2);
+  QCOMPARE(requestCount, 2);
 }
 
 QTEST_MAIN(AppControllerTest)

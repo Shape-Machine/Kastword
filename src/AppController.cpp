@@ -3,11 +3,10 @@
 
 #include "AppController.h"
 
+#include "PlatformIntegration.h"
 #include "WhisperEngine.h"
 #include <KConfigGroup>
-#include <KGlobalAccel>
 #include <KLocalizedString>
-#include <KNotification>
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QStandardPaths>
@@ -47,9 +46,13 @@ AppController::AppController(std::unique_ptr<AudioCapture> audio,
 AppController::AppController(std::unique_ptr<AudioCapture> audio,
                              std::unique_ptr<TextOutput> output, TranscribeFunction transcribe,
                              bool desktopIntegration, bool requireModel, QObject *parent,
-                             std::unique_ptr<ModelManager> modelManager)
+                             std::unique_ptr<ModelManager> modelManager,
+                             std::unique_ptr<DesktopIntegration> desktopServices)
     : QObject(parent), m_audio(std::move(audio)), m_output(std::move(output)),
       m_modelManager(modelManager ? std::move(modelManager) : std::make_unique<ModelManager>()),
+      m_desktopServices(desktopServices
+                            ? std::move(desktopServices)
+                            : (desktopIntegration ? createDesktopIntegration() : nullptr)),
       m_transcriptionWorker(new TranscriptionWorker(std::move(transcribe))),
       m_desktopIntegration(desktopIntegration), m_requireModel(requireModel),
       m_config(QStringLiteral("kastwordrc")), m_shortcut(i18n("Toggle dictation"), this) {
@@ -131,20 +134,19 @@ void AppController::initialize() {
     if (!group.readEntry("GlobalAccelComponentIdentityV2", false)) {
       // An earlier build used the display name as the component ID, creating a second registration
       // that competed with the executable's stable lowercase ID. Remove that duplicate once.
-      KGlobalAccel::cleanComponent(QStringLiteral("Kastword"));
+      m_desktopServices->cleanShortcutComponent(QStringLiteral("Kastword"));
       KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
       writableGroup.writeEntry("GlobalAccelComponentIdentityV2", true);
       writableGroup.sync();
     }
-    KGlobalAccel::self()->setDefaultShortcut(&m_shortcut, shortcut);
-    KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut);
+    m_desktopServices->configureShortcut(&m_shortcut, shortcut);
     if (!group.readEntry("ShortcutMigratedToMetaZ", false)) {
-      const QList<QKeySequence> currentShortcut = KGlobalAccel::self()->shortcut(&m_shortcut);
+      const QList<QKeySequence> currentShortcut = m_desktopServices->shortcuts(&m_shortcut);
       const QList<QKeySequence> previousDefault = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
       const QList<QKeySequence> originalDefault = {QKeySequence(QStringLiteral("Meta+D"))};
       // Update only Kastword's former defaults. An empty or different shortcut is a user choice.
       if (currentShortcut == previousDefault || currentShortcut == originalDefault)
-        KGlobalAccel::self()->setShortcut(&m_shortcut, shortcut, KGlobalAccel::NoAutoloading);
+        m_desktopServices->setShortcuts(&m_shortcut, shortcut, false);
       KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
       writableGroup.writeEntry("ShortcutMigratedToMetaZ", true);
       writableGroup.sync();
@@ -160,7 +162,8 @@ void AppController::initialize() {
   connect(m_output.get(), &TextOutput::deliveryStatus, this, [this](const QString &status) {
     setStatus(status);
     if (m_desktopIntegration && status.contains(i18n("failed"), Qt::CaseInsensitive))
-      KNotification::event(KNotification::Error, i18n("Automatic paste failed"), status);
+      m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
+                                          i18n("Automatic paste failed"), status);
   });
   if (modelReady())
     setStatus(i18n("Ready"));
@@ -290,7 +293,8 @@ void AppController::toggle() {
   if (!m_audio->start(&error)) {
     setStatus(error);
     if (m_desktopIntegration)
-      KNotification::event(KNotification::Error, i18n("Kastword"), error);
+      m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
+                                          i18n("Kastword"), error);
     return;
   }
   setState(State::Recording);
@@ -314,18 +318,19 @@ void AppController::handleTranscriptionFinished(const QString &text, const QStri
   if (!error.isEmpty()) {
     setState(State::Idle);
     setStatus(error);
-    if (m_statusNotification)
-      m_statusNotification->close();
+    if (m_desktopServices)
+      m_desktopServices->closeStatusNotification();
     if (m_desktopIntegration)
-      KNotification::event(KNotification::Error, i18n("Transcription failed"), error);
+      m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
+                                          i18n("Transcription failed"), error);
     return;
   }
   const QString trimmedText = text.trimmed();
   if (trimmedText.isEmpty()) {
     setState(State::Idle);
     setStatus(i18n("No speech detected."));
-    if (m_statusNotification)
-      m_statusNotification->close();
+    if (m_desktopServices)
+      m_desktopServices->closeStatusNotification();
     return;
   }
   m_transcript = trimmedText;
@@ -349,10 +354,11 @@ void AppController::handleCaptureFailure(const QString &error) {
   }
   setState(State::Idle);
   setStatus(error);
-  if (m_statusNotification)
-    m_statusNotification->close();
+  if (m_desktopServices)
+    m_desktopServices->closeStatusNotification();
   if (m_desktopIntegration)
-    KNotification::event(KNotification::Error, i18n("Recording failed"), error);
+    m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
+                                        i18n("Recording failed"), error);
 }
 
 void AppController::setState(State value) {
@@ -366,11 +372,9 @@ void AppController::showStatusNotification(const QString &title, const QString &
                                            const QString &iconName, bool persistent) {
   if (!m_desktopIntegration)
     return;
-  if (m_statusNotification)
-    m_statusNotification->close();
-  const auto flags = persistent ? KNotification::Persistent : KNotification::CloseOnTimeout;
-  m_statusNotification =
-      KNotification::event(KNotification::Notification, title, text, iconName, flags);
+  m_desktopServices->closeStatusNotification();
+  m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Information, title,
+                                      text, iconName, persistent);
 }
 
 void AppController::setStatus(const QString &value) {
