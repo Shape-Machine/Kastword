@@ -12,6 +12,28 @@
 #include <QTimer>
 #include <utility>
 
+namespace {
+class QtAudioCaptureBackend final : public AudioCaptureBackend {
+public:
+  QtAudioCaptureBackend(const QAudioDevice &device, const QAudioFormat &format)
+      : m_source(device, format) {
+    connect(&m_source, &QAudioSource::stateChanged, this, &AudioCaptureBackend::stateChanged);
+  }
+
+  QIODevice *start() override { return m_source.start(); }
+  void stop() override { m_source.stop(); }
+  QAudio::Error error() const override { return m_source.error(); }
+
+private:
+  QAudioSource m_source;
+};
+
+std::unique_ptr<AudioCaptureBackend> createBackend(const QAudioDevice &device,
+                                                   const QAudioFormat &format) {
+  return std::make_unique<QtAudioCaptureBackend>(device, format);
+}
+} // namespace
+
 QString AudioCapture::errorMessageFor(QAudio::Error error) {
   switch (error) {
   case QAudio::OpenError:
@@ -30,7 +52,12 @@ AudioCapture::AudioCapture(QObject *parent)
     : AudioCapture([] { return QMediaDevices::defaultAudioInput(); }, parent) {}
 
 AudioCapture::AudioCapture(DeviceProvider deviceProvider, QObject *parent)
-    : QObject(parent), m_deviceProvider(std::move(deviceProvider)) {}
+    : QObject(parent), m_deviceProvider(std::move(deviceProvider)),
+      m_backendFactory(createBackend) {}
+
+AudioCapture::AudioCapture(const QAudioFormat &format, BackendFactory backendFactory,
+                           QObject *parent)
+    : QObject(parent), m_backendFactory(std::move(backendFactory)), m_injectedFormat(format) {}
 
 void CapturedAudioBuffer::configure(const QAudioFormat &format, int maximumDurationSeconds) {
   m_format = format;
@@ -56,20 +83,20 @@ bool AudioCapture::start(QString *error) {
   if (m_source)
     return true;
 
-  const QAudioDevice device = m_deviceProvider();
-  if (device.isNull()) {
+  const QAudioDevice device = m_injectedFormat.isValid() ? QAudioDevice() : m_deviceProvider();
+  if (device.isNull() && !m_injectedFormat.isValid()) {
     *error = i18n("No microphone is available.");
     return false;
   }
 
-  m_format = device.preferredFormat();
+  m_format = m_injectedFormat.isValid() ? m_injectedFormat : device.preferredFormat();
   if (!m_format.isValid() || m_format.bytesPerSample() == 0) {
     *error = i18n("The microphone reported an invalid audio format.");
     return false;
   }
 
   m_buffer.configure(m_format, m_maximumDurationSeconds);
-  m_source = std::make_unique<QAudioSource>(device, m_format);
+  m_source = m_backendFactory(device, m_format);
   m_device = m_source->start();
   if (!m_device) {
     *error = i18n("Could not start microphone capture.");
@@ -77,10 +104,10 @@ bool AudioCapture::start(QString *error) {
     return false;
   }
 
-  connect(m_source.get(), &QAudioSource::stateChanged, this, [this](QAudio::State state) {
+  connect(m_source.get(), &AudioCaptureBackend::stateChanged, this, [this](QAudio::State state) {
     if (state != QAudio::StoppedState || !m_source || m_source->error() == QAudio::NoError)
       return;
-    const QPointer<QAudioSource> failedSource = m_source.get();
+    const QPointer<AudioCaptureBackend> failedSource = m_source.get();
     const QAudio::Error captureError = m_source->error();
     QTimer::singleShot(0, this, [this, failedSource, captureError] {
       if (!failedSource || m_source.get() != failedSource)

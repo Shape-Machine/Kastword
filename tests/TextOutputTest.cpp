@@ -82,6 +82,8 @@ private slots:
   void copiesTranscriptionToAvailableClipboards();
   void forgetsOnlyMatchingClipboardText();
   void reportsPasteHelperFailures();
+  void mapsPasteHelperErrors_data();
+  void mapsPasteHelperErrors();
   void deliversThroughX11Helper();
   void deliversThroughWaylandHelper();
   void reportsMissingAutomaticPasteHelper();
@@ -142,6 +144,24 @@ void TextOutputTest::reportsPasteHelperFailures() {
                     QStringLiteral("unexpected success"));
   QTRY_COMPARE(status.count(), 1);
   QCOMPARE(status.takeFirst().at(0).toString(), QStringLiteral("Automatic paste helper crashed."));
+}
+
+void TextOutputTest::mapsPasteHelperErrors_data() {
+  QTest::addColumn<QProcess::ProcessError>("error");
+  QTest::addColumn<TextOutput::HelperResult>("result");
+  QTest::newRow("failed to start")
+      << QProcess::FailedToStart << TextOutput::HelperResult::FailedToStart;
+  QTest::newRow("crashed") << QProcess::Crashed << TextOutput::HelperResult::Crashed;
+  QTest::newRow("timed out") << QProcess::Timedout << TextOutput::HelperResult::Failed;
+  QTest::newRow("write error") << QProcess::WriteError << TextOutput::HelperResult::Failed;
+  QTest::newRow("read error") << QProcess::ReadError << TextOutput::HelperResult::Failed;
+  QTest::newRow("unknown error") << QProcess::UnknownError << TextOutput::HelperResult::Failed;
+}
+
+void TextOutputTest::mapsPasteHelperErrors() {
+  QFETCH(QProcess::ProcessError, error);
+  QFETCH(TextOutput::HelperResult, result);
+  QCOMPARE(TextOutput::helperResultForProcessError(error), result);
 }
 
 void TextOutputTest::deliversThroughX11Helper() {

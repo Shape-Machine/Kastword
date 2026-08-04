@@ -73,10 +73,7 @@ public:
                        if (*completed)
                          return;
                        *completed = true;
-                       finished(error == QProcess::FailedToStart
-                                    ? TextOutput::HelperResult::FailedToStart
-                                    : TextOutput::HelperResult::Crashed,
-                                -1);
+                       finished(TextOutput::helperResultForProcessError(error), -1);
                        process->deleteLater();
                      });
     QObject::connect(process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), m_owner,
@@ -133,6 +130,14 @@ QStringList TextOutput::waylandPasteArguments() {
           QStringLiteral("47:1"), QStringLiteral("47:0"), QStringLiteral("42:0"),
           QStringLiteral("29:0"), QStringLiteral("29:1"), QStringLiteral("47:1"),
           QStringLiteral("47:0"), QStringLiteral("29:0")};
+}
+
+TextOutput::HelperResult TextOutput::helperResultForProcessError(QProcess::ProcessError error) {
+  if (error == QProcess::FailedToStart)
+    return HelperResult::FailedToStart;
+  if (error == QProcess::Crashed)
+    return HelperResult::Crashed;
+  return HelperResult::Failed;
 }
 
 QString TextOutput::deliver(const QString &text, bool autoPaste) {
