@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QObject>
+#include <QProcess>
 #include <QString>
 #include <QStringList>
 #include <functional>
@@ -45,6 +46,7 @@ public:
                                        bool xdotoolAvailable, bool ydotoolAvailable);
   static QStringList x11PasteArguments();
   static QStringList waylandPasteArguments();
+  static HelperResult helperResultForProcessError(QProcess::ProcessError error);
 
 signals:
   void deliveryStatus(const QString &status);

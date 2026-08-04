@@ -5,6 +5,7 @@
 
 #include <KConfigGroup>
 #include <KLocalizedString>
+#include <QBuffer>
 #include <QFile>
 #include <QMutex>
 #include <QScopeGuard>
@@ -107,6 +108,21 @@ public:
   QString cleanedComponent;
   QList<Notification> notifications;
   int closeCount = 0;
+};
+
+class FakeAudioBackend final : public AudioCaptureBackend {
+public:
+  explicit FakeAudioBackend(QIODevice *device) : m_device(device) {}
+  QIODevice *start() override { return m_device; }
+  void stop() override {}
+  QAudio::Error error() const override { return currentError; }
+  void fail(QAudio::Error error) {
+    currentError = error;
+    emit stateChanged(QAudio::StoppedState);
+  }
+
+  QIODevice *m_device;
+  QAudio::Error currentError = QAudio::NoError;
 };
 
 class AppControllerTest final : public QObject {
@@ -845,6 +861,31 @@ void AppControllerTest::reportsInjectedAudioDiscoveryAndBackendErrors() {
   QString startError;
   QVERIFY(!capture.start(&startError));
   QCOMPARE(startError, QStringLiteral("No microphone is available."));
+
+  QAudioFormat format;
+  format.setSampleRate(16000);
+  format.setChannelCount(1);
+  format.setSampleFormat(QAudioFormat::Int16);
+  QBuffer input;
+  FakeAudioBackend *backend = nullptr;
+  AudioCapture backendCapture(format,
+                              [&backend, &input](const QAudioDevice &, const QAudioFormat &) {
+                                auto created = std::make_unique<FakeAudioBackend>(&input);
+                                backend = created.get();
+                                return created;
+                              });
+  QSignalSpy failure(&backendCapture, &AudioCapture::captureFailed);
+  QVERIFY(backendCapture.start(&startError));
+  backend->fail(error);
+  if (error == QAudio::NoError) {
+    QCoreApplication::processEvents();
+    QCOMPARE(failure.count(), 0);
+    QVERIFY(backendCapture.isRecording());
+  } else {
+    QTRY_COMPARE(failure.count(), 1);
+    QCOMPARE(failure.constFirst().constFirst().toString(), message);
+    QVERIFY(!backendCapture.isRecording());
+  }
 }
 
 void AppControllerTest::activatesAndTogglesApplicationWindow() {
