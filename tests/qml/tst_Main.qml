@@ -128,8 +128,11 @@ TestCase {
         applicationWindow.openModelManager()
         const models = modelPage()
         const filter = findChild(models, "modelLanguageFilter")
+        const warning = findChild(models, "externalModelWarning")
         verify(filter)
+        verify(warning)
         compare(filter.Accessible.name, "Filter speech models")
+        compare(warning.visible, true)
     }
 
     function test_modelFiltersDefaultToRecommendedAndSeparateCapabilities() {

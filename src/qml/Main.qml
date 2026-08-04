@@ -256,6 +256,14 @@ Kirigami.ApplicationWindow {
                     text: appController.modelManager.status
                 }
 
+                Kirigami.InlineMessage {
+                    objectName: "externalModelWarning"
+                    Layout.fillWidth: true
+                    visible: true
+                    type: Kirigami.MessageType.Information
+                    text: i18n("Only open Whisper models from sources you trust. Models are parsed inside Kastword.")
+                }
+
                 Controls.Button {
                     text: i18n("Use an existing model…")
                     enabled: !appController.modelManager.busy
@@ -320,14 +328,6 @@ Kirigami.ApplicationWindow {
                     visible: autoPasteCheckBox.checked
                     type: Kirigami.MessageType.Warning
                     text: i18n("Automatic paste sends keystrokes to the focused application after a short delay. On Wayland, Kastword cannot verify that focus stayed unchanged.")
-                }
-
-                Kirigami.InlineMessage {
-                    Kirigami.FormData.isSection: true
-                    Layout.fillWidth: true
-                    visible: true
-                    type: Kirigami.MessageType.Information
-                    text: i18n("Only open Whisper models from sources you trust. Models are parsed inside Kastword.")
                 }
 
                 Controls.Label {
