@@ -134,12 +134,15 @@ public:
   void setAutoPaste(bool) {}
   void setRecordingLimitMinutes(int) {}
   Q_INVOKABLE bool setShortcut(const QKeySequence &value) {
+    if (!m_shortcutChangeAccepted)
+      return false;
     if (m_shortcut == value)
       return true;
     m_shortcut = value;
     emit shortcutChanged();
     return true;
   }
+  Q_INVOKABLE void setShortcutChangeAccepted(bool accepted) { m_shortcutChangeAccepted = accepted; }
 
   Q_INVOKABLE void setModelUrl(const QUrl &url) { setModelPath(url.toLocalFile()); }
   Q_INVOKABLE void toggle() {
@@ -200,6 +203,7 @@ private:
   FakeModelManager m_modelManager;
   bool m_modelReady = true;
   bool m_restoringModel = false;
+  bool m_shortcutChangeAccepted = true;
 };
 
 class QmlTestSetup final : public QObject {

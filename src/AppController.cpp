@@ -145,15 +145,25 @@ void AppController::initialize() {
       const QList<QKeySequence> previousDefault = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
       const QList<QKeySequence> originalDefault = {QKeySequence(QStringLiteral("Meta+D"))};
       // Update only Kastword's former defaults. An empty or different shortcut is a user choice.
+      bool migrationComplete = true;
       if (currentShortcut == previousDefault || currentShortcut == originalDefault) {
-        m_desktopServices->setShortcuts(&m_shortcut, shortcut, false);
-        currentShortcut = shortcut;
+        const bool accepted = m_desktopServices->setShortcuts(&m_shortcut, shortcut, false);
+        currentShortcut = m_desktopServices->shortcuts(&m_shortcut);
+        migrationComplete = accepted && currentShortcut == shortcut;
       }
-      KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
-      writableGroup.writeEntry("ShortcutMigratedToMetaZ", true);
-      writableGroup.sync();
+      if (migrationComplete) {
+        KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
+        writableGroup.writeEntry("ShortcutMigratedToMetaZ", true);
+        writableGroup.sync();
+      }
     }
     m_shortcutSequence = currentShortcut.value(0);
+    m_desktopServices->watchShortcutChanges(&m_shortcut, [this](const QKeySequence &shortcut) {
+      if (m_shortcutSequence == shortcut)
+        return;
+      m_shortcutSequence = shortcut;
+      emit shortcutChanged();
+    });
     connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
   }
   m_shortcut.setEnabled(modelReady());

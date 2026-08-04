@@ -20,6 +20,8 @@ public:
   virtual QList<QKeySequence> shortcuts(QAction *action) const = 0;
   virtual bool setShortcuts(QAction *action, const QList<QKeySequence> &shortcuts,
                             bool autoload) = 0;
+  virtual void watchShortcutChanges(QAction *action,
+                                    std::function<void(const QKeySequence &)> handler) = 0;
   virtual void cleanShortcutComponent(const QString &component) = 0;
   virtual void showNotification(NotificationKind kind, const QString &title, const QString &text,
                                 const QString &iconName = {}, bool persistent = false) = 0;

@@ -26,6 +26,16 @@ public:
         action, shortcuts, autoload ? KGlobalAccel::Autoloading : KGlobalAccel::NoAutoloading);
   }
 
+  void watchShortcutChanges(QAction *action,
+                            std::function<void(const QKeySequence &)> handler) override {
+    QObject::connect(KGlobalAccel::self(), &KGlobalAccel::globalShortcutChanged, action,
+                     [action, handler = std::move(handler)](QAction *changedAction,
+                                                            const QKeySequence &shortcut) {
+                       if (changedAction == action)
+                         handler(shortcut);
+                     });
+  }
+
   void cleanShortcutComponent(const QString &component) override {
     KGlobalAccel::cleanComponent(component);
   }

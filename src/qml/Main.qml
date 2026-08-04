@@ -34,12 +34,16 @@ Kirigami.ApplicationWindow {
 
     property string pendingRemovalId: ""
     property int currentView: 0
+    property bool shortcutChangeFailed: false
 
     Connections {
         target: appController
         function onModelSetupRequested() {
             root.show()
             root.openModelManager()
+        }
+        function onShortcutChanged() {
+            root.shortcutChangeFailed = false
         }
     }
 
@@ -338,10 +342,20 @@ Kirigami.ApplicationWindow {
                     keySequence: appController.shortcut
                     multiKeyShortcutsAllowed: false
                     onKeySequenceModified: {
-                        if (!appController.setShortcut(keySequence))
+                        root.shortcutChangeFailed = !appController.setShortcut(keySequence)
+                        if (root.shortcutChangeFailed)
                             keySequence = appController.shortcut
                     }
                     Accessible.name: i18n("Global dictation shortcut")
+                }
+
+                Kirigami.InlineMessage {
+                    objectName: "shortcutError"
+                    Kirigami.FormData.isSection: true
+                    Layout.fillWidth: true
+                    visible: root.shortcutChangeFailed
+                    type: Kirigami.MessageType.Error
+                    text: i18n("The global shortcut could not be changed. Choose another shortcut.")
                 }
             }
         }
