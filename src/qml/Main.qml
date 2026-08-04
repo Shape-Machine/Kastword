@@ -12,14 +12,10 @@ import org.kde.kirigami as Kirigami
 Kirigami.ApplicationWindow {
     id: root
     objectName: "mainWindow"
-    width: 480
-    height: 280
-    minimumWidth: 380
-    minimumHeight: Math.max(280,
-                            mainContent.implicitHeight
-                            + mainPage.topPadding
-                            + mainPage.bottomPadding
-                            + root.pageStack.globalToolBar.height)
+    width: 760
+    height: 520
+    minimumWidth: 620
+    minimumHeight: 400
     visible: false
     title: i18n("Kastword")
 
@@ -28,36 +24,15 @@ Kirigami.ApplicationWindow {
     }
 
     function openModelManager() {
-        if (root.modelManagerDialog)
-            return
-        const page = modelManagerPage.createObject(root.contentItem)
-        root.modelManagerDialog = root.pageStack.pushDialogLayer(page, {}, {
-            width: Kirigami.Units.gridUnit * 32,
-            height: Kirigami.Units.gridUnit * 30,
-            minimumWidth: Kirigami.Units.gridUnit * 24,
-            minimumHeight: Kirigami.Units.gridUnit * 20
-        })
-        if (!root.modelManagerDialog)
-            page.destroy()
+        root.currentView = 1
     }
 
     function openSettings() {
-        if (root.settingsDialog)
-            return
-        const page = settingsPage.createObject(root.contentItem)
-        root.settingsDialog = root.pageStack.pushDialogLayer(page, {}, {
-            width: Kirigami.Units.gridUnit * 32,
-            height: Kirigami.Units.gridUnit * 30,
-            minimumWidth: Kirigami.Units.gridUnit * 24,
-            minimumHeight: Kirigami.Units.gridUnit * 20
-        })
-        if (!root.settingsDialog)
-            page.destroy()
+        root.currentView = 2
     }
 
     property string pendingRemovalId: ""
-    property var modelManagerDialog: null
-    property var settingsDialog: null
+    property int currentView: 0
 
     Connections {
         target: appController
@@ -124,7 +99,6 @@ Kirigami.ApplicationWindow {
         Kirigami.ScrollablePage {
             objectName: "modelManagerPage"
             title: i18n("Speech models")
-            Component.onDestruction: root.modelManagerDialog = null
 
             ColumnLayout {
                 width: parent.width
@@ -303,10 +277,8 @@ Kirigami.ApplicationWindow {
         id: settingsPage
 
         Kirigami.ScrollablePage {
-            id: settingsPageRoot
             objectName: "settingsPage"
             title: i18n("Settings")
-            Component.onDestruction: root.settingsDialog = null
 
             Kirigami.FormLayout {
                 width: parent.width
@@ -323,10 +295,7 @@ Kirigami.ApplicationWindow {
                     Controls.Button {
                         objectName: "manageModelsButton"
                         text: i18n("Manage…")
-                        onClicked: {
-                            settingsPageRoot.Kirigami.PageStack.closeDialog()
-                            root.openModelManager()
-                        }
+                        onClicked: root.openModelManager()
                         Accessible.name: i18n("Manage speech models")
                     }
                 }
@@ -386,23 +355,18 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    pageStack.initialPage: Kirigami.Page {
-        id: mainPage
-        title: i18n("Offline dictation")
-        actions: [
-            Kirigami.Action {
-                text: i18n("Settings")
-                icon.name: "settings-configure"
-                onTriggered: root.openSettings()
-            }
-        ]
+    Component {
+        id: dictationPage
 
-        ColumnLayout {
-            id: mainContent
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            spacing: Kirigami.Units.largeSpacing
+        Kirigami.Page {
+            title: i18n("Offline dictation")
+
+            ColumnLayout {
+                id: mainContent
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                spacing: Kirigami.Units.largeSpacing
 
             Kirigami.InlineMessage {
                 objectName: "statusMessage"
@@ -531,6 +495,95 @@ Kirigami.ApplicationWindow {
                         Controls.ToolTip.visible: hovered
                         Controls.ToolTip.text: Accessible.name
                     }
+                }
+            }
+            }
+        }
+    }
+
+    pageStack.initialPage: Kirigami.Page {
+        id: mainPage
+        padding: 0
+        title: root.currentView === 0 ? i18n("Offline dictation")
+             : root.currentView === 1 ? i18n("Speech models")
+             : i18n("Settings")
+
+        RowLayout {
+            anchors.fill: parent
+            spacing: 0
+
+            Controls.Pane {
+                Layout.fillHeight: true
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 11
+                padding: Kirigami.Units.smallSpacing
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Controls.ButtonGroup {
+                        id: navigationGroup
+                    }
+
+                    Controls.TabButton {
+                        objectName: "dictationTab"
+                        Layout.fillWidth: true
+                        text: i18n("Offline dictation")
+                        icon.name: "audio-input-microphone"
+                        display: Controls.AbstractButton.TextBesideIcon
+                        checked: root.currentView === 0
+                        Controls.ButtonGroup.group: navigationGroup
+                        onClicked: root.currentView = 0
+                    }
+
+                    Controls.TabButton {
+                        objectName: "modelsTab"
+                        Layout.fillWidth: true
+                        text: i18n("Speech models")
+                        icon.name: "folder-download"
+                        display: Controls.AbstractButton.TextBesideIcon
+                        checked: root.currentView === 1
+                        Controls.ButtonGroup.group: navigationGroup
+                        onClicked: root.currentView = 1
+                    }
+
+                    Controls.TabButton {
+                        objectName: "settingsTab"
+                        Layout.fillWidth: true
+                        text: i18n("Settings")
+                        icon.name: "settings-configure"
+                        display: Controls.AbstractButton.TextBesideIcon
+                        checked: root.currentView === 2
+                        Controls.ButtonGroup.group: navigationGroup
+                        onClicked: root.currentView = 2
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                    }
+                }
+            }
+
+            Kirigami.Separator {
+                Layout.fillHeight: true
+            }
+
+            StackLayout {
+                objectName: "mainViewStack"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                currentIndex: root.currentView
+
+                Loader {
+                    sourceComponent: dictationPage
+                }
+
+                Loader {
+                    sourceComponent: modelManagerPage
+                }
+
+                Loader {
+                    sourceComponent: settingsPage
                 }
             }
         }

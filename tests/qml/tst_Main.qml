@@ -33,19 +33,22 @@ TestCase {
         appController.setTestState(false, false)
     }
 
-    function waitForModelDialog() {
-        tryVerify(function() { return applicationWindow.modelManagerDialog !== null })
-        return applicationWindow.modelManagerDialog
+    function modelPage() {
+        const page = findChild(applicationWindow.contentItem, "modelManagerPage")
+        verify(page)
+        return page
     }
 
-    function waitForSettingsDialog() {
-        tryVerify(function() { return applicationWindow.settingsDialog !== null })
-        return applicationWindow.settingsDialog
+    function settingsPage() {
+        const page = findChild(applicationWindow.contentItem, "settingsPage")
+        verify(page)
+        return page
     }
 
     function test_missingModelOpensSetupAndDisablesDictation() {
         appController.setModelReady(false)
-        compare(waitForModelDialog().objectName, "modelManagerPage")
+        tryCompare(applicationWindow, "currentView", 1)
+        compare(modelPage().objectName, "modelManagerPage")
         const button = findChild(applicationWindow.contentItem, "dictationButton")
         verify(button)
         compare(button.enabled, false)
@@ -54,15 +57,16 @@ TestCase {
     function test_savedModelVerificationDoesNotOpenSetup() {
         appController.setRestoringModel(true)
         appController.setModelReady(false)
-        verify(applicationWindow.modelManagerDialog === null)
+        compare(applicationWindow.currentView, 0)
         applicationWindow.openModelManager()
-        const modelDialog = waitForModelDialog()
-        const warning = findChild(modelDialog, "modelSetupWarning")
+        compare(applicationWindow.currentView, 1)
+        const models = modelPage()
+        const warning = findChild(models, "modelSetupWarning")
         verify(warning)
         compare(warning.visible, false)
 
         appController.setRestoringModel(false)
-        compare(applicationWindow.modelManagerDialog, modelDialog)
+        compare(applicationWindow.currentView, 1)
     }
 
     function cleanup() {
@@ -121,31 +125,27 @@ TestCase {
     }
 
     function test_modelControlsHaveAccessibleNames() {
-        applicationWindow.pageStack.currentItem.actions[0].trigger()
-        const settingsDialog = waitForSettingsDialog()
-        compare(settingsDialog.objectName, "settingsPage")
-        verify(settingsDialog.width > applicationWindow.width)
-        verify(settingsDialog.height > applicationWindow.height)
-        const manage = findChild(settingsDialog, "manageModelsButton")
+        applicationWindow.openSettings()
+        compare(applicationWindow.currentView, 2)
+        const settings = settingsPage()
+        const manage = findChild(settings, "manageModelsButton")
         verify(manage)
         compare(manage.Accessible.name, "Manage speech models")
         manage.clicked()
-        const modelDialog = waitForModelDialog()
-        compare(modelDialog.objectName, "modelManagerPage")
-        verify(modelDialog.width > applicationWindow.width)
-        verify(modelDialog.height > applicationWindow.height)
-        const filter = findChild(modelDialog, "modelLanguageFilter")
+        compare(applicationWindow.currentView, 1)
+        const models = modelPage()
+        const filter = findChild(models, "modelLanguageFilter")
         verify(filter)
         compare(filter.Accessible.name, "Filter speech models")
     }
 
     function test_modelFiltersDefaultToRecommendedAndSeparateCapabilities() {
         applicationWindow.openModelManager()
-        const modelDialog = waitForModelDialog()
-        const filter = findChild(modelDialog, "modelLanguageFilter")
-        const english = findChild(modelDialog, "modelCard-base.en")
-        const recommendedMultilingual = findChild(modelDialog, "modelCard-small")
-        const otherMultilingual = findChild(modelDialog, "modelCard-tiny")
+        const models = modelPage()
+        const filter = findChild(models, "modelLanguageFilter")
+        const english = findChild(models, "modelCard-base.en")
+        const recommendedMultilingual = findChild(models, "modelCard-small")
+        const otherMultilingual = findChild(models, "modelCard-tiny")
         verify(filter)
         verify(english)
         verify(recommendedMultilingual)
@@ -169,13 +169,13 @@ TestCase {
 
     function test_verificationCanBeCancelled() {
         applicationWindow.openModelManager()
-        const modelDialog = waitForModelDialog()
-        const filter = findChild(modelDialog, "modelLanguageFilter")
+        const models = modelPage()
+        const filter = findChild(models, "modelLanguageFilter")
         verify(filter)
         filter.currentIndex = filter.indexOfValue("all")
         appController.modelManager.setVerifyingId("tiny")
 
-        const cancel = findChild(modelDialog, "cancelModel-tiny")
+        const cancel = findChild(models, "cancelModel-tiny")
         verify(cancel)
         tryCompare(cancel, "visible", true)
         compare(cancel.text, "Cancel")
@@ -183,14 +183,14 @@ TestCase {
 
     function test_partialDownloadCanBeRemoved() {
         applicationWindow.openModelManager()
-        const modelDialog = waitForModelDialog()
-        const filter = findChild(modelDialog, "modelLanguageFilter")
+        const models = modelPage()
+        const filter = findChild(models, "modelLanguageFilter")
         verify(filter)
         filter.currentIndex = filter.indexOfValue("all")
         appController.modelManager.setPartialId("tiny")
 
-        const partial = findChild(modelDialog, "partialModel-tiny")
-        const remove = findChild(modelDialog, "removeModel-tiny")
+        const partial = findChild(models, "partialModel-tiny")
+        const remove = findChild(models, "removeModel-tiny")
         verify(partial)
         verify(remove)
         tryCompare(partial, "visible", true)
@@ -207,6 +207,27 @@ TestCase {
         const previousCount = appController.toggleCount
         keyClick(Qt.Key_Space)
         compare(appController.toggleCount, previousCount + 1)
+    }
+
+    function test_verticalTabsSwitchViewsInOneWindow() {
+        const dictationTab = findChild(applicationWindow.contentItem, "dictationTab")
+        const modelsTab = findChild(applicationWindow.contentItem, "modelsTab")
+        const settingsTab = findChild(applicationWindow.contentItem, "settingsTab")
+        verify(dictationTab)
+        verify(modelsTab)
+        verify(settingsTab)
+        compare(dictationTab.checked, true)
+
+        modelsTab.clicked()
+        compare(applicationWindow.currentView, 1)
+        compare(modelsTab.checked, true)
+        compare(modelPage().visible, true)
+
+        settingsTab.clicked()
+        compare(applicationWindow.currentView, 2)
+        compare(settingsTab.checked, true)
+        compare(settingsPage().visible, true)
+        compare(applicationWindow.pageStack.depth, 1)
     }
 
     function test_compactTranscriptActionsAreAccessible() {
