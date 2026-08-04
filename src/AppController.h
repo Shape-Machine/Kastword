@@ -11,6 +11,7 @@
 
 #include <KConfig>
 #include <QAction>
+#include <QKeySequence>
 #include <QObject>
 #include <QPair>
 #include <QPointer>
@@ -38,7 +39,8 @@ class AppController final : public QObject {
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
-  Q_PROPERTY(QString shortcutText READ shortcutText CONSTANT)
+  Q_PROPERTY(QKeySequence shortcut READ shortcut WRITE setShortcut NOTIFY shortcutChanged)
+  Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
 
 public:
   enum class State { Idle, Recording, Transcribing, Success };
@@ -72,12 +74,14 @@ public:
   bool autoPaste() const { return m_autoPaste; }
   int recordingLimitMinutes() const { return m_recordingLimitMinutes; }
   qreal level() const { return m_level; }
+  QKeySequence shortcut() const { return m_shortcutSequence; }
   QString shortcutText() const;
 
   void setModelPath(const QString &value);
   void setLanguage(const QString &value);
   void setAutoPaste(bool value);
   void setRecordingLimitMinutes(int value);
+  void setShortcut(const QKeySequence &value);
   QAction *shortcutAction() { return &m_shortcut; }
 
   Q_INVOKABLE void toggle();
@@ -97,6 +101,7 @@ signals:
   void autoPasteChanged();
   void recordingLimitMinutesChanged();
   void levelChanged();
+  void shortcutChanged();
 
 private:
   void setState(State value);
@@ -119,6 +124,7 @@ private:
   bool m_requireModel;
   KConfig m_config;
   QAction m_shortcut;
+  QKeySequence m_shortcutSequence{QStringLiteral("Meta+Z")};
   State m_state = State::Idle;
   QString m_status;
   QString m_transcript;

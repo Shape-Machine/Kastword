@@ -3,6 +3,7 @@
 
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
+#include <QKeySequence>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QUrl>
@@ -97,7 +98,8 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
-  Q_PROPERTY(QString shortcutText READ shortcutText CONSTANT)
+  Q_PROPERTY(QKeySequence shortcut READ shortcut WRITE setShortcut NOTIFY shortcutChanged)
+  Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
   Q_PROPERTY(int toggleCount READ toggleCount NOTIFY toggleCountChanged)
 
 public:
@@ -118,7 +120,8 @@ public:
   bool autoPaste() const { return false; }
   int recordingLimitMinutes() const { return 5; }
   qreal level() const { return 0.5; }
-  QString shortcutText() const { return QStringLiteral("Meta+Z"); }
+  QKeySequence shortcut() const { return m_shortcut; }
+  QString shortcutText() const { return m_shortcut.toString(QKeySequence::NativeText); }
   int toggleCount() const { return m_toggleCount; }
 
   void setModelPath(const QString &path) {
@@ -130,6 +133,12 @@ public:
   void setLanguage(const QString &) {}
   void setAutoPaste(bool) {}
   void setRecordingLimitMinutes(int) {}
+  void setShortcut(const QKeySequence &value) {
+    if (m_shortcut == value)
+      return;
+    m_shortcut = value;
+    emit shortcutChanged();
+  }
 
   Q_INVOKABLE void setModelUrl(const QUrl &url) { setModelPath(url.toLocalFile()); }
   Q_INVOKABLE void toggle() {
@@ -176,6 +185,7 @@ signals:
   void recordingLimitMinutesChanged();
   void levelChanged();
   void toggleCountChanged();
+  void shortcutChanged();
   void modelSetupRequested();
   void modelReadyChanged();
 
@@ -185,6 +195,7 @@ private:
   QString m_status = QStringLiteral("Ready");
   QString m_modelPath;
   int m_toggleCount = 0;
+  QKeySequence m_shortcut{QStringLiteral("Meta+Z")};
   FakeModelManager m_modelManager;
   bool m_modelReady = true;
   bool m_restoringModel = false;
