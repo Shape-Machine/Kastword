@@ -10,27 +10,33 @@ CMAKE_ARGS ?=
 COVERAGE_DIR ?= $(BUILD_DIR)/coverage
 COVERAGE_MIN_LINE ?= 68
 COVERAGE_MIN_BRANCH ?= 55
+BUILD_FILE := $(BUILD_DIR)/build.ninja
+RUN_LOCKED := mkdir -p "$(BUILD_DIR)" && flock "$(BUILD_DIR)/.build.lock"
 
 all: build
 
 configure:
-	cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
+	$(RUN_LOCKED) cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 		-DCMAKE_INSTALL_PREFIX=$(PREFIX) $(CMAKE_ARGS)
 
-build: configure
-	cmake --build $(BUILD_DIR)
+$(BUILD_FILE): CMakeLists.txt Makefile
+	$(RUN_LOCKED) cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
+		-DCMAKE_INSTALL_PREFIX=$(PREFIX) $(CMAKE_ARGS)
+
+build: $(BUILD_FILE)
+	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword
 
 run: build
 	./$(BUILD_DIR)/kastword --show-window
 
 install:
-	cmake -S . -B $(BUILD_DIR) -G Ninja \
+	$(RUN_LOCKED) cmake -S . -B $(BUILD_DIR) -G Ninja \
 		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 		-DCMAKE_INSTALL_PREFIX="$(PREFIX)" \
 		-DKASTWORD_FETCH_WHISPER=ON \
 		-DKASTWORD_FETCH_DEFAULT_MODEL=OFF \
 		$(CMAKE_ARGS)
-	cmake --build $(BUILD_DIR)
+	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword
 	cmake --install $(BUILD_DIR) --component Kastword
 	@if command -v update-desktop-database >/dev/null 2>&1; then \
 		update-desktop-database "$(PREFIX)/share/applications"; \
@@ -89,8 +95,9 @@ uninstall:
 	fi
 	@echo "Kastword has been uninstalled."
 
-test: build
-	ctest --test-dir $(BUILD_DIR) --output-on-failure
+test: $(BUILD_FILE)
+	$(RUN_LOCKED) cmake --build $(BUILD_DIR)
+	$(RUN_LOCKED) ctest --test-dir $(BUILD_DIR) --output-on-failure
 
 coverage: override CMAKE_ARGS += -DKASTWORD_ENABLE_COVERAGE=ON
 coverage: test
@@ -113,4 +120,4 @@ validate: license
 	$(MAKE) test lint
 	appstreamcli validate --no-net data/io.github.shape_machine.Kastword.metainfo.xml
 	desktop-file-validate $(BUILD_DIR)/io.github.shape_machine.Kastword.desktop
-	cmake --build $(BUILD_DIR) --target kastword_qmllint
+	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword_qmllint
