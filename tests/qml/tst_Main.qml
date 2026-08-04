@@ -23,6 +23,8 @@ TestCase {
     function init() {
         appController.setRestoringModel(false)
         appController.setModelReady(true)
+        appController.setShortcutChangeAccepted(true)
+        appController.setShortcut("Meta+Z")
         const loader = createTemporaryObject(applicationComponent, testCase)
         verify(loader)
         tryCompare(loader, "status", Loader.Ready)
@@ -275,6 +277,28 @@ TestCase {
         editor.keySequence = "Meta+Shift+X"
         editor.keySequenceModified()
         compare(appController.shortcutText, "Meta+Shift+X")
+    }
+
+    function test_settingsReportsRejectedGlobalShortcut() {
+        applicationWindow.openSettings()
+        const editor = findChild(settingsPage(), "shortcutEditor")
+        const error = findChild(settingsPage(), "shortcutError")
+        verify(editor)
+        verify(error)
+        appController.setShortcutChangeAccepted(false)
+
+        editor.keySequence = "Meta+Shift+Y"
+        editor.keySequenceModified()
+
+        compare(appController.shortcutText, "Meta+Z")
+        compare(editor.keySequence, appController.shortcut)
+        compare(error.visible, true)
+        verify(error.text.indexOf("Choose another shortcut") >= 0)
+
+        appController.setShortcutChangeAccepted(true)
+        editor.keySequence = "Meta+Shift+W"
+        editor.keySequenceModified()
+        compare(error.visible, false)
     }
 
     function test_compactTranscriptActionsAreAccessible() {

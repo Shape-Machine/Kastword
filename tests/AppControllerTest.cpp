@@ -93,6 +93,13 @@ public:
       currentShortcuts = shortcuts;
     return shortcutChangeAccepted;
   }
+  void watchShortcutChanges(QAction *, std::function<void(const QKeySequence &)> handler) override {
+    shortcutChangedHandler = std::move(handler);
+  }
+  void reportShortcutChange(const QKeySequence &shortcut) {
+    currentShortcuts = shortcut.isEmpty() ? QList<QKeySequence>{} : QList<QKeySequence>{shortcut};
+    shortcutChangedHandler(shortcut);
+  }
   void cleanShortcutComponent(const QString &component) override { cleanedComponent = component; }
   void showNotification(NotificationKind kind, const QString &title, const QString &text,
                         const QString &iconName, bool persistent) override {
@@ -113,6 +120,7 @@ public:
   QList<QKeySequence> migratedShortcuts;
   bool migratedWithAutoload = true;
   bool shortcutChangeAccepted = true;
+  std::function<void(const QKeySequence &)> shortcutChangedHandler;
   QString cleanedComponent;
   QList<Notification> notifications;
   int closeCount = 0;
@@ -164,6 +172,7 @@ private slots:
   void restrictsLanguageForLocalEnglishOnlyModel();
   void stopsRecordingWhenActiveModelDisappears();
   void reportsModelVerificationAndReadiness();
+  void retriesRejectedShortcutMigration();
   void configuresDesktopIntegrationAndReportsFailures();
   void reportsAutomaticPasteFailuresToDesktop_data();
   void reportsAutomaticPasteFailuresToDesktop();
@@ -784,6 +793,29 @@ void AppControllerTest::reportsModelVerificationAndReadiness() {
   QCOMPARE(controller.status(), QStringLiteral("Ready"));
 }
 
+void AppControllerTest::retriesRejectedShortcutMigration() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto desktop = std::make_unique<FakeDesktopIntegration>();
+  auto *desktopPtr = desktop.get();
+  desktop->currentShortcuts = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
+  desktop->shortcutChangeAccepted = false;
+
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      true, false, nullptr, {}, std::move(desktop));
+
+  QCOMPARE(desktopPtr->migratedShortcuts,
+           QList<QKeySequence>{QKeySequence(QStringLiteral("Meta+Z"))});
+  QCOMPARE(controller.shortcut(), QKeySequence(QStringLiteral("Meta+Shift+D")));
+  KConfig config(QStringLiteral("kastwordrc"));
+  const KConfigGroup group(&config, QStringLiteral("General"));
+  QVERIFY(!group.readEntry("ShortcutMigratedToMetaZ", false));
+}
+
 void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
   auto audio = std::make_unique<FakeAudioCapture>();
   auto *audioPtr = audio.get();
@@ -802,6 +834,11 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
   QCOMPARE(desktopPtr->configuredShortcuts,
            QList<QKeySequence>{QKeySequence(QStringLiteral("Meta+Z"))});
   QCOMPARE(desktopPtr->cleanedComponent, QStringLiteral("Kastword"));
+
+  QSignalSpy shortcutChanged(&controller, &AppController::shortcutChanged);
+  desktopPtr->reportShortcutChange(QKeySequence(QStringLiteral("Meta+Shift+W")));
+  QCOMPARE(controller.shortcut(), QKeySequence(QStringLiteral("Meta+Shift+W")));
+  QCOMPARE(shortcutChanged.count(), 1);
 
   QVERIFY(controller.setShortcut(QKeySequence(QStringLiteral("Meta+Shift+X"))));
   QCOMPARE(controller.shortcut(), QKeySequence(QStringLiteral("Meta+Shift+X")));
