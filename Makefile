@@ -65,9 +65,13 @@ install-smoke: build
 	test -f "$$smoke_prefix/share/locale/x-test/LC_MESSAGES/kastword.mo"; \
 	test ! -e "$$smoke_prefix/share/kastword/models/ggml-base.en.bin"; \
 	find "$$smoke_prefix" -type f -print > "$$installed_files"; \
+	user_model="$$smoke_prefix/share/kastword/models/ggml-base.en.bin"; \
+	cmake -E make_directory "$$(dirname "$$user_model")"; \
+	cmake -E touch "$$user_model"; \
 	case "$$smoke_prefix" in ""|/) echo "Refusing unsafe uninstall prefix" >&2; exit 1;; esac; \
 	$(MAKE) uninstall PREFIX="$$smoke_prefix" BUILD_DIR="$(BUILD_DIR)"; \
-	while IFS= read -r installed_file; do test ! -e "$$installed_file"; done < "$$installed_files"
+	while IFS= read -r installed_file; do test ! -e "$$installed_file"; done < "$$installed_files"; \
+	test -f "$$user_model"
 
 uninstall:
 	cmake -E rm -f \
@@ -75,7 +79,6 @@ uninstall:
 		"$(PREFIX)/share/applications/io.github.shape_machine.Kastword.desktop" \
 		"$(PREFIX)/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml" \
 		"$(PREFIX)/share/locale/x-test/LC_MESSAGES/kastword.mo" \
-		"$(PREFIX)/share/kastword/models/ggml-base.en.bin" \
 		"$(PREFIX)/share/doc/kastword/README.md" \
 		"$(PREFIX)/share/doc/kastword/GPL-3.0-or-later.txt"
 	@if command -v update-desktop-database >/dev/null 2>&1; then \
