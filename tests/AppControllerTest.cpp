@@ -67,6 +67,10 @@ public:
   }
   void forget(const QString &text) override { forgottenText = text; }
   void reportDeliveryStatus(const QString &status) { emit deliveryStatus(status); }
+  void reportDeliveryFailure(const QString &status) {
+    emit deliveryStatus(status);
+    emit deliveryFailed(status);
+  }
 
   QString deliveredText;
   bool deliveredWithAutoPaste = false;
@@ -157,6 +161,8 @@ private slots:
   void stopsRecordingWhenActiveModelDisappears();
   void reportsModelVerificationAndReadiness();
   void configuresDesktopIntegrationAndReportsFailures();
+  void reportsAutomaticPasteFailuresToDesktop_data();
+  void reportsAutomaticPasteFailuresToDesktop();
   void presentsTrayStates_data();
   void presentsTrayStates();
   void reportsInjectedAudioDiscoveryAndBackendErrors_data();
@@ -805,6 +811,40 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
            QStringLiteral("Deterministic backend failure."));
 }
 
+void AppControllerTest::reportsAutomaticPasteFailuresToDesktop_data() {
+  QTest::addColumn<QString>("status");
+  QTest::newRow("failed to start")
+      << QStringLiteral("Automatic paste helper could not be started.");
+  QTest::newRow("crashed") << QStringLiteral("Automatic paste helper crashed.");
+  QTest::newRow("process error") << QStringLiteral("Automatic paste helper encountered an error.");
+  QTest::newRow("nonzero exit") << QStringLiteral(
+      "Automatic paste helper failed with exit code 9.");
+}
+
+void AppControllerTest::reportsAutomaticPasteFailuresToDesktop() {
+  QFETCH(QString, status);
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto *outputPtr = output.get();
+  auto desktop = std::make_unique<FakeDesktopIntegration>();
+  auto *desktopPtr = desktop.get();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      true, false, nullptr, {}, std::move(desktop));
+
+  outputPtr->reportDeliveryFailure(status);
+
+  QCOMPARE(controller.status(), status);
+  QCOMPARE(desktopPtr->notifications.size(), 1);
+  QCOMPARE(desktopPtr->notifications.constFirst().kind,
+           DesktopIntegration::NotificationKind::Error);
+  QCOMPARE(desktopPtr->notifications.constFirst().title, QStringLiteral("Automatic paste failed"));
+  QCOMPARE(desktopPtr->notifications.constFirst().text, status);
+}
+
 void AppControllerTest::presentsTrayStates_data() {
   QTest::addColumn<int>("state");
   QTest::addColumn<bool>("modelReady");
@@ -862,10 +902,25 @@ void AppControllerTest::reportsInjectedAudioDiscoveryAndBackendErrors() {
   QVERIFY(!capture.start(&startError));
   QCOMPARE(startError, QStringLiteral("No microphone is available."));
 
+  AudioCapture invalidFormatCapture(QAudioFormat(), [](const QAudioDevice &, const QAudioFormat &) {
+    return std::unique_ptr<AudioCaptureBackend>();
+  });
+  QVERIFY(!invalidFormatCapture.start(&startError));
+  QCOMPARE(startError, QStringLiteral("The microphone reported an invalid audio format."));
+
   QAudioFormat format;
   format.setSampleRate(16000);
   format.setChannelCount(1);
   format.setSampleFormat(QAudioFormat::Int16);
+  AudioCapture missingFactoryCapture(format, AudioCapture::BackendFactory());
+  QVERIFY(!missingFactoryCapture.start(&startError));
+  QCOMPARE(startError, QStringLiteral("Could not start microphone capture."));
+  AudioCapture nullBackendCapture(format, [](const QAudioDevice &, const QAudioFormat &) {
+    return std::unique_ptr<AudioCaptureBackend>();
+  });
+  QVERIFY(!nullBackendCapture.start(&startError));
+  QCOMPARE(startError, QStringLiteral("Could not start microphone capture."));
+
   QBuffer input;
   FakeAudioBackend *backend = nullptr;
   AudioCapture backendCapture(format,

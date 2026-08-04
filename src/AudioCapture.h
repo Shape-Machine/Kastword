@@ -67,4 +67,5 @@ private:
   DeviceProvider m_deviceProvider;
   BackendFactory m_backendFactory;
   QAudioFormat m_injectedFormat;
+  bool m_hasInjectedBackend = false;
 };

@@ -197,14 +197,19 @@ void TextOutput::startPaste(const QString &program, const QStringList &arguments
     if (result == HelperResult::Success)
       emit deliveryStatus(success);
     else if (result == HelperResult::FailedToStart)
-      emit deliveryStatus(i18n("Automatic paste helper could not be started."));
+      reportDeliveryFailure(i18n("Automatic paste helper could not be started."));
     else if (result == HelperResult::Crashed)
-      emit deliveryStatus(i18n("Automatic paste helper crashed."));
+      reportDeliveryFailure(i18n("Automatic paste helper crashed."));
     else if (result == HelperResult::ProcessError)
-      emit deliveryStatus(i18n("Automatic paste helper encountered an error."));
+      reportDeliveryFailure(i18n("Automatic paste helper encountered an error."));
     else
-      emit deliveryStatus(i18n("Automatic paste helper failed with exit code %1.", exitCode));
+      reportDeliveryFailure(i18n("Automatic paste helper failed with exit code %1.", exitCode));
   });
+}
+
+void TextOutput::reportDeliveryFailure(const QString &status) {
+  emit deliveryStatus(status);
+  emit deliveryFailed(status);
 }
 
 void TextOutput::forget(const QString &text) {
