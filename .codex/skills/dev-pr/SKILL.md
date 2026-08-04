@@ -1,6 +1,6 @@
 ---
 name: dev-pr
-description: Validate the current Kastword feature branch, push it, create or reuse its GitHub pull request, monitor required GitHub Actions checks, merge only after checks pass and GitHub reports the PR mergeable, then synchronize local main and delete the merged feature branch locally and remotely. Use when the user invokes $dev-pr or asks Codex to open, watch, and merge the current feature branch. If checks fail, diagnose them and report suggested next steps without merging.
+description: Validate the current Kastword feature branch, push it, create or reuse its GitHub pull request, monitor required GitHub Actions checks, rebase-merge only after checks pass and GitHub reports the PR mergeable, then synchronize local main and delete the merged feature branch locally and remotely. Use when the user invokes $dev-pr or asks Codex to open, watch, and merge the current feature branch. If checks fail, diagnose them and report suggested next steps without merging.
 ---
 
 # Create, Monitor, and Merge a Pull Request
@@ -58,8 +58,8 @@ After all required checks pass:
    blocked merge state or missing required review.
 2. If mergeability is unknown, keep polling briefly. If it is conflicted or blocked, report the
    reason and stop without merging.
-3. Merge using the repository's preferred strategy; use a merge commit when no preference is
-   documented. Request remote branch deletion as part of the merge.
+3. Merge with `gh pr merge --rebase --delete-branch`. Do not substitute a merge commit or squash
+   merge. If rebase merging is unavailable, report the repository restriction and stop.
 4. Verify GitHub reports the pull request as merged before changing local branches.
 
 ## Synchronize and clean up locally
