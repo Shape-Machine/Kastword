@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Sri Rang
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-.PHONY: all configure build run install install-smoke uninstall test coverage clean format lint license validate
+.PHONY: all configure ensure-configured build run install install-smoke uninstall test coverage clean format lint license validate
 
 BUILD_DIR ?= build
 BUILD_TYPE ?= Release
@@ -10,20 +10,32 @@ CMAKE_ARGS ?=
 COVERAGE_DIR ?= $(BUILD_DIR)/coverage
 COVERAGE_MIN_LINE ?= 68
 COVERAGE_MIN_BRANCH ?= 55
-BUILD_FILE := $(BUILD_DIR)/build.ninja
+CONFIG_KEY = $(shell { sha256sum Makefile; printf '%s\n' '$(BUILD_TYPE)' '$(PREFIX)' '$(CMAKE_ARGS)'; } \
+	| sha256sum | cut -d' ' -f1)
+CONFIG_STAMP := $(BUILD_DIR)/.make-config
 RUN_LOCKED := mkdir -p "$(BUILD_DIR)" && flock "$(BUILD_DIR)/.build.lock"
+CONFIGURE_COMMAND = cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
+	-DCMAKE_INSTALL_PREFIX=$(PREFIX) \
+	-DKASTWORD_FETCH_WHISPER=ON \
+	-DKASTWORD_FETCH_DEFAULT_MODEL=OFF \
+	-DKASTWORD_ENABLE_COVERAGE=OFF \
+	-DKASTWORD_ENABLE_SANITIZERS=OFF \
+	$(CMAKE_ARGS)
 
 all: build
 
 configure:
-	$(RUN_LOCKED) cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
-		-DCMAKE_INSTALL_PREFIX=$(PREFIX) $(CMAKE_ARGS)
+	$(RUN_LOCKED) $(CONFIGURE_COMMAND)
+	@printf '%s\n' '$(CONFIG_KEY)' > "$(CONFIG_STAMP)"
 
-$(BUILD_FILE): CMakeLists.txt Makefile
-	$(RUN_LOCKED) cmake -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
-		-DCMAKE_INSTALL_PREFIX=$(PREFIX) $(CMAKE_ARGS)
+ensure-configured:
+	@if [ ! -f "$(BUILD_DIR)/build.ninja" ] \
+		|| [ "$$(cat "$(CONFIG_STAMP)" 2>/dev/null || true)" != "$(CONFIG_KEY)" ]; then \
+		$(RUN_LOCKED) $(CONFIGURE_COMMAND); \
+		printf '%s\n' '$(CONFIG_KEY)' > "$(CONFIG_STAMP)"; \
+	fi
 
-build: $(BUILD_FILE)
+build: ensure-configured
 	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword
 
 run: build
@@ -35,8 +47,10 @@ install:
 		-DCMAKE_INSTALL_PREFIX="$(PREFIX)" \
 		-DKASTWORD_FETCH_WHISPER=ON \
 		-DKASTWORD_FETCH_DEFAULT_MODEL=OFF \
+		-DKASTWORD_ENABLE_COVERAGE=OFF \
+		-DKASTWORD_ENABLE_SANITIZERS=OFF \
 		$(CMAKE_ARGS)
-	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword
+	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword pofiles tsfiles
 	cmake --install $(BUILD_DIR) --component Kastword
 	@if command -v update-desktop-database >/dev/null 2>&1; then \
 		update-desktop-database "$(PREFIX)/share/applications"; \
@@ -46,7 +60,8 @@ install:
 	fi
 	@echo "Kastword is installed. Launch it from the application menu."
 
-install-smoke: build
+install-smoke: ensure-configured
+	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword pofiles tsfiles
 	@set -eu; \
 	smoke_prefix="$$(mktemp -d)"; \
 	installed_files=""; \
@@ -95,7 +110,7 @@ uninstall:
 	fi
 	@echo "Kastword has been uninstalled."
 
-test: $(BUILD_FILE)
+test: ensure-configured
 	$(RUN_LOCKED) cmake --build $(BUILD_DIR)
 	$(RUN_LOCKED) ctest --test-dir $(BUILD_DIR) --output-on-failure
 

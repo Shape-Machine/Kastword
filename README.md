@@ -161,9 +161,9 @@ speech model; users choose models after installation. The legacy
 5. Kastword transcribes locally, updates the clipboard, and pastes when a helper is available.
 
 Downloaded models are checksum-verified and stored per user under
-`~/.local/share/kastword/models/`. Settings can switch models, show their disk usage, resume or
-retry downloads, and remove managed models. Dictation remains disabled whenever no valid model is
-selected.
+`~/.local/share/kastword/models/`. Speech Models can switch models, show their disk usage, resume or
+retry downloads, and remove managed models. Settings controls dictation behavior and the global
+keyboard shortcut. Dictation remains disabled whenever no valid model is selected.
 
 Click the tray icon to open or hide the settings window. The tray menu can start or stop
 dictation and quit the application.

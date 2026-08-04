@@ -15,7 +15,7 @@ Kirigami.ApplicationWindow {
     objectName: "mainWindow"
     width: 760
     height: 520
-    minimumWidth: 620
+    minimumWidth: 380
     minimumHeight: 400
     visible: false
     title: i18n("Kastword")
@@ -502,8 +502,14 @@ Kirigami.ApplicationWindow {
             spacing: 0
 
             Controls.Pane {
+                id: navigationPane
+                objectName: "navigationPane"
+                readonly property bool compact: mainPage.width < Math.max(620,
+                                                                           Kirigami.Units.gridUnit * 32)
+
                 Layout.fillHeight: true
-                Layout.preferredWidth: Kirigami.Units.gridUnit * 11
+                Layout.preferredWidth: compact ? Kirigami.Units.gridUnit * 3
+                                               : Kirigami.Units.gridUnit * 11
                 padding: Kirigami.Units.smallSpacing
 
                 ColumnLayout {
@@ -519,10 +525,13 @@ Kirigami.ApplicationWindow {
                         Layout.fillWidth: true
                         text: i18n("Offline dictation")
                         icon.name: "audio-input-microphone"
-                        display: Controls.AbstractButton.TextBesideIcon
+                        display: navigationPane.compact ? Controls.AbstractButton.IconOnly
+                                                        : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 0
                         Controls.ButtonGroup.group: navigationGroup
                         onClicked: root.currentView = 0
+                        Controls.ToolTip.visible: hovered && navigationPane.compact
+                        Controls.ToolTip.text: text
                     }
 
                     Controls.TabButton {
@@ -530,10 +539,13 @@ Kirigami.ApplicationWindow {
                         Layout.fillWidth: true
                         text: i18n("Speech models")
                         icon.name: "folder-download"
-                        display: Controls.AbstractButton.TextBesideIcon
+                        display: navigationPane.compact ? Controls.AbstractButton.IconOnly
+                                                        : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 1
                         Controls.ButtonGroup.group: navigationGroup
                         onClicked: root.currentView = 1
+                        Controls.ToolTip.visible: hovered && navigationPane.compact
+                        Controls.ToolTip.text: text
                     }
 
                     Controls.TabButton {
@@ -541,10 +553,13 @@ Kirigami.ApplicationWindow {
                         Layout.fillWidth: true
                         text: i18n("Settings")
                         icon.name: "settings-configure"
-                        display: Controls.AbstractButton.TextBesideIcon
+                        display: navigationPane.compact ? Controls.AbstractButton.IconOnly
+                                                        : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 2
                         Controls.ButtonGroup.group: navigationGroup
                         onClicked: root.currentView = 2
+                        Controls.ToolTip.visible: hovered && navigationPane.compact
+                        Controls.ToolTip.text: text
                     }
 
                     Item {
