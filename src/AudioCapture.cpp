@@ -57,7 +57,8 @@ AudioCapture::AudioCapture(DeviceProvider deviceProvider, QObject *parent)
 
 AudioCapture::AudioCapture(const QAudioFormat &format, BackendFactory backendFactory,
                            QObject *parent)
-    : QObject(parent), m_backendFactory(std::move(backendFactory)), m_injectedFormat(format) {}
+    : QObject(parent), m_backendFactory(std::move(backendFactory)), m_injectedFormat(format),
+      m_hasInjectedBackend(true) {}
 
 void CapturedAudioBuffer::configure(const QAudioFormat &format, int maximumDurationSeconds) {
   m_format = format;
@@ -83,20 +84,29 @@ bool AudioCapture::start(QString *error) {
   if (m_source)
     return true;
 
-  const QAudioDevice device = m_injectedFormat.isValid() ? QAudioDevice() : m_deviceProvider();
-  if (device.isNull() && !m_injectedFormat.isValid()) {
+  const QAudioDevice device =
+      m_hasInjectedBackend || !m_deviceProvider ? QAudioDevice() : m_deviceProvider();
+  if (device.isNull() && !m_hasInjectedBackend) {
     *error = i18n("No microphone is available.");
     return false;
   }
 
-  m_format = m_injectedFormat.isValid() ? m_injectedFormat : device.preferredFormat();
+  m_format = m_hasInjectedBackend ? m_injectedFormat : device.preferredFormat();
   if (!m_format.isValid() || m_format.bytesPerSample() == 0) {
     *error = i18n("The microphone reported an invalid audio format.");
     return false;
   }
 
   m_buffer.configure(m_format, m_maximumDurationSeconds);
+  if (!m_backendFactory) {
+    *error = i18n("Could not start microphone capture.");
+    return false;
+  }
   m_source = m_backendFactory(device, m_format);
+  if (!m_source) {
+    *error = i18n("Could not start microphone capture.");
+    return false;
+  }
   m_device = m_source->start();
   if (!m_device) {
     *error = i18n("Could not start microphone capture.");

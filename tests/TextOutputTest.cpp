@@ -127,11 +127,14 @@ void TextOutputTest::forgetsOnlyMatchingClipboardText() {
 void TextOutputTest::reportsPasteHelperFailures() {
   TextOutput output;
   QSignalSpy status(&output, &TextOutput::deliveryStatus);
+  QSignalSpy failures(&output, &TextOutput::deliveryFailed);
 
   output.startPaste(QStringLiteral("/bin/sh"), {QStringLiteral("-c"), QStringLiteral("exit 7")},
                     QStringLiteral("unexpected success"));
   QTRY_COMPARE(status.count(), 1);
   QCOMPARE(status.takeFirst().at(0).toString(),
+           QStringLiteral("Automatic paste helper failed with exit code 7."));
+  QCOMPARE(failures.takeFirst().at(0).toString(),
            QStringLiteral("Automatic paste helper failed with exit code 7."));
 
   output.startPaste(QStringLiteral("/missing/kastword-paste-helper"), {},
@@ -139,12 +142,16 @@ void TextOutputTest::reportsPasteHelperFailures() {
   QTRY_COMPARE(status.count(), 1);
   QCOMPARE(status.takeFirst().at(0).toString(),
            QStringLiteral("Automatic paste helper could not be started."));
+  QCOMPARE(failures.takeFirst().at(0).toString(),
+           QStringLiteral("Automatic paste helper could not be started."));
 
   output.startPaste(QStringLiteral("/bin/sh"),
                     {QStringLiteral("-c"), QStringLiteral("kill -SEGV $$")},
                     QStringLiteral("unexpected success"));
   QTRY_COMPARE(status.count(), 1);
   QCOMPARE(status.takeFirst().at(0).toString(), QStringLiteral("Automatic paste helper crashed."));
+  QCOMPARE(failures.takeFirst().at(0).toString(),
+           QStringLiteral("Automatic paste helper crashed."));
 }
 
 void TextOutputTest::mapsPasteHelperErrors_data() {
@@ -324,6 +331,7 @@ void TextOutputTest::injectsClipboardDbusFocusAndProcessBoundaries() {
   platformPtr->helperExitCode = 9;
   TextOutput output(std::move(platform));
   QSignalSpy status(&output, &TextOutput::deliveryStatus);
+  QSignalSpy failures(&output, &TextOutput::deliveryFailed);
 
   QCOMPARE(output.deliver(QStringLiteral("private text"), true),
            QStringLiteral("Copied to clipboard; automatic paste scheduled."));
@@ -332,6 +340,8 @@ void TextOutputTest::injectsClipboardDbusFocusAndProcessBoundaries() {
   QCOMPARE(platformPtr->klipperTextValue, QStringLiteral("private text"));
   QTRY_COMPARE(status.count(), 1);
   QCOMPARE(status.takeFirst().at(0).toString(),
+           QStringLiteral("Automatic paste helper failed with exit code 9."));
+  QCOMPARE(failures.takeFirst().at(0).toString(),
            QStringLiteral("Automatic paste helper failed with exit code 9."));
   QCOMPARE(platformPtr->launchedProgram, QStringLiteral("/fake/xdotool"));
   QCOMPARE(platformPtr->launchedArguments, TextOutput::x11PasteArguments());
@@ -347,11 +357,14 @@ void TextOutputTest::reportsInjectedProcessError() {
   platform->helperResult = TextOutput::HelperResult::ProcessError;
   TextOutput output(std::move(platform));
   QSignalSpy status(&output, &TextOutput::deliveryStatus);
+  QSignalSpy failures(&output, &TextOutput::deliveryFailed);
 
   output.deliver(QStringLiteral("private text"), true);
 
   QTRY_COMPARE(status.count(), 1);
   QCOMPARE(status.constFirst().constFirst().toString(),
+           QStringLiteral("Automatic paste helper encountered an error."));
+  QCOMPARE(failures.constFirst().constFirst().toString(),
            QStringLiteral("Automatic paste helper encountered an error."));
 }
 

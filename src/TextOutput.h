@@ -50,9 +50,11 @@ public:
 
 signals:
   void deliveryStatus(const QString &status);
+  void deliveryFailed(const QString &status);
 
 private:
   friend class TextOutputTest;
+  void reportDeliveryFailure(const QString &status);
   void scheduleX11Paste(const QString &xdotool);
   void startPaste(const QString &program, const QStringList &arguments, const QString &success);
   std::unique_ptr<Platform> m_platform;

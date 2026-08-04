@@ -159,9 +159,9 @@ void AppController::initialize() {
     emit levelChanged();
   });
   connect(m_audio.get(), &AudioCapture::captureFailed, this, &AppController::handleCaptureFailure);
-  connect(m_output.get(), &TextOutput::deliveryStatus, this, [this](const QString &status) {
-    setStatus(status);
-    if (m_desktopIntegration && status.contains(i18n("failed"), Qt::CaseInsensitive))
+  connect(m_output.get(), &TextOutput::deliveryStatus, this, &AppController::setStatus);
+  connect(m_output.get(), &TextOutput::deliveryFailed, this, [this](const QString &status) {
+    if (m_desktopIntegration)
       m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
                                           i18n("Automatic paste failed"), status);
   });
