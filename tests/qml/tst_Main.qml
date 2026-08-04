@@ -226,6 +226,21 @@ TestCase {
         compare(applicationWindow.pageStack.depth, 1)
     }
 
+    function test_navigationAdaptsToMinimumWidth() {
+        const dictationTab = findChild(applicationWindow.contentItem, "dictationTab")
+        const button = findChild(applicationWindow.contentItem, "dictationButton")
+        const navigation = findChild(applicationWindow.contentItem, "navigationPane")
+        verify(dictationTab)
+        verify(button)
+        verify(navigation)
+
+        applicationWindow.width = applicationWindow.minimumWidth
+        tryCompare(applicationWindow, "width", applicationWindow.minimumWidth)
+        tryCompare(navigation, "compact", true)
+        compare(dictationTab.display, Controls.AbstractButton.IconOnly)
+        verify(button.width <= applicationWindow.pageStack.currentItem.width)
+    }
+
     function test_settingsCanModifyGlobalShortcut() {
         applicationWindow.openSettings()
         const editor = findChild(settingsPage(), "shortcutEditor")
