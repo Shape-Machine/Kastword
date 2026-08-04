@@ -16,7 +16,7 @@ class TextOutput : public QObject {
   Q_OBJECT
 public:
   using FocusReader = std::function<QString(const QString &)>;
-  enum class HelperResult { Success, FailedToStart, Crashed, Failed };
+  enum class HelperResult { Success, FailedToStart, Crashed, ProcessError, Failed };
   class Platform {
   public:
     using HelperFinished = std::function<void(HelperResult, int)>;

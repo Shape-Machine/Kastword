@@ -94,6 +94,7 @@ private slots:
   void usesExpectedX11Arguments();
   void usesRegularClipboardShortcutOnWayland();
   void injectsClipboardDbusFocusAndProcessBoundaries();
+  void reportsInjectedProcessError();
 };
 
 void TextOutputTest::initTestCase() { KLocalizedString::setApplicationDomain("kastword"); }
@@ -152,10 +153,11 @@ void TextOutputTest::mapsPasteHelperErrors_data() {
   QTest::newRow("failed to start")
       << QProcess::FailedToStart << TextOutput::HelperResult::FailedToStart;
   QTest::newRow("crashed") << QProcess::Crashed << TextOutput::HelperResult::Crashed;
-  QTest::newRow("timed out") << QProcess::Timedout << TextOutput::HelperResult::Failed;
-  QTest::newRow("write error") << QProcess::WriteError << TextOutput::HelperResult::Failed;
-  QTest::newRow("read error") << QProcess::ReadError << TextOutput::HelperResult::Failed;
-  QTest::newRow("unknown error") << QProcess::UnknownError << TextOutput::HelperResult::Failed;
+  QTest::newRow("timed out") << QProcess::Timedout << TextOutput::HelperResult::ProcessError;
+  QTest::newRow("write error") << QProcess::WriteError << TextOutput::HelperResult::ProcessError;
+  QTest::newRow("read error") << QProcess::ReadError << TextOutput::HelperResult::ProcessError;
+  QTest::newRow("unknown error") << QProcess::UnknownError
+                                 << TextOutput::HelperResult::ProcessError;
 }
 
 void TextOutputTest::mapsPasteHelperErrors() {
@@ -338,6 +340,19 @@ void TextOutputTest::injectsClipboardDbusFocusAndProcessBoundaries() {
   QVERIFY(platformPtr->clipboardTextValue.isEmpty());
   QVERIFY(platformPtr->selectionText.isEmpty());
   QVERIFY(platformPtr->klipperTextValue.isEmpty());
+}
+
+void TextOutputTest::reportsInjectedProcessError() {
+  auto platform = std::make_unique<FakeTextOutputPlatform>();
+  platform->helperResult = TextOutput::HelperResult::ProcessError;
+  TextOutput output(std::move(platform));
+  QSignalSpy status(&output, &TextOutput::deliveryStatus);
+
+  output.deliver(QStringLiteral("private text"), true);
+
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.constFirst().constFirst().toString(),
+           QStringLiteral("Automatic paste helper encountered an error."));
 }
 
 QTEST_MAIN(TextOutputTest)

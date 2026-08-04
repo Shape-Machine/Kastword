@@ -394,6 +394,10 @@ msgstr "xxAutomatic paste helper could not be started.xx"
 msgid "Automatic paste helper crashed."
 msgstr "xxAutomatic paste helper crashed.xx"
 
+#: src/TextOutput.cpp:204
+msgid "Automatic paste helper encountered an error."
+msgstr "xxAutomatic paste helper encountered an error.xx"
+
 #: src/TextOutput.cpp:128
 msgid "Automatic paste helper failed with exit code %1."
 msgstr "xxAutomatic paste helper failed with exit code %1.xx"
