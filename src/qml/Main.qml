@@ -8,6 +8,7 @@ import QtQuick.Controls as Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import org.kde.kirigami as Kirigami
+import org.kde.kquickcontrols as KQuickControls
 
 Kirigami.ApplicationWindow {
     id: root
@@ -330,9 +331,14 @@ Kirigami.ApplicationWindow {
                     text: i18n("Automatic paste sends keystrokes to the focused application after a short delay. On Wayland, Kastword cannot verify that focus stayed unchanged.")
                 }
 
-                Controls.Label {
+                KQuickControls.KeySequenceItem {
+                    id: shortcutEditor
+                    objectName: "shortcutEditor"
                     Kirigami.FormData.label: i18n("Shortcut:")
-                    text: appController.shortcutText
+                    keySequence: appController.shortcut
+                    multiKeyShortcutsAllowed: false
+                    onKeySequenceModified: appController.shortcut = keySequence
+                    Accessible.name: i18n("Global dictation shortcut")
                 }
             }
         }

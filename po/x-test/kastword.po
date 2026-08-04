@@ -36,13 +36,13 @@ msgstr "xxVerifying the speech model…xx"
 msgid "Choose a speech model to enable dictation."
 msgstr "xxChoose a speech model to enable dictation.xx"
 
-#: src/AppController.cpp:162
-msgid "failed"
-msgstr "xxfailedxx"
-
 #: src/AppController.cpp:163
 msgid "Automatic paste failed"
 msgstr "xxAutomatic paste failedxx"
+
+#: src/AppController.cpp:181
+msgid "None"
+msgstr "xxNonexx"
 
 #: src/AppController.cpp:178
 msgid "English"
@@ -655,6 +655,10 @@ msgstr ""
 #: src/qml/Main.qml:348
 msgid "Shortcut:"
 msgstr "xxShortcut:xx"
+
+#: src/qml/Main.qml:354
+msgid "Global dictation shortcut"
+msgstr "xxGlobal dictation shortcutxx"
 
 #: src/qml/Main.qml:356
 msgid "Offline dictation"

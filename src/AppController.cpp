@@ -130,7 +130,7 @@ void AppController::initialize() {
 
   if (m_desktopIntegration) {
     m_shortcut.setObjectName(QStringLiteral("toggle-dictation"));
-    const QList<QKeySequence> shortcut = {QKeySequence(shortcutText())};
+    const QList<QKeySequence> shortcut = {QKeySequence(QString::fromLatin1(defaultShortcut))};
     if (!group.readEntry("GlobalAccelComponentIdentityV2", false)) {
       // An earlier build used the display name as the component ID, creating a second registration
       // that competed with the executable's stable lowercase ID. Remove that duplicate once.
@@ -140,17 +140,20 @@ void AppController::initialize() {
       writableGroup.sync();
     }
     m_desktopServices->configureShortcut(&m_shortcut, shortcut);
+    QList<QKeySequence> currentShortcut = m_desktopServices->shortcuts(&m_shortcut);
     if (!group.readEntry("ShortcutMigratedToMetaZ", false)) {
-      const QList<QKeySequence> currentShortcut = m_desktopServices->shortcuts(&m_shortcut);
       const QList<QKeySequence> previousDefault = {QKeySequence(QStringLiteral("Meta+Shift+D"))};
       const QList<QKeySequence> originalDefault = {QKeySequence(QStringLiteral("Meta+D"))};
       // Update only Kastword's former defaults. An empty or different shortcut is a user choice.
-      if (currentShortcut == previousDefault || currentShortcut == originalDefault)
+      if (currentShortcut == previousDefault || currentShortcut == originalDefault) {
         m_desktopServices->setShortcuts(&m_shortcut, shortcut, false);
+        currentShortcut = shortcut;
+      }
       KConfigGroup writableGroup(&m_config, QStringLiteral("General"));
       writableGroup.writeEntry("ShortcutMigratedToMetaZ", true);
       writableGroup.sync();
     }
+    m_shortcutSequence = currentShortcut.value(0);
     connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
   }
   m_shortcut.setEnabled(modelReady());
@@ -173,7 +176,20 @@ void AppController::initialize() {
     setStatus(i18n("Choose a speech model to enable dictation."));
 }
 
-QString AppController::shortcutText() const { return QString::fromLatin1(defaultShortcut); }
+QString AppController::shortcutText() const {
+  return m_shortcutSequence.isEmpty() ? i18n("None")
+                                      : m_shortcutSequence.toString(QKeySequence::NativeText);
+}
+
+void AppController::setShortcut(const QKeySequence &value) {
+  if (m_shortcutSequence == value)
+    return;
+  if (m_desktopIntegration)
+    m_desktopServices->setShortcuts(
+        &m_shortcut, value.isEmpty() ? QList<QKeySequence>{} : QList<QKeySequence>{value}, false);
+  m_shortcutSequence = value;
+  emit shortcutChanged();
+}
 
 QVariantList AppController::availableLanguages() const {
   QVariantList languages = {

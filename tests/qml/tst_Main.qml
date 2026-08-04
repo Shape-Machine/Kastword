@@ -226,6 +226,17 @@ TestCase {
         compare(applicationWindow.pageStack.depth, 1)
     }
 
+    function test_settingsCanModifyGlobalShortcut() {
+        applicationWindow.openSettings()
+        const editor = findChild(settingsPage(), "shortcutEditor")
+        verify(editor)
+        compare(editor.Accessible.name, "Global dictation shortcut")
+
+        editor.keySequence = "Meta+Shift+X"
+        editor.keySequenceModified()
+        compare(appController.shortcutText, "Meta+Shift+X")
+    }
+
     function test_compactTranscriptActionsAreAccessible() {
         const page = applicationWindow.pageStack.currentItem
         const preview = findChild(applicationWindow.contentItem, "transcriptText")

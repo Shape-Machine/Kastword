@@ -786,6 +786,7 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
   auto output = std::make_unique<FakeTextOutput>();
   auto desktop = std::make_unique<FakeDesktopIntegration>();
   auto *desktopPtr = desktop.get();
+  desktop->currentShortcuts = {QKeySequence(QStringLiteral("Meta+Z"))};
   AppController controller(
       std::move(audio), std::move(output),
       [](const QByteArray &, const QString &, const QString &) {
@@ -797,6 +798,13 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
   QCOMPARE(desktopPtr->configuredShortcuts,
            QList<QKeySequence>{QKeySequence(QStringLiteral("Meta+Z"))});
   QCOMPARE(desktopPtr->cleanedComponent, QStringLiteral("Kastword"));
+
+  controller.setShortcut(QKeySequence(QStringLiteral("Meta+Shift+X")));
+  QCOMPARE(controller.shortcut(), QKeySequence(QStringLiteral("Meta+Shift+X")));
+  QCOMPARE(controller.shortcutText(), QStringLiteral("Meta+Shift+X"));
+  QCOMPARE(desktopPtr->migratedShortcuts,
+           QList<QKeySequence>{QKeySequence(QStringLiteral("Meta+Shift+X"))});
+  QVERIFY(!desktopPtr->migratedWithAutoload);
 
   controller.toggle();
   QCOMPARE(desktopPtr->notifications.size(), 1);
