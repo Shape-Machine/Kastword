@@ -66,6 +66,8 @@ qt_add_executable(kastword
     src/ModelCatalog.h
     src/ModelManager.cpp
     src/ModelManager.h
+    src/PlatformIntegration.cpp
+    src/PlatformIntegration.h
     src/RuntimeSecurity.cpp
     src/RuntimeSecurity.h
     src/WhisperEngine.cpp
@@ -188,6 +190,8 @@ if(BUILD_TESTING)
         src/ModelCatalog.h
         src/ModelManager.cpp
         src/ModelManager.h
+        src/PlatformIntegration.cpp
+        src/PlatformIntegration.h
         src/TextOutput.cpp
         src/TextOutput.h
         src/TranscriptionWorker.cpp

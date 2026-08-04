@@ -26,6 +26,52 @@ QString createHelper(const QTemporaryDir &directory, const QString &name, const 
     return {};
   return path;
 }
+
+class FakeTextOutputPlatform final : public TextOutput::Platform {
+public:
+  void setClipboardText(const QString &text, bool selection) override {
+    (selection ? selectionText : clipboardTextValue) = text;
+  }
+  QString clipboardText(bool selection) const override {
+    return selection ? selectionText : clipboardTextValue;
+  }
+  void clearClipboard(bool selection) override {
+    (selection ? selectionText : clipboardTextValue).clear();
+  }
+  bool supportsSelection() const override { return selectionSupported; }
+  void setKlipperText(const QString &text) override { klipperTextValue = text; }
+  QString klipperText(bool *available) const override {
+    *available = klipperAvailable;
+    return klipperTextValue;
+  }
+  QString sessionType() const override { return session; }
+  QString findExecutable(const QString &name) const override {
+    return executables.contains(name) ? QStringLiteral("/fake/") + name : QString();
+  }
+  QString focusedWindow(const QString &) const override {
+    return focusReads < focusedWindows.size() ? focusedWindows.at(focusReads++) : QString();
+  }
+  void launchHelper(const QString &program, const QStringList &arguments,
+                    HelperFinished finished) override {
+    launchedProgram = program;
+    launchedArguments = arguments;
+    finished(helperResult, helperExitCode);
+  }
+
+  QString clipboardTextValue;
+  QString selectionText;
+  QString klipperTextValue;
+  bool selectionSupported = true;
+  bool klipperAvailable = true;
+  QString session = QStringLiteral("x11");
+  QStringList executables = {QStringLiteral("xdotool")};
+  mutable int focusReads = 0;
+  QStringList focusedWindows = {QStringLiteral("42"), QStringLiteral("42")};
+  TextOutput::HelperResult helperResult = TextOutput::HelperResult::Success;
+  int helperExitCode = 0;
+  QString launchedProgram;
+  QStringList launchedArguments;
+};
 } // namespace
 
 class TextOutputTest final : public QObject {
@@ -45,6 +91,7 @@ private slots:
   void choosesPasteMethod();
   void usesExpectedX11Arguments();
   void usesRegularClipboardShortcutOnWayland();
+  void injectsClipboardDbusFocusAndProcessBoundaries();
 };
 
 void TextOutputTest::initTestCase() { KLocalizedString::setApplicationDomain("kastword"); }
@@ -246,6 +293,31 @@ void TextOutputTest::usesRegularClipboardShortcutOnWayland() {
                         QStringLiteral("47:0"), QStringLiteral("29:0")}));
   // KEY_INSERT=110 would make Konsole read the primary selection, which may contain stale text.
   QVERIFY(!arguments.contains(QStringLiteral("110:1")));
+}
+
+void TextOutputTest::injectsClipboardDbusFocusAndProcessBoundaries() {
+  auto platform = std::make_unique<FakeTextOutputPlatform>();
+  auto *platformPtr = platform.get();
+  platformPtr->helperResult = TextOutput::HelperResult::Failed;
+  platformPtr->helperExitCode = 9;
+  TextOutput output(std::move(platform));
+  QSignalSpy status(&output, &TextOutput::deliveryStatus);
+
+  QCOMPARE(output.deliver(QStringLiteral("private text"), true),
+           QStringLiteral("Copied to clipboard; automatic paste scheduled."));
+  QCOMPARE(platformPtr->clipboardTextValue, QStringLiteral("private text"));
+  QCOMPARE(platformPtr->selectionText, QStringLiteral("private text"));
+  QCOMPARE(platformPtr->klipperTextValue, QStringLiteral("private text"));
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.takeFirst().at(0).toString(),
+           QStringLiteral("Automatic paste helper failed with exit code 9."));
+  QCOMPARE(platformPtr->launchedProgram, QStringLiteral("/fake/xdotool"));
+  QCOMPARE(platformPtr->launchedArguments, TextOutput::x11PasteArguments());
+
+  output.forget(QStringLiteral("private text"));
+  QVERIFY(platformPtr->clipboardTextValue.isEmpty());
+  QVERIFY(platformPtr->selectionText.isEmpty());
+  QVERIFY(platformPtr->klipperTextValue.isEmpty());
 }
 
 QTEST_MAIN(TextOutputTest)

@@ -12,8 +12,7 @@
 #include <QTimer>
 #include <utility>
 
-namespace {
-QString captureErrorMessage(QAudio::Error error) {
+QString AudioCapture::errorMessageFor(QAudio::Error error) {
   switch (error) {
   case QAudio::OpenError:
     return i18n("The microphone could not be opened.");
@@ -26,9 +25,12 @@ QString captureErrorMessage(QAudio::Error error) {
   }
   return i18n("Microphone capture stopped unexpectedly.");
 }
-} // namespace
 
-AudioCapture::AudioCapture(QObject *parent) : QObject(parent) {}
+AudioCapture::AudioCapture(QObject *parent)
+    : AudioCapture([] { return QMediaDevices::defaultAudioInput(); }, parent) {}
+
+AudioCapture::AudioCapture(DeviceProvider deviceProvider, QObject *parent)
+    : QObject(parent), m_deviceProvider(std::move(deviceProvider)) {}
 
 void CapturedAudioBuffer::configure(const QAudioFormat &format, int maximumDurationSeconds) {
   m_format = format;
@@ -54,7 +56,7 @@ bool AudioCapture::start(QString *error) {
   if (m_source)
     return true;
 
-  const QAudioDevice device = QMediaDevices::defaultAudioInput();
+  const QAudioDevice device = m_deviceProvider();
   if (device.isNull()) {
     *error = i18n("No microphone is available.");
     return false;
@@ -87,7 +89,7 @@ bool AudioCapture::start(QString *error) {
       m_source.reset();
       m_buffer.configure(m_format, m_maximumDurationSeconds);
       emit levelChanged(0.0);
-      emit captureFailed(captureErrorMessage(captureError));
+      emit captureFailed(errorMessageFor(captureError));
     });
   });
 

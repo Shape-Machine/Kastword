@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "AppController.h"
+#include "PlatformIntegration.h"
 #include "RuntimeSecurity.h"
 
 #include <KDBusService>
@@ -69,44 +70,31 @@ int main(int argc, char **argv) {
   trayMenu.addAction(&dictateAction);
   tray.setContextMenu(&trayMenu);
 
-  const auto toggleWindow = [window] {
-    if (window->isVisible()) {
-      window->hide();
-    } else {
-      window->show();
-      window->raise();
-      window->requestActivate();
-    }
+  const WindowActivation windowActivation = {
+      [window] { return window->isVisible(); },
+      [window] { window->hide(); },
+      [window] { window->show(); },
+      [window] { window->raise(); },
+      [window] { window->requestActivate(); },
   };
-  QObject::connect(&tray, &KStatusNotifierItem::activateRequested, window,
-                   [toggleWindow](bool, const QPoint &) { toggleWindow(); });
+  QObject::connect(
+      &tray, &KStatusNotifierItem::activateRequested, window,
+      [windowActivation](bool, const QPoint &) { activateWindow(windowActivation, true); });
   QObject::connect(&dbusService, &KDBusService::activateRequested, window,
-                   [window](const QStringList &, const QString &) {
-                     window->show();
-                     window->raise();
-                     window->requestActivate();
+                   [windowActivation](const QStringList &, const QString &) {
+                     activateWindow(windowActivation, false);
                    });
-  QObject::connect(&openAction, &QAction::triggered, window, toggleWindow);
+  QObject::connect(&openAction, &QAction::triggered, window,
+                   [windowActivation] { activateWindow(windowActivation, true); });
   QObject::connect(&dictateAction, &QAction::triggered, &controller, &AppController::toggle);
 
   QObject::connect(&controller, &AppController::stateChanged, &tray,
                    [&controller, &tray, &dictateAction] {
-                     const AppController::State state = controller.state();
-                     if (state == AppController::State::Recording) {
-                       tray.setIconByName(QStringLiteral("media-record"));
-                       dictateAction.setText(i18n("Stop and Transcribe"));
-                     } else if (state == AppController::State::Transcribing) {
-                       tray.setIconByName(QStringLiteral("view-refresh"));
-                       dictateAction.setText(i18n("Transcribing…"));
-                     } else if (state == AppController::State::Success) {
-                       tray.setIconByName(QStringLiteral("dialog-ok-apply"));
-                       dictateAction.setText(i18n("Start Dictation"));
-                     } else {
-                       tray.setIconByName(QStringLiteral("audio-input-microphone"));
-                       dictateAction.setText(i18n("Start Dictation"));
-                     }
-                     dictateAction.setEnabled(controller.modelReady() &&
-                                              state != AppController::State::Transcribing);
+                     const TrayPresentation presentation =
+                         trayPresentation(int(controller.state()), controller.modelReady());
+                     tray.setIconByName(presentation.iconName);
+                     dictateAction.setText(presentation.actionText);
+                     dictateAction.setEnabled(presentation.actionEnabled);
                      tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"),
                                      controller.status());
                    });

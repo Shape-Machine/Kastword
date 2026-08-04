@@ -5,6 +5,7 @@
 
 #include "AudioCapture.h"
 #include "ModelManager.h"
+#include "PlatformIntegration.h"
 #include "TextOutput.h"
 #include "TranscriptionWorker.h"
 
@@ -18,8 +19,6 @@
 #include <QUrl>
 #include <QVariantList>
 #include <memory>
-
-class KNotification;
 
 class AppController final : public QObject {
   Q_OBJECT
@@ -52,7 +51,8 @@ public:
                 TranscribeFunction transcribe, bool desktopIntegration, QObject *parent = nullptr);
   AppController(std::unique_ptr<AudioCapture> audio, std::unique_ptr<TextOutput> output,
                 TranscribeFunction transcribe, bool desktopIntegration, bool requireModel,
-                QObject *parent = nullptr, std::unique_ptr<ModelManager> modelManager = {});
+                QObject *parent = nullptr, std::unique_ptr<ModelManager> modelManager = {},
+                std::unique_ptr<DesktopIntegration> desktopServices = {});
   ~AppController() override;
   State state() const { return m_state; }
   bool isIdle() const { return m_state == State::Idle; }
@@ -112,6 +112,7 @@ private:
   std::unique_ptr<AudioCapture> m_audio;
   std::unique_ptr<TextOutput> m_output;
   std::unique_ptr<ModelManager> m_modelManager;
+  std::unique_ptr<DesktopIntegration> m_desktopServices;
   QThread m_transcriptionThread;
   TranscriptionWorker *m_transcriptionWorker;
   bool m_desktopIntegration;
@@ -126,5 +127,4 @@ private:
   bool m_autoPaste = false;
   int m_recordingLimitMinutes = 5;
   qreal m_level = 0.0;
-  QPointer<KNotification> m_statusNotification;
 };
