@@ -125,14 +125,7 @@ TestCase {
     }
 
     function test_modelControlsHaveAccessibleNames() {
-        applicationWindow.openSettings()
-        compare(applicationWindow.currentView, 2)
-        const settings = settingsPage()
-        const manage = findChild(settings, "manageModelsButton")
-        verify(manage)
-        compare(manage.Accessible.name, "Manage speech models")
-        manage.clicked()
-        compare(applicationWindow.currentView, 1)
+        applicationWindow.openModelManager()
         const models = modelPage()
         const filter = findChild(models, "modelLanguageFilter")
         verify(filter)

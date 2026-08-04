@@ -606,22 +606,6 @@ msgstr "xxModel storage: %1xx"
 msgid "Settings"
 msgstr "xxSettingsxx"
 
-#: src/qml/Main.qml:284
-msgid "Model:"
-msgstr "xxModel:xx"
-
-#: src/qml/Main.qml:289
-msgid "No model selected"
-msgstr "xxNo model selectedxx"
-
-#: src/qml/Main.qml:294
-msgid "Manage…"
-msgstr "xxManage…xx"
-
-#: src/qml/Main.qml:296
-msgid "Manage speech models"
-msgstr "xxManage speech modelsxx"
-
 #: src/qml/Main.qml:303
 msgid "Language:"
 msgstr "xxLanguage:xx"
