@@ -137,7 +137,7 @@ TextOutput::HelperResult TextOutput::helperResultForProcessError(QProcess::Proce
     return HelperResult::FailedToStart;
   if (error == QProcess::Crashed)
     return HelperResult::Crashed;
-  return HelperResult::Failed;
+  return HelperResult::ProcessError;
 }
 
 QString TextOutput::deliver(const QString &text, bool autoPaste) {
@@ -200,6 +200,8 @@ void TextOutput::startPaste(const QString &program, const QStringList &arguments
       emit deliveryStatus(i18n("Automatic paste helper could not be started."));
     else if (result == HelperResult::Crashed)
       emit deliveryStatus(i18n("Automatic paste helper crashed."));
+    else if (result == HelperResult::ProcessError)
+      emit deliveryStatus(i18n("Automatic paste helper encountered an error."));
     else
       emit deliveryStatus(i18n("Automatic paste helper failed with exit code %1.", exitCode));
   });
