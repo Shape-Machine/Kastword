@@ -21,8 +21,8 @@ public:
     return KGlobalAccel::self()->shortcut(action);
   }
 
-  void setShortcuts(QAction *action, const QList<QKeySequence> &shortcuts, bool autoload) override {
-    KGlobalAccel::self()->setShortcut(
+  bool setShortcuts(QAction *action, const QList<QKeySequence> &shortcuts, bool autoload) override {
+    return KGlobalAccel::self()->setShortcut(
         action, shortcuts, autoload ? KGlobalAccel::Autoloading : KGlobalAccel::NoAutoloading);
   }
 

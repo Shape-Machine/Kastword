@@ -214,16 +214,41 @@ TestCase {
         verify(settingsTab)
         compare(dictationTab.checked, true)
 
-        modelsTab.clicked()
-        compare(applicationWindow.currentView, 1)
+        mouseClick(modelsTab)
+        tryCompare(applicationWindow, "currentView", 1)
         compare(modelsTab.checked, true)
         compare(modelPage().visible, true)
 
-        settingsTab.clicked()
-        compare(applicationWindow.currentView, 2)
+        mouseClick(settingsTab)
+        tryCompare(applicationWindow, "currentView", 2)
         compare(settingsTab.checked, true)
         compare(settingsPage().visible, true)
         compare(applicationWindow.pageStack.depth, 1)
+    }
+
+    function test_verticalTabsSupportArrowKeys() {
+        const dictationTab = findChild(applicationWindow.contentItem, "dictationTab")
+        const modelsTab = findChild(applicationWindow.contentItem, "modelsTab")
+        const settingsTab = findChild(applicationWindow.contentItem, "settingsTab")
+        verify(dictationTab)
+        verify(modelsTab)
+        verify(settingsTab)
+
+        dictationTab.forceActiveFocus()
+        verify(dictationTab.activeFocus)
+        keyClick(Qt.Key_Down)
+        verify(modelsTab.activeFocus)
+        keyClick(Qt.Key_Space)
+        compare(applicationWindow.currentView, 1)
+
+        keyClick(Qt.Key_Down)
+        verify(settingsTab.activeFocus)
+        keyClick(Qt.Key_Down)
+        verify(dictationTab.activeFocus)
+        keyClick(Qt.Key_Up)
+        verify(settingsTab.activeFocus)
+        keyClick(Qt.Key_Space)
+        compare(applicationWindow.currentView, 2)
     }
 
     function test_navigationAdaptsToMinimumWidth() {

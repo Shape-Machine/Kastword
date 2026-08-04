@@ -337,7 +337,10 @@ Kirigami.ApplicationWindow {
                     Kirigami.FormData.label: i18n("Shortcut:")
                     keySequence: appController.shortcut
                     multiKeyShortcutsAllowed: false
-                    onKeySequenceModified: appController.shortcut = keySequence
+                    onKeySequenceModified: {
+                        if (!appController.setShortcut(keySequence))
+                            keySequence = appController.shortcut
+                    }
                     Accessible.name: i18n("Global dictation shortcut")
                 }
             }
@@ -521,6 +524,7 @@ Kirigami.ApplicationWindow {
                     }
 
                     Controls.TabButton {
+                        id: dictationTab
                         objectName: "dictationTab"
                         Layout.fillWidth: true
                         text: i18n("Offline dictation")
@@ -529,12 +533,15 @@ Kirigami.ApplicationWindow {
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 0
                         Controls.ButtonGroup.group: navigationGroup
+                        KeyNavigation.up: settingsTab
+                        KeyNavigation.down: modelsTab
                         onClicked: root.currentView = 0
                         Controls.ToolTip.visible: hovered && navigationPane.compact
                         Controls.ToolTip.text: text
                     }
 
                     Controls.TabButton {
+                        id: modelsTab
                         objectName: "modelsTab"
                         Layout.fillWidth: true
                         text: i18n("Speech models")
@@ -543,12 +550,15 @@ Kirigami.ApplicationWindow {
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 1
                         Controls.ButtonGroup.group: navigationGroup
+                        KeyNavigation.up: dictationTab
+                        KeyNavigation.down: settingsTab
                         onClicked: root.currentView = 1
                         Controls.ToolTip.visible: hovered && navigationPane.compact
                         Controls.ToolTip.text: text
                     }
 
                     Controls.TabButton {
+                        id: settingsTab
                         objectName: "settingsTab"
                         Layout.fillWidth: true
                         text: i18n("Settings")
@@ -557,6 +567,8 @@ Kirigami.ApplicationWindow {
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 2
                         Controls.ButtonGroup.group: navigationGroup
+                        KeyNavigation.up: modelsTab
+                        KeyNavigation.down: dictationTab
                         onClicked: root.currentView = 2
                         Controls.ToolTip.visible: hovered && navigationPane.compact
                         Controls.ToolTip.text: text
