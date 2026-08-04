@@ -296,8 +296,8 @@ TestCase {
         verify(error.text.indexOf("Choose another shortcut") >= 0)
 
         appController.setShortcutChangeAccepted(true)
-        editor.keySequence = "Meta+Shift+W"
-        editor.keySequenceModified()
+        appController.setShortcut("Meta+Shift+W")
+        compare(editor.keySequence, appController.shortcut)
         compare(error.visible, false)
     }
 

@@ -847,10 +847,11 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
            QList<QKeySequence>{QKeySequence(QStringLiteral("Meta+Shift+X"))});
   QVERIFY(!desktopPtr->migratedWithAutoload);
 
+  const QString statusBeforeShortcutFailure = controller.status();
   desktopPtr->shortcutChangeAccepted = false;
   QVERIFY(!controller.setShortcut(QKeySequence(QStringLiteral("Meta+Shift+Y"))));
   QCOMPARE(controller.shortcut(), QKeySequence(QStringLiteral("Meta+Shift+X")));
-  QVERIFY(controller.status().contains(QStringLiteral("Choose another shortcut")));
+  QCOMPARE(controller.status(), statusBeforeShortcutFailure);
 
   desktopPtr->shortcutChangeAccepted = true;
   QVERIFY(controller.setShortcut(QKeySequence()));
