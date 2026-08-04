@@ -18,7 +18,7 @@ public:
   virtual ~DesktopIntegration() = default;
   virtual void configureShortcut(QAction *action, const QList<QKeySequence> &shortcuts) = 0;
   virtual QList<QKeySequence> shortcuts(QAction *action) const = 0;
-  virtual void setShortcuts(QAction *action, const QList<QKeySequence> &shortcuts,
+  virtual bool setShortcuts(QAction *action, const QList<QKeySequence> &shortcuts,
                             bool autoload) = 0;
   virtual void cleanShortcutComponent(const QString &component) = 0;
   virtual void showNotification(NotificationKind kind, const QString &title, const QString &text,

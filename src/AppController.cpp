@@ -181,14 +181,29 @@ QString AppController::shortcutText() const {
                                       : m_shortcutSequence.toString(QKeySequence::NativeText);
 }
 
-void AppController::setShortcut(const QKeySequence &value) {
+bool AppController::setShortcut(const QKeySequence &value) {
   if (m_shortcutSequence == value)
-    return;
-  if (m_desktopIntegration)
-    m_desktopServices->setShortcuts(
-        &m_shortcut, value.isEmpty() ? QList<QKeySequence>{} : QList<QKeySequence>{value}, false);
-  m_shortcutSequence = value;
-  emit shortcutChanged();
+    return true;
+
+  if (!m_desktopIntegration) {
+    m_shortcutSequence = value;
+    emit shortcutChanged();
+    return true;
+  }
+
+  const QList<QKeySequence> requested =
+      value.isEmpty() ? QList<QKeySequence>{} : QList<QKeySequence>{value};
+  const bool accepted = m_desktopServices->setShortcuts(&m_shortcut, requested, false);
+  const QKeySequence effective = m_desktopServices->shortcuts(&m_shortcut).value(0);
+  if (m_shortcutSequence != effective) {
+    m_shortcutSequence = effective;
+    emit shortcutChanged();
+  }
+  if (!accepted || effective != value) {
+    setStatus(i18n("The global shortcut could not be changed. Choose another shortcut."));
+    return false;
+  }
+  return true;
 }
 
 QVariantList AppController::availableLanguages() const {
@@ -314,9 +329,17 @@ void AppController::toggle() {
     return;
   }
   setState(State::Recording);
-  setStatus(i18n("Listening — press %1 to finish.", shortcutText()));
-  showStatusNotification(i18n("Dictation started"), i18n("Press %1 again to stop.", shortcutText()),
-                         QStringLiteral("media-record"), true);
+  if (m_shortcutSequence.isEmpty()) {
+    setStatus(i18n("Listening — use Stop Dictation to finish."));
+    showStatusNotification(i18n("Dictation started"),
+                           i18n("Use the Kastword window or tray action to stop."),
+                           QStringLiteral("media-record"), true);
+  } else {
+    setStatus(i18n("Listening — press %1 to finish.", shortcutText()));
+    showStatusNotification(i18n("Dictation started"),
+                           i18n("Press %1 again to stop.", shortcutText()),
+                           QStringLiteral("media-record"), true);
+  }
 }
 
 void AppController::transcribe(QByteArray audio) {

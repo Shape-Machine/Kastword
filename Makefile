@@ -41,15 +41,7 @@ build: ensure-configured
 run: build
 	./$(BUILD_DIR)/kastword --show-window
 
-install:
-	$(RUN_LOCKED) cmake -S . -B $(BUILD_DIR) -G Ninja \
-		-DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
-		-DCMAKE_INSTALL_PREFIX="$(PREFIX)" \
-		-DKASTWORD_FETCH_WHISPER=ON \
-		-DKASTWORD_FETCH_DEFAULT_MODEL=OFF \
-		-DKASTWORD_ENABLE_COVERAGE=OFF \
-		-DKASTWORD_ENABLE_SANITIZERS=OFF \
-		$(CMAKE_ARGS)
+install: ensure-configured
 	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword pofiles tsfiles
 	cmake --install $(BUILD_DIR) --component Kastword
 	@if command -v update-desktop-database >/dev/null 2>&1; then \

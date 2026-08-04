@@ -39,7 +39,7 @@ class AppController final : public QObject {
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
-  Q_PROPERTY(QKeySequence shortcut READ shortcut WRITE setShortcut NOTIFY shortcutChanged)
+  Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
 
 public:
@@ -81,7 +81,7 @@ public:
   void setLanguage(const QString &value);
   void setAutoPaste(bool value);
   void setRecordingLimitMinutes(int value);
-  void setShortcut(const QKeySequence &value);
+  Q_INVOKABLE bool setShortcut(const QKeySequence &value);
   QAction *shortcutAction() { return &m_shortcut; }
 
   Q_INVOKABLE void toggle();

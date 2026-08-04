@@ -165,7 +165,7 @@ Downloaded models are checksum-verified and stored per user under
 retry downloads, and remove managed models. Settings controls dictation behavior and the global
 keyboard shortcut. Dictation remains disabled whenever no valid model is selected.
 
-Click the tray icon to open or hide the settings window. The tray menu can start or stop
+Click the tray icon to open or hide the Kastword window. The tray menu can start or stop
 dictation and quit the application.
 
 ## Privacy and security model

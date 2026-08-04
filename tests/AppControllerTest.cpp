@@ -86,9 +86,12 @@ public:
     configuredShortcuts = shortcuts;
   }
   QList<QKeySequence> shortcuts(QAction *) const override { return currentShortcuts; }
-  void setShortcuts(QAction *, const QList<QKeySequence> &shortcuts, bool autoload) override {
+  bool setShortcuts(QAction *, const QList<QKeySequence> &shortcuts, bool autoload) override {
     migratedShortcuts = shortcuts;
     migratedWithAutoload = autoload;
+    if (shortcutChangeAccepted)
+      currentShortcuts = shortcuts;
+    return shortcutChangeAccepted;
   }
   void cleanShortcutComponent(const QString &component) override { cleanedComponent = component; }
   void showNotification(NotificationKind kind, const QString &title, const QString &text,
@@ -109,6 +112,7 @@ public:
   QList<QKeySequence> currentShortcuts;
   QList<QKeySequence> migratedShortcuts;
   bool migratedWithAutoload = true;
+  bool shortcutChangeAccepted = true;
   QString cleanedComponent;
   QList<Notification> notifications;
   int closeCount = 0;
@@ -799,16 +803,28 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
            QList<QKeySequence>{QKeySequence(QStringLiteral("Meta+Z"))});
   QCOMPARE(desktopPtr->cleanedComponent, QStringLiteral("Kastword"));
 
-  controller.setShortcut(QKeySequence(QStringLiteral("Meta+Shift+X")));
+  QVERIFY(controller.setShortcut(QKeySequence(QStringLiteral("Meta+Shift+X"))));
   QCOMPARE(controller.shortcut(), QKeySequence(QStringLiteral("Meta+Shift+X")));
   QCOMPARE(controller.shortcutText(), QStringLiteral("Meta+Shift+X"));
   QCOMPARE(desktopPtr->migratedShortcuts,
            QList<QKeySequence>{QKeySequence(QStringLiteral("Meta+Shift+X"))});
   QVERIFY(!desktopPtr->migratedWithAutoload);
 
+  desktopPtr->shortcutChangeAccepted = false;
+  QVERIFY(!controller.setShortcut(QKeySequence(QStringLiteral("Meta+Shift+Y"))));
+  QCOMPARE(controller.shortcut(), QKeySequence(QStringLiteral("Meta+Shift+X")));
+  QVERIFY(controller.status().contains(QStringLiteral("Choose another shortcut")));
+
+  desktopPtr->shortcutChangeAccepted = true;
+  QVERIFY(controller.setShortcut(QKeySequence()));
+  QCOMPARE(controller.shortcutText(), QStringLiteral("None"));
+
   controller.toggle();
+  QVERIFY(controller.status().contains(QStringLiteral("Stop Dictation")));
   QCOMPARE(desktopPtr->notifications.size(), 1);
   QCOMPARE(desktopPtr->notifications.constLast().title, QStringLiteral("Dictation started"));
+  QVERIFY(desktopPtr->notifications.constLast().text.contains(QStringLiteral("tray action")));
+  QVERIFY(!desktopPtr->notifications.constLast().text.contains(QStringLiteral("None")));
   QVERIFY(desktopPtr->notifications.constLast().persistent);
 
   audioPtr->fail(QStringLiteral("Deterministic backend failure."));

@@ -119,11 +119,14 @@ int main(int argc, char **argv) {
     window->requestActivate();
   }
 
-  if (controller.modelReady())
-    KNotification::event(
-        KNotification::Notification, i18n("Kastword is ready"),
-        i18n("Running in the system tray. Press %1 to dictate.", controller.shortcutText()),
-        QStringLiteral("audio-input-microphone"), KNotification::CloseOnTimeout);
+  if (controller.modelReady()) {
+    const QString readyText =
+        controller.shortcut().isEmpty()
+            ? i18n("Running in the system tray. Open Kastword or use the tray menu to dictate.")
+            : i18n("Running in the system tray. Press %1 to dictate.", controller.shortcutText());
+    KNotification::event(KNotification::Notification, i18n("Kastword is ready"), readyText,
+                         QStringLiteral("audio-input-microphone"), KNotification::CloseOnTimeout);
+  }
 
   return app.exec();
 }

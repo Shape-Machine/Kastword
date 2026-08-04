@@ -106,6 +106,9 @@ msgstr "xxTranscription is already in progress.xx"
 msgid "Listening — press %1 to finish."
 msgstr "xxListening — press %1 to finish.xx"
 
+msgid "Listening — use Stop Dictation to finish."
+msgstr "xxListening — use Stop Dictation to finish.xx"
+
 #: src/AppController.cpp:298
 msgid "Dictation started"
 msgstr "xxDictation startedxx"
@@ -113,6 +116,15 @@ msgstr "xxDictation startedxx"
 #: src/AppController.cpp:298
 msgid "Press %1 again to stop."
 msgstr "xxPress %1 again to stop.xx"
+
+msgid "Use the Kastword window or tray action to stop."
+msgstr "xxUse the Kastword window or tray action to stop.xx"
+
+msgid "The global shortcut could not be changed. Choose another shortcut."
+msgstr "xxThe global shortcut could not be changed. Choose another shortcut.xx"
+
+msgid "Running in the system tray. Open Kastword or use the tray menu to dictate."
+msgstr "xxRunning in the system tray. Open Kastword or use the tray menu to dictate.xx"
 
 #: src/AppController.cpp:320
 msgid "Transcription failed"

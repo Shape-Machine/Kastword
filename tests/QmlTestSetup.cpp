@@ -98,7 +98,7 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
-  Q_PROPERTY(QKeySequence shortcut READ shortcut WRITE setShortcut NOTIFY shortcutChanged)
+  Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
   Q_PROPERTY(int toggleCount READ toggleCount NOTIFY toggleCountChanged)
 
@@ -133,11 +133,12 @@ public:
   void setLanguage(const QString &) {}
   void setAutoPaste(bool) {}
   void setRecordingLimitMinutes(int) {}
-  void setShortcut(const QKeySequence &value) {
+  Q_INVOKABLE bool setShortcut(const QKeySequence &value) {
     if (m_shortcut == value)
-      return;
+      return true;
     m_shortcut = value;
     emit shortcutChanged();
+    return true;
   }
 
   Q_INVOKABLE void setModelUrl(const QUrl &url) { setModelPath(url.toLocalFile()); }
