@@ -283,23 +283,6 @@ Kirigami.ApplicationWindow {
             Kirigami.FormLayout {
                 width: parent.width
 
-                RowLayout {
-                    Kirigami.FormData.label: i18n("Model:")
-
-                    Controls.Label {
-                        Layout.fillWidth: true
-                        elide: Text.ElideMiddle
-                        text: appController.modelReady ? appController.modelPath : i18n("No model selected")
-                    }
-
-                    Controls.Button {
-                        objectName: "manageModelsButton"
-                        text: i18n("Manage…")
-                        onClicked: root.openModelManager()
-                        Accessible.name: i18n("Manage speech models")
-                    }
-                }
-
                 Controls.ComboBox {
                     id: languageComboBox
                     objectName: "languageComboBox"
