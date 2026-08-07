@@ -453,10 +453,12 @@ void AppController::toggle() {
   }
   if (!audioInputReady()) {
     const QString error = audioInputStatus();
+    const QString title = audioInputId() == AudioCapture::noDeviceId()
+                              ? i18n("Audio input disabled")
+                              : i18n("Microphone unavailable");
     setStatus(error);
     if (m_desktopIntegration)
-      m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
-                                          i18n("Microphone unavailable"), error,
+      m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error, title, error,
                                           QStringLiteral("audio-input-microphone"));
     emit audioInputSetupRequested();
     return;
