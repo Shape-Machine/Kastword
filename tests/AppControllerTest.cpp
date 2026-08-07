@@ -599,7 +599,7 @@ void AppControllerTest::selectsAndPersistsAudioInput() {
   AppController controller(
       std::move(audio), std::move(output),
       [](const QByteArray &, const QString &, const QString &) {
-        return QPair<QString, QString>();
+        return qMakePair(QStringLiteral("done"), QString());
       },
       false);
 
@@ -617,6 +617,11 @@ void AppControllerTest::selectsAndPersistsAudioInput() {
   QCOMPARE(audioPtr->startedDeviceId, QStringLiteral("headset"));
   controller.toggle();
   QTRY_VERIFY(!controller.isTranscribing());
+  QCOMPARE(controller.state(), AppController::State::Success);
+  controller.setAudioInputId(QString());
+  QCOMPARE(controller.audioInputId(), QString());
+  controller.setAudioInputId(QStringLiteral("headset"));
+  QCOMPARE(controller.audioInputId(), QStringLiteral("headset"));
 
   KConfig config(QStringLiteral("kastwordrc"));
   const KConfigGroup group(&config, QStringLiteral("General"));
@@ -647,14 +652,20 @@ void AppControllerTest::recoversAudioInputWithoutSilentFallback() {
   controller.setAudioInputId(QStringLiteral("headset"));
   QVERIFY(controller.audioInputReady());
   QVERIFY(controller.shortcutAction()->isEnabled());
+  QVERIFY(controller.dictationActionEnabled());
 
+  controller.toggle();
+  QVERIFY(audioPtr->recording);
   audioPtr->setInputs({{QStringLiteral("built-in"), QStringLiteral("Built-in Microphone"), true}});
   QVERIFY(!controller.audioInputReady());
   QCOMPARE(controller.audioInputId(), QStringLiteral("headset"));
   QVERIFY(controller.audioInputStatus().contains(QStringLiteral("unavailable")));
-  QVERIFY(!controller.shortcutAction()->isEnabled());
+  QVERIFY(controller.shortcutAction()->isEnabled());
   controller.toggle();
   QVERIFY(!audioPtr->recording);
+  QTRY_VERIFY(!controller.isTranscribing());
+  QVERIFY(!controller.shortcutAction()->isEnabled());
+  QVERIFY(!controller.dictationActionEnabled());
 
   const QVariantList unavailableInputs = controller.audioInputs();
   QCOMPARE(unavailableInputs.constLast().toMap().value(QStringLiteral("id")).toString(),
@@ -668,6 +679,7 @@ void AppControllerTest::recoversAudioInputWithoutSilentFallback() {
   QVERIFY(controller.audioInputReady());
   QCOMPARE(controller.audioInputId(), QStringLiteral("headset"));
   QVERIFY(controller.shortcutAction()->isEnabled());
+  QVERIFY(controller.dictationActionEnabled());
 
   controller.setAudioInputId(QString());
   QCOMPARE(controller.audioInputStatus(), QStringLiteral("Using Dock Microphone"));
@@ -1110,7 +1122,7 @@ void AppControllerTest::reportsAutomaticPasteFailuresToDesktop() {
 
 void AppControllerTest::presentsTrayStates_data() {
   QTest::addColumn<int>("state");
-  QTest::addColumn<bool>("modelReady");
+  QTest::addColumn<bool>("actionEnabled");
   QTest::addColumn<QString>("icon");
   QTest::addColumn<QString>("text");
   QTest::addColumn<bool>("enabled");
@@ -1133,12 +1145,12 @@ void AppControllerTest::presentsTrayStates_data() {
 
 void AppControllerTest::presentsTrayStates() {
   QFETCH(int, state);
-  QFETCH(bool, modelReady);
+  QFETCH(bool, actionEnabled);
   QFETCH(QString, icon);
   QFETCH(QString, text);
   QFETCH(bool, enabled);
 
-  const TrayPresentation presentation = trayPresentation(state, modelReady);
+  const TrayPresentation presentation = trayPresentation(state, actionEnabled);
   QCOMPARE(presentation.iconName, icon);
   QCOMPARE(presentation.actionText, text);
   QCOMPARE(presentation.actionEnabled, enabled);

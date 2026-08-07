@@ -36,7 +36,7 @@ struct TrayPresentation {
   bool actionEnabled = false;
 };
 
-TrayPresentation trayPresentation(int state, bool modelReady);
+TrayPresentation trayPresentation(int state, bool actionEnabled);
 
 struct WindowActivation {
   std::function<bool()> isVisible;

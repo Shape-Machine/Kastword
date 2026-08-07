@@ -65,15 +65,15 @@ std::unique_ptr<DesktopIntegration> createDesktopIntegration() {
   return std::make_unique<KdeDesktopIntegration>();
 }
 
-TrayPresentation trayPresentation(int stateValue, bool modelReady) {
+TrayPresentation trayPresentation(int stateValue, bool actionEnabled) {
   const auto state = static_cast<AppController::State>(stateValue);
   if (state == AppController::State::Recording)
-    return {QStringLiteral("media-record"), i18n("Stop and Transcribe"), modelReady};
+    return {QStringLiteral("media-record"), i18n("Stop and Transcribe"), actionEnabled};
   if (state == AppController::State::Transcribing)
     return {QStringLiteral("view-refresh"), i18n("Transcribing…"), false};
   if (state == AppController::State::Success)
-    return {QStringLiteral("dialog-information"), i18n("Start Dictation"), modelReady};
-  return {QStringLiteral("audio-input-microphone"), i18n("Start Dictation"), modelReady};
+    return {QStringLiteral("dialog-information"), i18n("Start Dictation"), actionEnabled};
+  return {QStringLiteral("audio-input-microphone"), i18n("Start Dictation"), actionEnabled};
 }
 
 void activateWindow(const WindowActivation &window, bool toggle) {
