@@ -412,15 +412,18 @@ Kirigami.ApplicationWindow {
         Kirigami.ScrollablePage {
             objectName: "audioInputPage"
             title: i18n("Audio input")
-            verticalScrollBarPolicy: Qt.ScrollBarAlwaysOn
 
-            Kirigami.FormLayout {
-                width: parent.width
+            ColumnLayout {
+                width: Math.min(parent.width, Kirigami.Units.gridUnit * 44)
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Controls.Label {
+                    text: i18n("Microphone:")
+                }
 
                 ColumnLayout {
                     id: audioInputList
                     objectName: "audioInputList"
-                    Kirigami.FormData.label: i18n("Microphone:")
                     Layout.fillWidth: true
                     enabled: appController.audioInputSelectionEnabled
                     Accessible.name: i18n("Audio input device")
@@ -455,7 +458,6 @@ Kirigami.ApplicationWindow {
 
                 Kirigami.InlineMessage {
                     objectName: "audioInputStatus"
-                    Kirigami.FormData.isSection: true
                     Layout.fillWidth: true
                     visible: true
                     type: appController.audioInputReady ? Kirigami.MessageType.Positive
@@ -467,7 +469,6 @@ Kirigami.ApplicationWindow {
 
                 Kirigami.InlineMessage {
                     objectName: "audioInputMonitoringError"
-                    Kirigami.FormData.isSection: true
                     Layout.fillWidth: true
                     visible: appController.audioInputMonitoringError.length > 0
                     type: Kirigami.MessageType.Error
@@ -484,9 +485,12 @@ Kirigami.ApplicationWindow {
                     ]
                 }
 
+                Controls.Label {
+                    text: i18n("Input level:")
+                }
+
                 Controls.ProgressBar {
                     objectName: "audioInputLevel"
-                    Kirigami.FormData.label: i18n("Input level:")
                     Layout.fillWidth: true
                     from: 0
                     to: 1
@@ -497,7 +501,6 @@ Kirigami.ApplicationWindow {
 
                 Controls.Label {
                     objectName: "audioInputPrivacyNote"
-                    Kirigami.FormData.isSection: true
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     opacity: 0.7
