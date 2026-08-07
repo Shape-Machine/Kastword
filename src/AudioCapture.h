@@ -72,6 +72,7 @@ public:
   static QString errorMessageFor(QAudio::Error error);
   static QString deviceId(const QAudioDevice &device);
   static QString encodedDeviceId(const QByteArray &backendId);
+  static QString noDeviceId() { return QStringLiteral(":none"); }
 
 signals:
   void levelChanged(qreal level);

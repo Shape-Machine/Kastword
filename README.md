@@ -162,11 +162,11 @@ speech model; users choose models after installation. The legacy
 
 Downloaded models are checksum-verified and stored per user under
 `~/.local/share/kastword/models/`. Speech Models can switch models, show their disk usage, resume or
-retry downloads, and remove managed models. Audio Input can follow the system default microphone or
-use a specific device. A specific selection is never silently replaced when disconnected; dictation
-remains disabled until that device returns or another input is chosen. Settings controls dictation
-behavior and the global keyboard shortcut. Dictation remains disabled whenever no valid model or
-audio input is available.
+retry downloads, and remove managed models. Audio Input can disable microphone use with None, follow
+the system default microphone, or use a specific device. A specific selection is never silently
+replaced when disconnected; dictation remains disabled until that device returns or another input is
+chosen. Settings controls dictation behavior and the global keyboard shortcut. Dictation remains
+disabled whenever no valid model or audio input is available.
 
 Click the tray icon to open or hide the Kastword window. The tray menu can start or stop
 dictation and quit the application.

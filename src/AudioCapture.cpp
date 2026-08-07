@@ -113,6 +113,8 @@ void AudioCapture::setSelectedDeviceId(const QString &id) {
 }
 
 QAudioDevice AudioCapture::selectedDevice() const {
+  if (m_selectedDeviceId == noDeviceId())
+    return {};
   if (m_deviceProvider)
     return m_deviceProvider();
   if (m_selectedDeviceId.isEmpty())
@@ -126,6 +128,8 @@ QAudioDevice AudioCapture::selectedDevice() const {
 }
 
 bool AudioCapture::selectedDeviceAvailable() const {
+  if (m_selectedDeviceId == noDeviceId())
+    return false;
   if (m_hasInjectedBackend)
     return true;
   return !selectedDevice().isNull();

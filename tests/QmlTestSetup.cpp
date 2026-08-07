@@ -153,6 +153,9 @@ public:
   qreal level() const { return 0.5; }
   QVariantList audioInputs() const {
     QVariantList inputs = {
+        QVariantMap{{QStringLiteral("id"), QStringLiteral(":none")},
+                    {QStringLiteral("name"), QStringLiteral("None")},
+                    {QStringLiteral("available"), true}},
         QVariantMap{{QStringLiteral("id"), QString()},
                     {QStringLiteral("name"), QStringLiteral("System default (Built-in Mic)")},
                     {QStringLiteral("available"), true}},
@@ -167,9 +170,13 @@ public:
   }
   QString audioInputId() const { return m_audioInputId; }
   bool audioInputReady() const {
+    if (m_audioInputId == QStringLiteral(":none"))
+      return false;
     return m_audioInputId.isEmpty() || (m_audioInputId == QStringLiteral("usb") && m_usbAvailable);
   }
   QString audioInputStatus() const {
+    if (m_audioInputId == QStringLiteral(":none"))
+      return QStringLiteral("No audio input is selected. Choose an input to enable dictation.");
     if (!audioInputReady())
       return QStringLiteral("The selected microphone is unavailable. Choose another audio input.");
     return m_audioInputId.isEmpty() ? QStringLiteral("Using Built-in Mic")
