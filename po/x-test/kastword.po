@@ -554,10 +554,6 @@ msgstr "xxAll modelsxx"
 msgid "Filter speech models"
 msgstr "xxFilter speech modelsxx"
 
-#: src/qml/Main.qml:157
-msgid " — Recommended"
-msgstr "xx — Recommendedxx"
-
 #: src/qml/Main.qml:168
 msgid "%1 · %2 · %3"
 msgstr "xx%1 · %2 · %3xx"
