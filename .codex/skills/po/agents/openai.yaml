@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Sri Rang
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+interface:
+  display_name: "Product Owner"
+  short_description: "Audit the product and shape its next issues"
+  default_prompt: "Use $po to audit the product, prioritize improvements, and propose GitHub issues for my approval."
