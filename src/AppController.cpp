@@ -84,7 +84,8 @@ void AppController::initialize() {
   m_autoPaste = group.readEntry("AutoPaste", false);
   const int supportedPasteShortcuts =
       TextOutput::CtrlV | TextOutput::CtrlShiftV | TextOutput::ShiftInsert;
-  int configuredPasteShortcuts = group.readEntry("PasteShortcuts", int(TextOutput::ShiftInsert));
+  int configuredPasteShortcuts =
+      group.readEntry("PasteShortcuts", int(TextOutput::CtrlV | TextOutput::CtrlShiftV | TextOutput::ShiftInsert));
   configuredPasteShortcuts &= supportedPasteShortcuts;
   if (configuredPasteShortcuts == 0)
     configuredPasteShortcuts = TextOutput::ShiftInsert;

@@ -145,7 +145,8 @@ private:
   QString m_modelPath;
   QString m_language = QStringLiteral("en");
   bool m_autoPaste = false;
-  TextOutput::PasteShortcuts m_pasteShortcuts = TextOutput::ShiftInsert;
+  TextOutput::PasteShortcuts m_pasteShortcuts =
+      TextOutput::CtrlV | TextOutput::CtrlShiftV | TextOutput::ShiftInsert;
   int m_recordingLimitMinutes = 5;
   qreal m_level = 0.0;
 };

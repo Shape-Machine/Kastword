@@ -69,7 +69,7 @@ private:
   void scheduleX11Paste(const QString &xdotool, const QStringList &arguments);
   void startPaste(const QString &program, const QStringList &arguments, const QString &success);
   std::unique_ptr<Platform> m_platform;
-  PasteShortcuts m_pasteShortcuts = ShiftInsert;
+  PasteShortcuts m_pasteShortcuts = CtrlV | CtrlShiftV | ShiftInsert;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(TextOutput::PasteShortcuts)
