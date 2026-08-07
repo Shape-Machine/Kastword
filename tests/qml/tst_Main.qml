@@ -12,6 +12,12 @@ TestCase {
 
     property var applicationWindow
 
+    SignalSpy {
+        id: passiveNotificationSpy
+        target: applicationWindow
+        signalName: "passiveNotificationShown"
+    }
+
     Component {
         id: applicationComponent
 
@@ -241,12 +247,43 @@ TestCase {
         compare(unavailableSize.opacity, 0.7)
         compare(unavailableIndicator.visible, false)
         compare(unavailable.Accessible.description, "https://example.test/tiny")
+        unavailable.forceActiveFocus()
+        compare(unavailable.activeFocus, true)
+        compare(unavailable.showUrlTooltip, true)
+        passiveNotificationSpy.clear()
         mouseClick(unavailable)
         compare(appController.copiedText, "https://example.test/tiny")
+        compare(passiveNotificationSpy.count, 1)
+        compare(passiveNotificationSpy.signalArguments[0][0],
+                "Download URL copied to clipboard.")
         compare(downloadButton.highlighted, true)
         const downloadPosition = downloadButton.mapToItem(unavailableCard, 0, 0)
         verify(downloadPosition.y + downloadButton.height
                <= unavailableCard.height - unavailableCard.padding)
+    }
+
+    function test_modelCardFooterAdaptsAtMinimumWidth() {
+        applicationWindow.width = applicationWindow.minimumWidth
+        applicationWindow.openModelManager()
+        const models = modelPage()
+        const filter = findChild(models, "modelLanguageFilter")
+        verify(filter)
+        filter.currentIndex = filter.indexOfValue("all")
+        waitForRendering(applicationWindow.contentItem)
+
+        const card = findChild(models, "modelCard-tiny")
+        const status = findChild(models, "availableModelStatus-tiny")
+        const download = findChild(models, "downloadModel-tiny")
+        verify(card)
+        verify(status)
+        verify(download)
+
+        const statusPosition = status.mapToItem(card, 0, 0)
+        const downloadPosition = download.mapToItem(card, 0, 0)
+        verify(downloadPosition.y > statusPosition.y)
+        verify(downloadPosition.x >= card.padding)
+        verify(downloadPosition.x + download.width <= card.width - card.padding)
+        verify(downloadPosition.y + download.height <= card.height - card.padding)
     }
 
     function test_verificationCanBeCancelled() {
