@@ -474,12 +474,16 @@ TestCase {
         verify(none)
         verify(button)
         compare(none.Accessible.description, "Disable audio input")
+        wait(0)
         const initialListWidth = list.width
+        const initialListX = list.mapToItem(page, 0, 0).x
         none.clicked()
+        wait(0)
         compare(appController.audioInputId, ":none")
         verify(appController.audioInputStatus.indexOf("No audio input is selected") >= 0)
         compare(button.enabled, false)
         compare(list.width, initialListWidth)
+        compare(list.mapToItem(page, 0, 0).x, initialListX)
         const note = findChild(page, "audioInputPrivacyNote")
         verify(note)
         compare(note.text, "Audio input is disabled.")
