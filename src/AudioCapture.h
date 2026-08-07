@@ -61,6 +61,8 @@ public:
   virtual bool isRecording() const { return m_source != nullptr && !m_monitoring; }
   virtual void setMonitoringEnabled(bool enabled);
   virtual bool monitoringRequested() const { return m_monitoringRequested; }
+  virtual QString monitoringError() const { return m_monitoringError; }
+  virtual void retryMonitoring();
   virtual QList<AudioInputDevice> audioInputs() const;
   virtual QString selectedDeviceId() const { return m_selectedDeviceId; }
   virtual void setSelectedDeviceId(const QString &id);
@@ -75,12 +77,14 @@ signals:
   void levelChanged(qreal level);
   void captureFailed(const QString &error);
   void audioInputsChanged();
+  void monitoringErrorChanged();
 
 private:
   QAudioDevice selectedDevice() const;
   bool startSource(bool monitoring, QString *error);
   void stopSource();
   void restartMonitoring();
+  void setMonitoringError(const QString &error);
   std::unique_ptr<AudioCaptureBackend> m_source;
   QIODevice *m_device = nullptr;
   QAudioFormat m_format;
@@ -94,4 +98,5 @@ private:
   bool m_hasInjectedBackend = false;
   bool m_monitoring = false;
   bool m_monitoringRequested = false;
+  QString m_monitoringError;
 };

@@ -151,8 +151,17 @@ void AudioCapture::setMonitoringEnabled(bool enabled) {
   if (!enabled) {
     if (m_monitoring)
       stopSource();
+    setMonitoringError({});
     return;
   }
+  restartMonitoring();
+}
+
+void AudioCapture::retryMonitoring() {
+  if (!m_monitoringRequested)
+    return;
+  if (m_monitoring)
+    stopSource();
   restartMonitoring();
 }
 
@@ -192,6 +201,8 @@ bool AudioCapture::startSource(bool monitoring, QString *error) {
     return false;
   }
   m_monitoring = monitoring;
+  if (monitoring)
+    setMonitoringError({});
 
   connect(m_source.get(), &AudioCaptureBackend::stateChanged, this, [this](QAudio::State state) {
     if (state != QAudio::StoppedState || !m_source || m_source->error() == QAudio::NoError)
@@ -208,7 +219,9 @@ bool AudioCapture::startSource(bool monitoring, QString *error) {
       if (!monitoring)
         m_buffer.configure(m_format, m_maximumDurationSeconds);
       emit levelChanged(0.0);
-      if (!monitoring)
+      if (monitoring)
+        setMonitoringError(errorMessageFor(captureError));
+      else
         emit captureFailed(errorMessageFor(captureError));
     });
   });
@@ -253,8 +266,20 @@ void AudioCapture::stopSource() {
 }
 
 void AudioCapture::restartMonitoring() {
-  if (!m_monitoringRequested || m_source || !selectedDeviceAvailable())
+  if (!m_monitoringRequested || m_source)
     return;
-  QString ignoredError;
-  startSource(true, &ignoredError);
+  if (!selectedDeviceAvailable()) {
+    setMonitoringError({});
+    return;
+  }
+  QString error;
+  if (!startSource(true, &error))
+    setMonitoringError(error);
+}
+
+void AudioCapture::setMonitoringError(const QString &error) {
+  if (m_monitoringError == error)
+    return;
+  m_monitoringError = error;
+  emit monitoringErrorChanged();
 }

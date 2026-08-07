@@ -458,6 +458,25 @@ Kirigami.ApplicationWindow {
                     Accessible.description: text
                 }
 
+                Kirigami.InlineMessage {
+                    objectName: "audioInputMonitoringError"
+                    Kirigami.FormData.isSection: true
+                    Layout.fillWidth: true
+                    visible: appController.audioInputMonitoringError.length > 0
+                    type: Kirigami.MessageType.Error
+                    text: i18n("Input level monitoring failed: %1",
+                               appController.audioInputMonitoringError)
+                    Accessible.name: i18n("Input level monitoring failed")
+                    Accessible.description: text
+                    actions: [
+                        Kirigami.Action {
+                            text: i18n("Retry")
+                            icon.name: "view-refresh"
+                            onTriggered: appController.retryAudioInputMonitoring()
+                        }
+                    ]
+                }
+
                 Controls.ProgressBar {
                     objectName: "audioInputLevel"
                     Kirigami.FormData.label: i18n("Input level:")
@@ -470,11 +489,14 @@ Kirigami.ApplicationWindow {
                 }
 
                 Controls.Label {
+                    objectName: "audioInputPrivacyNote"
                     Kirigami.FormData.isSection: true
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     opacity: 0.7
-                    text: i18n("Level monitoring only; audio is not saved. A specific microphone is never replaced automatically if it becomes unavailable.")
+                    text: appController.recording
+                        ? i18n("Dictation is recording audio for local transcription.")
+                        : i18n("Level monitoring only; audio is not saved. A specific microphone is never replaced automatically if it becomes unavailable.")
                 }
             }
         }

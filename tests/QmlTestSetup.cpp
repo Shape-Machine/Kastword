@@ -122,6 +122,9 @@ class FakeAppController final : public QObject {
       bool dictationActionEnabled READ dictationActionEnabled NOTIFY dictationAvailabilityChanged)
   Q_PROPERTY(bool audioInputMonitoringEnabled READ audioInputMonitoringEnabled NOTIFY
                  audioInputMonitoringEnabledChanged)
+  Q_PROPERTY(QString audioInputMonitoringError READ audioInputMonitoringError NOTIFY
+                 audioInputMonitoringErrorChanged)
+  Q_PROPERTY(int monitoringRetryCount READ monitoringRetryCount NOTIFY monitoringRetryCountChanged)
   Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
   Q_PROPERTY(int toggleCount READ toggleCount NOTIFY toggleCountChanged)
@@ -177,6 +180,8 @@ public:
     return m_recording || (m_modelReady && audioInputReady() && !m_transcribing);
   }
   bool audioInputMonitoringEnabled() const { return m_audioInputMonitoringEnabled; }
+  QString audioInputMonitoringError() const { return m_audioInputMonitoringError; }
+  int monitoringRetryCount() const { return m_monitoringRetryCount; }
   QKeySequence shortcut() const { return m_shortcut; }
   QString shortcutText() const { return m_shortcut.toString(QKeySequence::NativeText); }
   int toggleCount() const { return m_toggleCount; }
@@ -211,6 +216,21 @@ public:
       return;
     m_audioInputMonitoringEnabled = enabled;
     emit audioInputMonitoringEnabledChanged();
+  }
+  Q_INVOKABLE void retryAudioInputMonitoring() {
+    ++m_monitoringRetryCount;
+    emit monitoringRetryCountChanged();
+    setAudioInputMonitoringError({});
+  }
+  Q_INVOKABLE void setAudioInputMonitoringError(const QString &error) {
+    if (m_audioInputMonitoringError == error)
+      return;
+    m_audioInputMonitoringError = error;
+    emit audioInputMonitoringErrorChanged();
+  }
+  Q_INVOKABLE void resetMonitoringRetryCount() {
+    m_monitoringRetryCount = 0;
+    emit monitoringRetryCountChanged();
   }
   Q_INVOKABLE bool setShortcut(const QKeySequence &value) {
     if (!m_shortcutChangeAccepted)
@@ -291,6 +311,8 @@ signals:
   void audioInputsChanged();
   void dictationAvailabilityChanged();
   void audioInputMonitoringEnabledChanged();
+  void audioInputMonitoringErrorChanged();
+  void monitoringRetryCountChanged();
 
 private:
   void setPasteShortcut(bool &shortcut, bool value) {
@@ -322,6 +344,8 @@ private:
   QString m_audioInputId;
   bool m_usbAvailable = true;
   bool m_audioInputMonitoringEnabled = false;
+  QString m_audioInputMonitoringError;
+  int m_monitoringRetryCount = 0;
 };
 
 class QmlTestSetup final : public QObject {
