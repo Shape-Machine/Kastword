@@ -94,6 +94,8 @@ private slots:
   void usesExpectedX11Arguments();
   void usesRegularClipboardShortcutOnWayland();
   void injectsClipboardDbusFocusAndProcessBoundaries();
+  void injectsConfiguredWaylandPasteArguments();
+  void rejectsWaylandShiftInsertWithoutPrimarySelection();
   void reportsInjectedProcessError();
 };
 
@@ -214,6 +216,7 @@ void TextOutputTest::deliversThroughWaylandHelper() {
   qputenv("PATH", directory.path().toUtf8());
   qputenv("XDG_SESSION_TYPE", QByteArrayLiteral("wayland"));
   TextOutput output;
+  output.setPasteShortcuts(TextOutput::CtrlV);
   QSignalSpy status(&output, &TextOutput::deliveryStatus);
 
   QCOMPARE(output.deliver(QStringLiteral("wayland text"), true),
@@ -248,7 +251,8 @@ void TextOutputTest::cancelsX11PasteWhenFocusChanges() {
   });
   QSignalSpy status(&output, &TextOutput::deliveryStatus);
 
-  output.scheduleX11Paste(QStringLiteral("/bin/true"));
+  output.scheduleX11Paste(QStringLiteral("/bin/true"),
+                          TextOutput::x11PasteArguments(TextOutput::ShiftInsert));
 
   QTRY_COMPARE(status.count(), 1);
   QCOMPARE(status.takeFirst().at(0).toString(),
@@ -264,7 +268,8 @@ void TextOutputTest::pastesOnX11WhenFocusIsUnchanged() {
   });
   QSignalSpy status(&output, &TextOutput::deliveryStatus);
 
-  output.scheduleX11Paste(QStringLiteral("/bin/true"));
+  output.scheduleX11Paste(QStringLiteral("/bin/true"),
+                          TextOutput::x11PasteArguments(TextOutput::ShiftInsert));
 
   QTRY_COMPARE(status.count(), 1);
   QCOMPARE(status.takeFirst().at(0).toString(),
@@ -305,23 +310,23 @@ void TextOutputTest::choosesPasteMethod() {
 }
 
 void TextOutputTest::usesExpectedX11Arguments() {
-  QCOMPARE(TextOutput::x11PasteArguments(),
+  QCOMPARE(TextOutput::x11PasteArguments(TextOutput::CtrlV | TextOutput::CtrlShiftV |
+                                         TextOutput::ShiftInsert),
            QStringList({QStringLiteral("key"), QStringLiteral("--clearmodifiers"),
+                        QStringLiteral("ctrl+v"), QStringLiteral("ctrl+shift+v"),
                         QStringLiteral("shift+Insert")}));
 }
 
 void TextOutputTest::usesRegularClipboardShortcutOnWayland() {
-  const QStringList arguments = TextOutput::waylandPasteArguments();
+  const QStringList arguments = TextOutput::waylandPasteArguments(
+      TextOutput::CtrlV | TextOutput::CtrlShiftV | TextOutput::ShiftInsert);
 
-  // Ctrl+Shift+V makes Konsole read the regular clipboard updated by Kastword and Klipper.
-  // Follow it with Ctrl+V for applications that do not use the terminal shortcut.
   QCOMPARE(arguments,
-           QStringList({QStringLiteral("key"), QStringLiteral("29:1"), QStringLiteral("42:1"),
-                        QStringLiteral("47:1"), QStringLiteral("47:0"), QStringLiteral("42:0"),
-                        QStringLiteral("29:0"), QStringLiteral("29:1"), QStringLiteral("47:1"),
-                        QStringLiteral("47:0"), QStringLiteral("29:0")}));
-  // KEY_INSERT=110 would make Konsole read the primary selection, which may contain stale text.
-  QVERIFY(!arguments.contains(QStringLiteral("110:1")));
+           QStringList({QStringLiteral("key"), QStringLiteral("29:1"), QStringLiteral("47:1"),
+                        QStringLiteral("47:0"), QStringLiteral("29:0"), QStringLiteral("29:1"),
+                        QStringLiteral("42:1"), QStringLiteral("47:1"), QStringLiteral("47:0"),
+                        QStringLiteral("42:0"), QStringLiteral("29:0"), QStringLiteral("42:1"),
+                        QStringLiteral("110:1"), QStringLiteral("110:0"), QStringLiteral("42:0")}));
 }
 
 void TextOutputTest::injectsClipboardDbusFocusAndProcessBoundaries() {
@@ -330,6 +335,7 @@ void TextOutputTest::injectsClipboardDbusFocusAndProcessBoundaries() {
   platformPtr->helperResult = TextOutput::HelperResult::Failed;
   platformPtr->helperExitCode = 9;
   TextOutput output(std::move(platform));
+  output.setPasteShortcuts(TextOutput::CtrlV | TextOutput::ShiftInsert);
   QSignalSpy status(&output, &TextOutput::deliveryStatus);
   QSignalSpy failures(&output, &TextOutput::deliveryFailed);
 
@@ -344,12 +350,50 @@ void TextOutputTest::injectsClipboardDbusFocusAndProcessBoundaries() {
   QCOMPARE(failures.takeFirst().at(0).toString(),
            QStringLiteral("Automatic paste helper failed with exit code 9."));
   QCOMPARE(platformPtr->launchedProgram, QStringLiteral("/fake/xdotool"));
-  QCOMPARE(platformPtr->launchedArguments, TextOutput::x11PasteArguments());
+  QCOMPARE(platformPtr->launchedArguments,
+           TextOutput::x11PasteArguments(TextOutput::CtrlV | TextOutput::ShiftInsert));
 
   output.forget(QStringLiteral("private text"));
   QVERIFY(platformPtr->clipboardTextValue.isEmpty());
   QVERIFY(platformPtr->selectionText.isEmpty());
   QVERIFY(platformPtr->klipperTextValue.isEmpty());
+}
+
+void TextOutputTest::injectsConfiguredWaylandPasteArguments() {
+  auto platform = std::make_unique<FakeTextOutputPlatform>();
+  auto *platformPtr = platform.get();
+  platformPtr->session = QStringLiteral("wayland");
+  platformPtr->executables = {QStringLiteral("ydotool")};
+  TextOutput output(std::move(platform));
+  output.setPasteShortcuts(TextOutput::CtrlShiftV | TextOutput::ShiftInsert);
+
+  QCOMPARE(output.deliver(QStringLiteral("wayland selection"), true),
+           QStringLiteral("Copied to clipboard; automatic paste scheduled."));
+
+  QTRY_COMPARE(platformPtr->launchedProgram, QStringLiteral("/fake/ydotool"));
+  QCOMPARE(platformPtr->launchedArguments,
+           TextOutput::waylandPasteArguments(TextOutput::CtrlShiftV | TextOutput::ShiftInsert));
+}
+
+void TextOutputTest::rejectsWaylandShiftInsertWithoutPrimarySelection() {
+  auto platform = std::make_unique<FakeTextOutputPlatform>();
+  auto *platformPtr = platform.get();
+  platformPtr->session = QStringLiteral("wayland");
+  platformPtr->executables = {QStringLiteral("ydotool")};
+  platformPtr->selectionSupported = false;
+  TextOutput output(std::move(platform));
+  output.setPasteShortcuts(TextOutput::ShiftInsert);
+  QSignalSpy status(&output, &TextOutput::deliveryStatus);
+  QSignalSpy failures(&output, &TextOutput::deliveryFailed);
+
+  QCOMPARE(output.deliver(QStringLiteral("private dictation"), true),
+           QStringLiteral("Copied to clipboard; automatic paste scheduled."));
+
+  QTRY_COMPARE(status.count(), 1);
+  QCOMPARE(status.constFirst().constFirst().toString(),
+           QStringLiteral("Automatic paste could not prepare Shift+Insert on Wayland."));
+  QCOMPARE(failures.count(), 1);
+  QVERIFY(platformPtr->launchedProgram.isEmpty());
 }
 
 void TextOutputTest::reportsInjectedProcessError() {

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <QFlags>
 #include <QObject>
 #include <QProcess>
 #include <QString>
@@ -41,11 +42,21 @@ public:
   virtual QString deliver(const QString &text, bool autoPaste);
   virtual void forget(const QString &text);
 
+  enum PasteShortcut {
+    CtrlV = 0x1,
+    CtrlShiftV = 0x2,
+    ShiftInsert = 0x4,
+  };
+  Q_DECLARE_FLAGS(PasteShortcuts, PasteShortcut)
+  Q_FLAG(PasteShortcuts)
+  virtual void setPasteShortcuts(PasteShortcuts shortcuts);
+  PasteShortcuts pasteShortcuts() const { return m_pasteShortcuts; }
+
   enum class PasteMethod { ClipboardOnly, Xdotool, Ydotool };
   static PasteMethod choosePasteMethod(bool autoPaste, const QString &session,
                                        bool xdotoolAvailable, bool ydotoolAvailable);
-  static QStringList x11PasteArguments();
-  static QStringList waylandPasteArguments();
+  static QStringList x11PasteArguments(PasteShortcuts shortcuts);
+  static QStringList waylandPasteArguments(PasteShortcuts shortcuts);
   static HelperResult helperResultForProcessError(QProcess::ProcessError error);
 
 signals:
@@ -55,7 +66,10 @@ signals:
 private:
   friend class TextOutputTest;
   void reportDeliveryFailure(const QString &status);
-  void scheduleX11Paste(const QString &xdotool);
+  void scheduleX11Paste(const QString &xdotool, const QStringList &arguments);
   void startPaste(const QString &program, const QStringList &arguments, const QString &success);
   std::unique_ptr<Platform> m_platform;
+  PasteShortcuts m_pasteShortcuts = ShiftInsert;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(TextOutput::PasteShortcuts)

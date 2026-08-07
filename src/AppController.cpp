@@ -82,6 +82,14 @@ void AppController::initialize() {
     writableGroup.sync();
   }
   m_autoPaste = group.readEntry("AutoPaste", false);
+  const int supportedPasteShortcuts =
+      TextOutput::CtrlV | TextOutput::CtrlShiftV | TextOutput::ShiftInsert;
+  int configuredPasteShortcuts = group.readEntry("PasteShortcuts", int(TextOutput::ShiftInsert));
+  configuredPasteShortcuts &= supportedPasteShortcuts;
+  if (configuredPasteShortcuts == 0)
+    configuredPasteShortcuts = TextOutput::ShiftInsert;
+  m_pasteShortcuts = TextOutput::PasteShortcuts::fromInt(configuredPasteShortcuts);
+  m_output->setPasteShortcuts(m_pasteShortcuts);
   m_recordingLimitMinutes = qBound(1, group.readEntry("RecordingLimitMinutes", 5), 60);
   m_audio->setMaximumDurationSeconds(m_recordingLimitMinutes * 60);
 
@@ -277,6 +285,31 @@ void AppController::setAutoPaste(bool value) {
   emit autoPasteChanged();
 }
 
+void AppController::setPasteCtrlV(bool value) { setPasteShortcut(TextOutput::CtrlV, value); }
+
+void AppController::setPasteCtrlShiftV(bool value) {
+  setPasteShortcut(TextOutput::CtrlShiftV, value);
+}
+
+void AppController::setPasteShiftInsert(bool value) {
+  setPasteShortcut(TextOutput::ShiftInsert, value);
+}
+
+void AppController::setPasteShortcut(TextOutput::PasteShortcut shortcut, bool enabled) {
+  TextOutput::PasteShortcuts updated = m_pasteShortcuts;
+  updated.setFlag(shortcut, enabled);
+  if (updated == TextOutput::PasteShortcuts{}) {
+    emit pasteShortcutsChanged();
+    return;
+  }
+  if (updated == m_pasteShortcuts)
+    return;
+  m_pasteShortcuts = updated;
+  m_output->setPasteShortcuts(m_pasteShortcuts);
+  saveSettings();
+  emit pasteShortcutsChanged();
+}
+
 void AppController::setRecordingLimitMinutes(int value) {
   value = qBound(1, value, 60);
   if (m_recordingLimitMinutes == value)
@@ -434,6 +467,7 @@ void AppController::saveSettings() {
   group.writeEntry("ModelPath", m_modelPath);
   group.writeEntry("Language", m_language);
   group.writeEntry("AutoPaste", m_autoPaste);
+  group.writeEntry("PasteShortcuts", m_pasteShortcuts.toInt());
   group.writeEntry("RecordingLimitMinutes", m_recordingLimitMinutes);
   group.sync();
 }

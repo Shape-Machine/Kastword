@@ -119,17 +119,37 @@ TextOutput::PasteMethod TextOutput::choosePasteMethod(bool autoPaste, const QStr
   return ydotoolAvailable ? PasteMethod::Ydotool : PasteMethod::ClipboardOnly;
 }
 
-QStringList TextOutput::x11PasteArguments() {
-  return {QStringLiteral("key"), QStringLiteral("--clearmodifiers"),
-          QStringLiteral("shift+Insert")};
+void TextOutput::setPasteShortcuts(PasteShortcuts shortcuts) {
+  const PasteShortcuts supported = CtrlV | CtrlShiftV | ShiftInsert;
+  m_pasteShortcuts = shortcuts & supported;
+  if (m_pasteShortcuts == PasteShortcuts{})
+    m_pasteShortcuts = ShiftInsert;
 }
 
-QStringList TextOutput::waylandPasteArguments() {
-  // KEY_LEFTCTRL=29, KEY_LEFTSHIFT=42, and KEY_V=47.
-  return {QStringLiteral("key"),  QStringLiteral("29:1"), QStringLiteral("42:1"),
-          QStringLiteral("47:1"), QStringLiteral("47:0"), QStringLiteral("42:0"),
-          QStringLiteral("29:0"), QStringLiteral("29:1"), QStringLiteral("47:1"),
-          QStringLiteral("47:0"), QStringLiteral("29:0")};
+QStringList TextOutput::x11PasteArguments(PasteShortcuts shortcuts) {
+  QStringList arguments = {QStringLiteral("key"), QStringLiteral("--clearmodifiers")};
+  if (shortcuts.testFlag(CtrlV))
+    arguments.append(QStringLiteral("ctrl+v"));
+  if (shortcuts.testFlag(CtrlShiftV))
+    arguments.append(QStringLiteral("ctrl+shift+v"));
+  if (shortcuts.testFlag(ShiftInsert))
+    arguments.append(QStringLiteral("shift+Insert"));
+  return arguments;
+}
+
+QStringList TextOutput::waylandPasteArguments(PasteShortcuts shortcuts) {
+  // KEY_LEFTCTRL=29, KEY_LEFTSHIFT=42, KEY_V=47, and KEY_INSERT=110.
+  QStringList arguments = {QStringLiteral("key")};
+  if (shortcuts.testFlag(CtrlV))
+    arguments.append({QStringLiteral("29:1"), QStringLiteral("47:1"), QStringLiteral("47:0"),
+                      QStringLiteral("29:0")});
+  if (shortcuts.testFlag(CtrlShiftV))
+    arguments.append({QStringLiteral("29:1"), QStringLiteral("42:1"), QStringLiteral("47:1"),
+                      QStringLiteral("47:0"), QStringLiteral("42:0"), QStringLiteral("29:0")});
+  if (shortcuts.testFlag(ShiftInsert))
+    arguments.append({QStringLiteral("42:1"), QStringLiteral("110:1"), QStringLiteral("110:0"),
+                      QStringLiteral("42:0")});
+  return arguments;
 }
 
 TextOutput::HelperResult TextOutput::helperResultForProcessError(QProcess::ProcessError error) {
@@ -164,14 +184,19 @@ QString TextOutput::deliver(const QString &text, bool autoPaste) {
   if (method == PasteMethod::Xdotool) {
     // Defer the synthetic key press until Qt has advertised the new clipboard owner to the window
     // system. Pasting in this same event-loop turn can read the previous clipboard.
-    scheduleX11Paste(xdotool);
+    scheduleX11Paste(xdotool, x11PasteArguments(m_pasteShortcuts));
     return i18n("Copied to clipboard; automatic paste scheduled.");
   }
   if (method == PasteMethod::Ydotool) {
-    // Konsole's Ctrl+Shift+V action reads the regular clipboard; Shift+Insert can instead read a
-    // stale primary selection on Wayland. Allow the compositor to receive the new clipboard first.
-    QTimer::singleShot(150, this, [this, ydotool] {
-      startPaste(ydotool, waylandPasteArguments(), i18n("Sent paste to the focused application."));
+    const QStringList arguments = waylandPasteArguments(m_pasteShortcuts);
+    const bool requiresPrimarySelection = m_pasteShortcuts.testFlag(ShiftInsert);
+    QTimer::singleShot(150, this, [this, ydotool, arguments, text, requiresPrimarySelection] {
+      if (requiresPrimarySelection &&
+          (!m_platform->supportsSelection() || m_platform->clipboardText(true) != text)) {
+        reportDeliveryFailure(i18n("Automatic paste could not prepare Shift+Insert on Wayland."));
+        return;
+      }
+      startPaste(ydotool, arguments, i18n("Sent paste to the focused application."));
     });
     return i18n("Copied to clipboard; automatic paste scheduled.");
   }
@@ -180,14 +205,14 @@ QString TextOutput::deliver(const QString &text, bool autoPaste) {
                                                : QStringLiteral("ydotool"));
 }
 
-void TextOutput::scheduleX11Paste(const QString &xdotool) {
+void TextOutput::scheduleX11Paste(const QString &xdotool, const QStringList &arguments) {
   const QString originalWindow = m_platform->focusedWindow(xdotool);
-  QTimer::singleShot(150, this, [this, xdotool, originalWindow] {
+  QTimer::singleShot(150, this, [this, xdotool, originalWindow, arguments] {
     if (originalWindow.isEmpty() || m_platform->focusedWindow(xdotool) != originalWindow) {
       emit deliveryStatus(i18n("Automatic paste was cancelled because focus changed."));
       return;
     }
-    startPaste(xdotool, x11PasteArguments(), i18n("Pasted into the focused application."));
+    startPaste(xdotool, arguments, i18n("Pasted into the focused application."));
   });
 }
 

@@ -410,6 +410,10 @@ msgstr "xxAutomatic paste helper crashed.xx"
 msgid "Automatic paste helper encountered an error."
 msgstr "xxAutomatic paste helper encountered an error.xx"
 
+#: src/TextOutput.cpp:197
+msgid "Automatic paste could not prepare Shift+Insert on Wayland."
+msgstr "xxAutomatic paste could not prepare Shift+Insert on Wayland.xx"
+
 #: src/TextOutput.cpp:128
 msgid "Automatic paste helper failed with exit code %1."
 msgstr "xxAutomatic paste helper failed with exit code %1.xx"
@@ -648,13 +652,31 @@ msgstr "xxOutput:xx"
 msgid "Paste automatically"
 msgstr "xxPaste automaticallyxx"
 
+#: src/qml/Main.qml:332
+msgid "Paste shortcuts:"
+msgstr "xxPaste shortcuts:xx"
+
+#: src/qml/Main.qml:333
+msgid "Ctrl+V"
+msgstr "xxCtrl+Vxx"
+
+#: src/qml/Main.qml:341
+msgid "Ctrl+Shift+V"
+msgstr "xxCtrl+Shift+Vxx"
+
+#: src/qml/Main.qml:349
+msgid "Shift+Insert"
+msgstr "xxShift+Insertxx"
+
 #: src/qml/Main.qml:336
 msgid ""
-"Automatic paste sends keystrokes to the focused application after a short "
-"delay. On Wayland, Kastword cannot verify that focus stayed unchanged."
+"Automatic paste sends each selected shortcut to the focused application "
+"after a short delay. On Wayland, Kastword cannot verify that focus stayed "
+"unchanged."
 msgstr ""
-"xxAutomatic paste sends keystrokes to the focused application after a short "
-"delay. On Wayland, Kastword cannot verify that focus stayed unchanged.xx"
+"xxAutomatic paste sends each selected shortcut to the focused application "
+"after a short delay. On Wayland, Kastword cannot verify that focus stayed "
+"unchanged.xx"
 
 #: src/qml/Main.qml:344
 msgid ""
