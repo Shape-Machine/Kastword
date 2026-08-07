@@ -293,7 +293,7 @@ Kirigami.ApplicationWindow {
                                 }
 
                                 RowLayout {
-                                    Layout.fillWidth: modelFooter.columns === 1
+                                    Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignRight
                                     spacing: Kirigami.Units.smallSpacing
 

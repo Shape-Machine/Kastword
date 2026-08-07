@@ -258,6 +258,8 @@ TestCase {
                 "Download URL copied to clipboard.")
         compare(downloadButton.highlighted, true)
         const downloadPosition = downloadButton.mapToItem(unavailableCard, 0, 0)
+        verify(downloadPosition.x + downloadButton.width
+               >= unavailableCard.width - unavailableCard.padding * 2)
         verify(downloadPosition.y + downloadButton.height
                <= unavailableCard.height - unavailableCard.padding)
     }
