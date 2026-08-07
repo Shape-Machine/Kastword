@@ -691,8 +691,13 @@ void AppControllerTest::recoversAudioInputWithoutSilentFallback() {
   controller.toggle();
   QVERIFY(!audioPtr->recording);
   QTRY_VERIFY(!controller.isTranscribing());
-  QVERIFY(!controller.shortcutAction()->isEnabled());
+  QVERIFY(controller.shortcutAction()->isEnabled());
   QVERIFY(!controller.dictationActionEnabled());
+  QSignalSpy audioInputSetupRequested(&controller, &AppController::audioInputSetupRequested);
+  controller.toggle();
+  QCOMPARE(audioInputSetupRequested.count(), 1);
+  QVERIFY(!audioPtr->recording);
+  QVERIFY(controller.status().contains(QStringLiteral("unavailable")));
 
   const QVariantList unavailableInputs = controller.audioInputs();
   QCOMPARE(unavailableInputs.constLast().toMap().value(QStringLiteral("id")).toString(),
@@ -914,7 +919,7 @@ void AppControllerTest::disablesDictationUntilModelIsReady() {
 
   QVERIFY(!controller.modelReady());
   QVERIFY(controller.modelSetupRequired());
-  QVERIFY(!controller.shortcutAction()->isEnabled());
+  QVERIFY(controller.shortcutAction()->isEnabled());
   controller.toggle();
   QVERIFY(!audioPtr->recording);
   QCOMPARE(controller.status(), QStringLiteral("Choose a speech model before starting dictation."));
@@ -1111,6 +1116,16 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
   QCOMPARE(desktopPtr->notifications.constLast().kind, DesktopIntegration::NotificationKind::Error);
   QCOMPARE(desktopPtr->notifications.constLast().text,
            QStringLiteral("Deterministic backend failure."));
+
+  audioPtr->setInputs({});
+  QSignalSpy audioInputSetupRequested(&controller, &AppController::audioInputSetupRequested);
+  controller.toggle();
+  QCOMPARE(audioInputSetupRequested.count(), 1);
+  QCOMPARE(desktopPtr->notifications.size(), 3);
+  QCOMPARE(desktopPtr->notifications.constLast().kind, DesktopIntegration::NotificationKind::Error);
+  QCOMPARE(desktopPtr->notifications.constLast().title, QStringLiteral("Microphone unavailable"));
+  QCOMPARE(desktopPtr->notifications.constLast().text,
+           QStringLiteral("No microphone is available."));
 }
 
 void AppControllerTest::reportsAutomaticPasteFailuresToDesktop_data() {

@@ -76,6 +76,13 @@ TestCase {
         compare(button.enabled, false)
     }
 
+    function test_missingAudioInputOpensAudioSetup() {
+        applicationWindow.currentView = 0
+        appController.requestAudioInputSetup()
+        tryCompare(applicationWindow, "currentView", 2)
+        compare(audioInputPage().visible, true)
+    }
+
     function test_savedModelVerificationDoesNotOpenSetup() {
         appController.setRestoringModel(true)
         appController.setModelReady(false)

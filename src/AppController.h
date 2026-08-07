@@ -132,6 +132,7 @@ signals:
   void modelPathChanged();
   void modelReadyChanged();
   void modelSetupRequested();
+  void audioInputSetupRequested();
   void languageChanged();
   void autoPasteChanged();
   void pasteShortcutsChanged();

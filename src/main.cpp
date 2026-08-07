@@ -109,6 +109,11 @@ int main(int argc, char **argv) {
     window->raise();
     window->requestActivate();
   });
+  QObject::connect(&controller, &AppController::audioInputSetupRequested, window, [window] {
+    window->show();
+    window->raise();
+    window->requestActivate();
+  });
 
   if (showWindow) {
     window->show();
