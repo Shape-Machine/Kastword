@@ -189,19 +189,9 @@ QString TextOutput::deliver(const QString &text, bool autoPaste) {
   }
   if (method == PasteMethod::Ydotool) {
     const PasteShortcuts shortcuts = m_pasteShortcuts;
-    QTimer::singleShot(150, this, [this, ydotool, shortcuts, text] {
-      PasteShortcuts usableShortcuts = shortcuts;
-      QString success = i18n("Sent paste to the focused application.");
-      if (shortcuts.testFlag(ShiftInsert) &&
-          (!m_platform->supportsSelection() || m_platform->clipboardText(true) != text)) {
-        usableShortcuts.setFlag(ShiftInsert, false);
-        if (usableShortcuts == PasteShortcuts{}) {
-          reportDeliveryFailure(i18n("Automatic paste could not prepare Shift+Insert on Wayland."));
-          return;
-        }
-        success = i18n("Sent available paste shortcuts; Shift+Insert could not be prepared.");
-      }
-      startPaste(ydotool, waylandPasteArguments(usableShortcuts), success);
+    QTimer::singleShot(150, this, [this, ydotool, shortcuts] {
+      startPaste(ydotool, waylandPasteArguments(shortcuts),
+                 i18n("Sent paste to the focused application."));
     });
     return i18n("Copied to clipboard; automatic paste scheduled.");
   }
