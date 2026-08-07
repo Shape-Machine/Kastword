@@ -185,6 +185,8 @@ TestCase {
     }
 
     function test_modelCardsShowDistinctStatuses() {
+        applicationWindow.width = 1200
+        applicationWindow.modelFooterBreakpoint = 0
         applicationWindow.openModelManager()
         const models = modelPage()
         const filter = findChild(models, "modelLanguageFilter")
@@ -201,6 +203,7 @@ TestCase {
         const activeCard = findChild(models, "modelCard-base.en")
         const downloadedCard = findChild(models, "modelCard-small")
         const unavailableCard = findChild(models, "modelCard-tiny")
+        const unavailableFooter = findChild(models, "modelFooter-tiny")
         const useButton = findChild(models, "useModel-small")
         const downloadButton = findChild(models, "downloadModel-tiny")
         const activeIndicator = findChild(models, "activeModelIndicator-base.en")
@@ -215,6 +218,7 @@ TestCase {
         verify(activeCard)
         verify(downloadedCard)
         verify(unavailableCard)
+        verify(unavailableFooter)
         verify(useButton)
         verify(downloadButton)
         verify(activeIndicator)
@@ -246,6 +250,7 @@ TestCase {
         compare(unavailableSize.text, "· 141 MiB")
         compare(unavailableSize.opacity, 0.7)
         compare(unavailableIndicator.visible, false)
+        compare(unavailableFooter.columns, 2)
         compare(unavailable.Accessible.description, "https://example.test/tiny")
         unavailable.forceActiveFocus()
         compare(unavailable.activeFocus, true)
