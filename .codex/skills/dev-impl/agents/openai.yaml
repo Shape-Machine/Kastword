@@ -1,4 +1,4 @@
 interface:
   display_name: "Issue Implementation"
-  short_description: "Plan and implement an approved GitHub issue"
-  default_prompt: "Use $dev-impl with GitHub issue #NUMBER to review it and propose an implementation plan."
+  short_description: "Plan and implement approved GitHub issues"
+  default_prompt: "Use $dev-impl with GitHub issues #NUMBER and #NUMBER to review them and propose one implementation plan."
