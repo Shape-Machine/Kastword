@@ -412,6 +412,7 @@ Kirigami.ApplicationWindow {
         Kirigami.ScrollablePage {
             objectName: "audioInputPage"
             title: i18n("Audio input")
+            verticalScrollBarPolicy: Qt.ScrollBarAlwaysOn
 
             Kirigami.FormLayout {
                 width: parent.width
