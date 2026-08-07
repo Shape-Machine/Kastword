@@ -44,6 +44,10 @@ class AppController final : public QObject {
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
+  Q_PROPERTY(QVariantList audioInputs READ audioInputs NOTIFY audioInputsChanged)
+  Q_PROPERTY(QString audioInputId READ audioInputId WRITE setAudioInputId NOTIFY audioInputsChanged)
+  Q_PROPERTY(bool audioInputReady READ audioInputReady NOTIFY audioInputsChanged)
+  Q_PROPERTY(QString audioInputStatus READ audioInputStatus NOTIFY audioInputsChanged)
   Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
 
@@ -82,6 +86,10 @@ public:
   bool pasteShiftInsert() const { return m_pasteShortcuts.testFlag(TextOutput::ShiftInsert); }
   int recordingLimitMinutes() const { return m_recordingLimitMinutes; }
   qreal level() const { return m_level; }
+  QVariantList audioInputs() const;
+  QString audioInputId() const { return m_audio->selectedDeviceId(); }
+  bool audioInputReady() const { return m_audio->selectedDeviceAvailable(); }
+  QString audioInputStatus() const;
   QKeySequence shortcut() const { return m_shortcutSequence; }
   QString shortcutText() const;
 
@@ -92,6 +100,7 @@ public:
   void setPasteCtrlShiftV(bool value);
   void setPasteShiftInsert(bool value);
   void setRecordingLimitMinutes(int value);
+  void setAudioInputId(const QString &value);
   Q_INVOKABLE bool setShortcut(const QKeySequence &value);
   QAction *shortcutAction() { return &m_shortcut; }
 
@@ -114,6 +123,7 @@ signals:
   void pasteShortcutsChanged();
   void recordingLimitMinutesChanged();
   void levelChanged();
+  void audioInputsChanged();
   void shortcutChanged();
 
 private:
@@ -125,6 +135,7 @@ private:
   void handleTranscriptionFinished(const QString &text, const QString &error);
   void handleCaptureFailure(const QString &error);
   void initialize();
+  void updateShortcutEnabled();
   void showStatusNotification(const QString &title, const QString &text, const QString &iconName,
                               bool persistent = false);
 

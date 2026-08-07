@@ -92,6 +92,7 @@ void AppController::initialize() {
   m_output->setPasteShortcuts(m_pasteShortcuts);
   m_recordingLimitMinutes = qBound(1, group.readEntry("RecordingLimitMinutes", 5), 60);
   m_audio->setMaximumDurationSeconds(m_recordingLimitMinutes * 60);
+  m_audio->setSelectedDeviceId(group.readEntry("AudioInputId", QString()));
 
   connect(m_modelManager.get(), &ModelManager::activeModelPathChanged, this, [this] {
     const QString path = m_modelManager->activeModelPath();
@@ -113,10 +114,10 @@ void AppController::initialize() {
       recordingStopped = true;
     }
     if (modelReady())
-      setStatus(i18n("Ready"));
+      setStatus(audioInputReady() ? i18n("Ready") : audioInputStatus());
     else if (m_modelManager->verificationPending() && !recordingStopped)
       setStatus(i18n("Verifying the speech model…"));
-    m_shortcut.setEnabled(modelReady());
+    updateShortcutEnabled();
     emit modelReadyChanged();
   });
   connect(m_modelManager.get(), &ModelManager::changed, this, [this] {
@@ -174,29 +175,104 @@ void AppController::initialize() {
     });
     connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
   }
-  m_shortcut.setEnabled(modelReady());
+  updateShortcutEnabled();
   connect(m_audio.get(), &AudioCapture::levelChanged, this, [this](qreal value) {
     m_level = value;
     emit levelChanged();
   });
   connect(m_audio.get(), &AudioCapture::captureFailed, this, &AppController::handleCaptureFailure);
+  connect(m_audio.get(), &AudioCapture::audioInputsChanged, this, [this] {
+    updateShortcutEnabled();
+    emit audioInputsChanged();
+    if (!isIdle())
+      return;
+    if (!modelReady())
+      setStatus(m_modelManager->verificationPending()
+                    ? i18n("Verifying the speech model…")
+                    : i18n("Choose a speech model to enable dictation."));
+    else
+      setStatus(audioInputReady() ? i18n("Ready") : audioInputStatus());
+  });
   connect(m_output.get(), &TextOutput::deliveryStatus, this, &AppController::setStatus);
   connect(m_output.get(), &TextOutput::deliveryFailed, this, [this](const QString &status) {
     if (m_desktopIntegration)
       m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
                                           i18n("Automatic paste failed"), status);
   });
-  if (modelReady())
+  if (modelReady() && audioInputReady())
     setStatus(i18n("Ready"));
   else if (m_modelManager->verificationPending())
     setStatus(i18n("Verifying the speech model…"));
-  else
+  else if (!modelReady())
     setStatus(i18n("Choose a speech model to enable dictation."));
+  else
+    setStatus(audioInputStatus());
 }
 
 QString AppController::shortcutText() const {
   return m_shortcutSequence.isEmpty() ? i18n("None")
                                       : m_shortcutSequence.toString(QKeySequence::NativeText);
+}
+
+QVariantList AppController::audioInputs() const {
+  QVariantList inputs;
+  const QList<AudioInputDevice> devices = m_audio->audioInputs();
+  QString defaultDescription;
+  for (const AudioInputDevice &device : devices) {
+    if (device.isDefault) {
+      defaultDescription = device.description;
+      break;
+    }
+  }
+  if (defaultDescription.isEmpty() && audioInputId().isEmpty())
+    defaultDescription = m_audio->effectiveDeviceDescription();
+  inputs.append(QVariantMap{
+      {QStringLiteral("id"), QString()},
+      {QStringLiteral("name"), defaultDescription.isEmpty()
+                                   ? i18n("System default")
+                                   : i18n("System default (%1)", defaultDescription)},
+      {QStringLiteral("available"), !defaultDescription.isEmpty()},
+      {QStringLiteral("default"), true},
+  });
+  bool selectedListed = audioInputId().isEmpty();
+  for (const AudioInputDevice &device : devices) {
+    selectedListed = selectedListed || device.id == audioInputId();
+    inputs.append(QVariantMap{
+        {QStringLiteral("id"), device.id},
+        {QStringLiteral("name"), device.description},
+        {QStringLiteral("available"), true},
+        {QStringLiteral("default"), device.isDefault},
+    });
+  }
+  if (!selectedListed) {
+    inputs.append(QVariantMap{
+        {QStringLiteral("id"), audioInputId()},
+        {QStringLiteral("name"), i18n("Unavailable selected microphone")},
+        {QStringLiteral("available"), false},
+        {QStringLiteral("default"), false},
+    });
+  }
+  return inputs;
+}
+
+QString AppController::audioInputStatus() const {
+  if (!audioInputReady()) {
+    return audioInputId().isEmpty()
+               ? i18n("No microphone is available.")
+               : i18n("The selected microphone is unavailable. Choose another audio input.");
+  }
+  return i18n("Using %1", m_audio->effectiveDeviceDescription());
+}
+
+void AppController::setAudioInputId(const QString &value) {
+  if (!isIdle() || m_audio->selectedDeviceId() == value)
+    return;
+  m_audio->setSelectedDeviceId(value);
+  saveSettings();
+}
+
+void AppController::updateShortcutEnabled() {
+  m_shortcut.setEnabled(modelReady() && audioInputReady());
 }
 
 bool AppController::setShortcut(const QKeySequence &value) {
@@ -363,6 +439,10 @@ void AppController::toggle() {
     emit modelSetupRequested();
     return;
   }
+  if (!audioInputReady()) {
+    setStatus(audioInputStatus());
+    return;
+  }
   if (m_state == State::Transcribing) {
     setStatus(i18n("Transcription is already in progress."));
     return;
@@ -476,5 +556,6 @@ void AppController::saveSettings() {
   group.writeEntry("AutoPaste", m_autoPaste);
   group.writeEntry("PasteShortcuts", m_pasteShortcuts.toInt());
   group.writeEntry("RecordingLimitMinutes", m_recordingLimitMinutes);
+  group.writeEntry("AudioInputId", m_audio->selectedDeviceId());
   group.sync();
 }

@@ -48,8 +48,10 @@ QString AudioCapture::errorMessageFor(QAudio::Error error) {
   return i18n("Microphone capture stopped unexpectedly.");
 }
 
-AudioCapture::AudioCapture(QObject *parent)
-    : AudioCapture([] { return QMediaDevices::defaultAudioInput(); }, parent) {}
+AudioCapture::AudioCapture(QObject *parent) : QObject(parent), m_backendFactory(createBackend) {
+  connect(&m_mediaDevices, &QMediaDevices::audioInputsChanged, this,
+          &AudioCapture::audioInputsChanged);
+}
 
 AudioCapture::AudioCapture(DeviceProvider deviceProvider, QObject *parent)
     : QObject(parent), m_deviceProvider(std::move(deviceProvider)),
@@ -80,14 +82,59 @@ QByteArray CapturedAudioBuffer::takeForWhisper() {
   return convertAudioForWhisper(std::exchange(m_audio, {}), m_format);
 }
 
+QString AudioCapture::deviceId(const QAudioDevice &device) { return encodedDeviceId(device.id()); }
+
+QString AudioCapture::encodedDeviceId(const QByteArray &backendId) {
+  return QString::fromLatin1(
+      backendId.toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
+}
+
+QList<AudioInputDevice> AudioCapture::audioInputs() const {
+  QList<AudioInputDevice> result;
+  const QList<QAudioDevice> devices = QMediaDevices::audioInputs();
+  result.reserve(devices.size());
+  for (const QAudioDevice &device : devices)
+    result.append({deviceId(device), device.description(), device.isDefault()});
+  return result;
+}
+
+void AudioCapture::setSelectedDeviceId(const QString &id) {
+  if (m_selectedDeviceId == id)
+    return;
+  m_selectedDeviceId = id;
+  emit audioInputsChanged();
+}
+
+QAudioDevice AudioCapture::selectedDevice() const {
+  if (m_deviceProvider)
+    return m_deviceProvider();
+  if (m_selectedDeviceId.isEmpty())
+    return QMediaDevices::defaultAudioInput();
+  const QList<QAudioDevice> devices = QMediaDevices::audioInputs();
+  for (const QAudioDevice &device : devices) {
+    if (deviceId(device) == m_selectedDeviceId)
+      return device;
+  }
+  return {};
+}
+
+bool AudioCapture::selectedDeviceAvailable() const {
+  if (m_hasInjectedBackend)
+    return true;
+  return !selectedDevice().isNull();
+}
+
+QString AudioCapture::effectiveDeviceDescription() const { return selectedDevice().description(); }
+
 bool AudioCapture::start(QString *error) {
   if (m_source)
     return true;
 
-  const QAudioDevice device =
-      m_hasInjectedBackend || !m_deviceProvider ? QAudioDevice() : m_deviceProvider();
+  const QAudioDevice device = m_hasInjectedBackend ? QAudioDevice() : selectedDevice();
   if (device.isNull() && !m_hasInjectedBackend) {
-    *error = i18n("No microphone is available.");
+    *error = m_selectedDeviceId.isEmpty()
+                 ? i18n("No microphone is available.")
+                 : i18n("The selected microphone is unavailable. Choose another audio input.");
     return false;
   }
 

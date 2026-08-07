@@ -30,6 +30,9 @@ TestCase {
         appController.pasteShiftInsert = true
         appController.pasteCtrlV = false
         appController.pasteCtrlShiftV = false
+        appController.setTestState(false, false)
+        appController.setUsbAudioInputAvailable(true)
+        appController.audioInputId = ""
         const loader = createTemporaryObject(applicationComponent, testCase)
         verify(loader)
         tryCompare(loader, "status", Loader.Ready)
@@ -52,6 +55,12 @@ TestCase {
 
     function settingsPage() {
         const page = findChild(applicationWindow.contentItem, "settingsPage")
+        verify(page)
+        return page
+    }
+
+    function audioInputPage() {
+        const page = findChild(applicationWindow.contentItem, "audioInputPage")
         verify(page)
         return page
     }
@@ -336,9 +345,11 @@ TestCase {
     function test_verticalTabsSwitchViewsInOneWindow() {
         const dictationTab = findChild(applicationWindow.contentItem, "dictationTab")
         const modelsTab = findChild(applicationWindow.contentItem, "modelsTab")
+        const audioInputTab = findChild(applicationWindow.contentItem, "audioInputTab")
         const settingsTab = findChild(applicationWindow.contentItem, "settingsTab")
         verify(dictationTab)
         verify(modelsTab)
+        verify(audioInputTab)
         verify(settingsTab)
         compare(dictationTab.checked, true)
 
@@ -347,8 +358,13 @@ TestCase {
         compare(modelsTab.checked, true)
         compare(modelPage().visible, true)
 
-        mouseClick(settingsTab)
+        mouseClick(audioInputTab)
         tryCompare(applicationWindow, "currentView", 2)
+        compare(audioInputTab.checked, true)
+        compare(audioInputPage().visible, true)
+
+        mouseClick(settingsTab)
+        tryCompare(applicationWindow, "currentView", 3)
         compare(settingsTab.checked, true)
         compare(settingsPage().visible, true)
         compare(applicationWindow.pageStack.depth, 1)
@@ -357,9 +373,11 @@ TestCase {
     function test_verticalTabsSupportArrowKeys() {
         const dictationTab = findChild(applicationWindow.contentItem, "dictationTab")
         const modelsTab = findChild(applicationWindow.contentItem, "modelsTab")
+        const audioInputTab = findChild(applicationWindow.contentItem, "audioInputTab")
         const settingsTab = findChild(applicationWindow.contentItem, "settingsTab")
         verify(dictationTab)
         verify(modelsTab)
+        verify(audioInputTab)
         verify(settingsTab)
 
         dictationTab.forceActiveFocus()
@@ -370,13 +388,58 @@ TestCase {
         compare(applicationWindow.currentView, 1)
 
         keyClick(Qt.Key_Down)
+        verify(audioInputTab.activeFocus)
+        keyClick(Qt.Key_Down)
         verify(settingsTab.activeFocus)
         keyClick(Qt.Key_Down)
         verify(dictationTab.activeFocus)
         keyClick(Qt.Key_Up)
         verify(settingsTab.activeFocus)
         keyClick(Qt.Key_Space)
-        compare(applicationWindow.currentView, 2)
+        compare(applicationWindow.currentView, 3)
+    }
+
+    function test_audioInputPageSelectsAndReportsDevices() {
+        applicationWindow.openAudioInput()
+        const page = audioInputPage()
+        const combo = findChild(page, "audioInputComboBox")
+        const status = findChild(page, "audioInputStatus")
+        const level = findChild(page, "audioInputLevel")
+        const button = findChild(applicationWindow.contentItem, "dictationButton")
+        verify(combo)
+        verify(status)
+        verify(level)
+        verify(button)
+        compare(combo.Accessible.name, "Audio input device")
+        compare(level.Accessible.name, "Microphone level")
+        compare(combo.currentIndex, 0)
+        compare(appController.audioInputId, "")
+        compare(status.text, "Using Built-in Mic")
+
+        combo.currentIndex = combo.indexOfValue("usb")
+        combo.activated(combo.currentIndex)
+        compare(appController.audioInputId, "usb")
+        compare(status.text, "Using USB Headset")
+
+        appController.setUsbAudioInputAvailable(false)
+        tryCompare(appController, "audioInputReady", false)
+        verify(status.text.indexOf("unavailable") >= 0)
+        compare(button.enabled, false)
+
+        appController.setUsbAudioInputAvailable(true)
+        tryCompare(appController, "audioInputReady", true)
+        compare(button.enabled, true)
+    }
+
+    function test_audioInputSelectionIsLockedWhileBusy() {
+        applicationWindow.openAudioInput()
+        const combo = findChild(audioInputPage(), "audioInputComboBox")
+        verify(combo)
+        compare(combo.enabled, true)
+        appController.setTestState(true, false)
+        compare(combo.enabled, false)
+        appController.setTestState(false, true)
+        compare(combo.enabled, false)
     }
 
     function test_navigationAdaptsToMinimumWidth() {

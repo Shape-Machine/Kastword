@@ -14,9 +14,11 @@
 #include <QStandardPaths>
 #include <QTemporaryFile>
 #include <QTest>
+#include <algorithm>
 #include <atomic>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 class FakeAudioCapture final : public AudioCapture {
 public:
@@ -26,11 +28,19 @@ public:
   }
 
   bool start(QString *error) override {
-    if (!startResult) {
+    if (!startResult || !selectedDeviceAvailable()) {
       *error = startError;
       return false;
     }
     recording = true;
+    if (selectedId.isEmpty()) {
+      const auto found =
+          std::find_if(inputs.cbegin(), inputs.cend(),
+                       [](const AudioInputDevice &input) { return input.isDefault; });
+      startedDeviceId = found == inputs.cend() ? inputs.constFirst().id : found->id;
+    } else {
+      startedDeviceId = selectedId;
+    }
     return true;
   }
 
@@ -40,6 +50,38 @@ public:
   }
 
   bool isRecording() const override { return recording; }
+  QList<AudioInputDevice> audioInputs() const override { return inputs; }
+  QString selectedDeviceId() const override { return selectedId; }
+  void setSelectedDeviceId(const QString &id) override {
+    if (selectedId == id)
+      return;
+    selectedId = id;
+    emit audioInputsChanged();
+  }
+  bool selectedDeviceAvailable() const override {
+    if (selectedId.isEmpty())
+      return !inputs.isEmpty();
+    return std::any_of(inputs.cbegin(), inputs.cend(),
+                       [this](const AudioInputDevice &input) { return input.id == selectedId; });
+  }
+  QString effectiveDeviceDescription() const override {
+    if (inputs.isEmpty())
+      return {};
+    if (selectedId.isEmpty()) {
+      const auto found =
+          std::find_if(inputs.cbegin(), inputs.cend(),
+                       [](const AudioInputDevice &input) { return input.isDefault; });
+      return found == inputs.cend() ? inputs.constFirst().description : found->description;
+    }
+    const auto found =
+        std::find_if(inputs.cbegin(), inputs.cend(),
+                     [this](const AudioInputDevice &input) { return input.id == selectedId; });
+    return found == inputs.cend() ? QString() : found->description;
+  }
+  void setInputs(QList<AudioInputDevice> value) {
+    inputs = std::move(value);
+    emit audioInputsChanged();
+  }
   void reportLevel(qreal level) { emit levelChanged(level); }
   void fail(const QString &error) {
     recording = false;
@@ -50,6 +92,12 @@ public:
   bool recording = false;
   QString startError = QStringLiteral("Microphone unavailable.");
   QByteArray audio = QByteArrayLiteral("captured audio");
+  QList<AudioInputDevice> inputs = {
+      {QStringLiteral("built-in"), QStringLiteral("Built-in Microphone"), true},
+      {QStringLiteral("headset"), QStringLiteral("USB Headset"), false},
+  };
+  QString selectedId;
+  QString startedDeviceId;
   bool *destroyed = nullptr;
 };
 
@@ -165,6 +213,8 @@ private slots:
   void emitsSettingChangesOnlyWhenValuesChange();
   void defaultsToPrivateOutputAndConfigurableRecordingLimit();
   void configuresPasteShortcuts();
+  void selectsAndPersistsAudioInput();
+  void recoversAudioInputWithoutSilentFallback();
   void copiesText();
   void copiesTranscript();
   void forgetsTranscript();
@@ -537,6 +587,93 @@ void AppControllerTest::configuresPasteShortcuts() {
   KConfig config(QStringLiteral("kastwordrc"));
   const KConfigGroup group(&config, QStringLiteral("General"));
   QCOMPARE(group.readEntry("PasteShortcuts", 0), int(TextOutput::CtrlShiftV));
+}
+
+void AppControllerTest::selectsAndPersistsAudioInput() {
+  QCOMPARE(AudioCapture::encodedDeviceId(QByteArray("backend/id\0\xff", 12)),
+           QStringLiteral("YmFja2VuZC9pZAD_"));
+
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto *audioPtr = audio.get();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+
+  QCOMPARE(controller.audioInputs().size(), 3);
+  QCOMPARE(controller.audioInputId(), QString());
+  QCOMPARE(controller.audioInputStatus(), QStringLiteral("Using Built-in Microphone"));
+  controller.setAudioInputId(QStringLiteral("headset"));
+  QCOMPARE(controller.audioInputId(), QStringLiteral("headset"));
+  QCOMPARE(controller.audioInputStatus(), QStringLiteral("Using USB Headset"));
+  QCOMPARE(controller.audioInputs().constFirst().toMap().value(QStringLiteral("name")).toString(),
+           QStringLiteral("System default (Built-in Microphone)"));
+  QVERIFY(controller.audioInputReady());
+  QCOMPARE(audioPtr->selectedId, QStringLiteral("headset"));
+  controller.toggle();
+  QCOMPARE(audioPtr->startedDeviceId, QStringLiteral("headset"));
+  controller.toggle();
+  QTRY_VERIFY(!controller.isTranscribing());
+
+  KConfig config(QStringLiteral("kastwordrc"));
+  const KConfigGroup group(&config, QStringLiteral("General"));
+  QCOMPARE(group.readEntry("AudioInputId", QString()), QStringLiteral("headset"));
+
+  auto restoredAudio = std::make_unique<FakeAudioCapture>();
+  auto *restoredAudioPtr = restoredAudio.get();
+  AppController restored(
+      std::move(restoredAudio), std::make_unique<FakeTextOutput>(),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+  QCOMPARE(restored.audioInputId(), QStringLiteral("headset"));
+  QCOMPARE(restoredAudioPtr->selectedId, QStringLiteral("headset"));
+}
+
+void AppControllerTest::recoversAudioInputWithoutSilentFallback() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto *audioPtr = audio.get();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+  controller.setAudioInputId(QStringLiteral("headset"));
+  QVERIFY(controller.audioInputReady());
+  QVERIFY(controller.shortcutAction()->isEnabled());
+
+  audioPtr->setInputs({{QStringLiteral("built-in"), QStringLiteral("Built-in Microphone"), true}});
+  QVERIFY(!controller.audioInputReady());
+  QCOMPARE(controller.audioInputId(), QStringLiteral("headset"));
+  QVERIFY(controller.audioInputStatus().contains(QStringLiteral("unavailable")));
+  QVERIFY(!controller.shortcutAction()->isEnabled());
+  controller.toggle();
+  QVERIFY(!audioPtr->recording);
+
+  const QVariantList unavailableInputs = controller.audioInputs();
+  QCOMPARE(unavailableInputs.constLast().toMap().value(QStringLiteral("id")).toString(),
+           QStringLiteral("headset"));
+  QVERIFY(!unavailableInputs.constLast().toMap().value(QStringLiteral("available")).toBool());
+
+  audioPtr->setInputs({
+      {QStringLiteral("built-in"), QStringLiteral("Dock Microphone"), true},
+      {QStringLiteral("headset"), QStringLiteral("USB Headset"), false},
+  });
+  QVERIFY(controller.audioInputReady());
+  QCOMPARE(controller.audioInputId(), QStringLiteral("headset"));
+  QVERIFY(controller.shortcutAction()->isEnabled());
+
+  controller.setAudioInputId(QString());
+  QCOMPARE(controller.audioInputStatus(), QStringLiteral("Using Dock Microphone"));
+  controller.toggle();
+  controller.setAudioInputId(QStringLiteral("headset"));
+  QCOMPARE(controller.audioInputId(), QString());
 }
 
 void AppControllerTest::forgetsTranscript() {

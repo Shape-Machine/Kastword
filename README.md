@@ -24,7 +24,7 @@ project or endorsed by KDE e.V.
 
 - KDE global push-to-talk shortcut
 - tray-first operation with recording, transcription, and success indicators
-- responsive Qt Multimedia recording with microphone downmixing and resampling
+- selectable Qt Multimedia audio input with hot-plug recovery, downmixing, and resampling
 - completely local transcription using a user-selected official Whisper model
 - clipboard output with optional automatic paste
 - X11 paste through `xdotool`
@@ -162,8 +162,11 @@ speech model; users choose models after installation. The legacy
 
 Downloaded models are checksum-verified and stored per user under
 `~/.local/share/kastword/models/`. Speech Models can switch models, show their disk usage, resume or
-retry downloads, and remove managed models. Settings controls dictation behavior and the global
-keyboard shortcut. Dictation remains disabled whenever no valid model is selected.
+retry downloads, and remove managed models. Audio Input can follow the system default microphone or
+use a specific device. A specific selection is never silently replaced when disconnected; dictation
+remains disabled until that device returns or another input is chosen. Settings controls dictation
+behavior and the global keyboard shortcut. Dictation remains disabled whenever no valid model or
+audio input is available.
 
 Click the tray icon to open or hide the Kastword window. The tray menu can start or stop
 dictation and quit the application.
@@ -252,7 +255,7 @@ plugins. `.kateproject` provides Build, Run, Test, and Clean targets, while CMak
 ## Roadmap
 
 - broader Plasma Wayland/X11 and application compatibility testing
-- configurable shortcut and microphone selection
+- broader audio-device and hot-plug compatibility testing
 - reproducible distribution packages and signed binary releases
 
 Roadmap items are intentions, not promised dates.
