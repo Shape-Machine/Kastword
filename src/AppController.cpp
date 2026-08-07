@@ -275,7 +275,7 @@ void AppController::setAudioInputId(const QString &value) {
 }
 
 void AppController::updateDictationAvailability() {
-  m_shortcut.setEnabled(dictationActionEnabled());
+  m_shortcut.setEnabled(!isTranscribing());
   emit dictationAvailabilityChanged();
 }
 
@@ -444,7 +444,13 @@ void AppController::toggle() {
     return;
   }
   if (!audioInputReady()) {
-    setStatus(audioInputStatus());
+    const QString error = audioInputStatus();
+    setStatus(error);
+    if (m_desktopIntegration)
+      m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
+                                          i18n("Microphone unavailable"), error,
+                                          QStringLiteral("audio-input-microphone"));
+    emit audioInputSetupRequested();
     return;
   }
   if (m_state == State::Transcribing) {

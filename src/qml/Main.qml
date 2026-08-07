@@ -62,6 +62,10 @@ Kirigami.ApplicationWindow {
             root.show()
             root.openModelManager()
         }
+        function onAudioInputSetupRequested() {
+            root.show()
+            root.openAudioInput()
+        }
         function onShortcutChanged() {
             root.shortcutChangeFailed = false
         }

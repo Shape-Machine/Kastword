@@ -292,6 +292,7 @@ public:
     emit audioInputsChanged();
     emit dictationAvailabilityChanged();
   }
+  Q_INVOKABLE void requestAudioInputSetup() { emit audioInputSetupRequested(); }
 
 signals:
   void stateChanged();
@@ -306,6 +307,7 @@ signals:
   void toggleCountChanged();
   void shortcutChanged();
   void modelSetupRequested();
+  void audioInputSetupRequested();
   void modelReadyChanged();
   void copiedTextChanged();
   void audioInputsChanged();
