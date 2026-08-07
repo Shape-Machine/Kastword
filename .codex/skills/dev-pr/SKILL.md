@@ -1,13 +1,13 @@
 ---
 name: dev-pr
-description: Validate the current Kastword feature branch, push it, create or reuse its GitHub pull request, monitor required GitHub Actions checks, rebase-merge only after checks pass and GitHub reports the PR mergeable, then synchronize local main and delete the merged feature branch locally and remotely. Use when the user invokes $dev-pr or asks Codex to open, watch, and merge the current feature branch. If checks fail, diagnose them and report suggested next steps without merging.
+description: Validate the current Kastword feature branch, create or reuse its pull request, monitor required GitHub Actions checks and a seven-minute code-review window, require user decisions on review findings and permission to merge, then rebase-merge and clean up. Use when the user invokes $dev-pr or asks Codex to open, watch, review, and merge the current feature branch. If checks fail or review feedback needs a decision, report it without merging.
 ---
 
 # Create, Monitor, and Merge a Pull Request
 
 Carry the current feature branch from final validation through a merged pull request and local
 cleanup. Keep the user informed during monitoring and never merge a failing, pending, conflicted, or
-draft pull request.
+draft pull request. Never merge without explicit user permission after completing the review window.
 
 ## Prepare the branch
 
@@ -31,6 +31,32 @@ draft pull request.
    results in the description, as required by the repository instructions.
 5. Report the pull-request URL to the user.
 
+## Monitor code review
+
+Start a seven-minute review window immediately after opening or reusing the pull request. Run this
+window in parallel with required-check monitoring, poll every 30 seconds, and stop at seven minutes;
+do not extend the deadline merely because checks remain pending.
+
+At the start and on every poll, inspect all substantive feedback available through GitHub's pull
+request reviews, inline review comments, and general pull request comments. Include feedback from
+humans and review bots. Exclude CI status messages, empty approval or dismissal events, duplicate
+records, and comments by the pull request author. Treat qualifying feedback that already exists on a
+reused pull request as an immediate finding.
+
+When review feedback is found:
+
+1. Stop the review window and do not merge.
+2. Inspect each finding against the proposed diff and relevant repository context.
+3. Present a numbered list with the author, location and link when available, a concise summary, and
+   a recommendation to address or ignore it with concrete reasoning.
+4. Ask the user to decide what to do with the findings, then stop. Do not reply, resolve threads,
+   change source, or push commits until the user directs that action.
+
+When the seven-minute window ends without findings, ask the user for explicit permission to merge,
+then stop and wait for the response. Permission does not override pending or failing checks, review
+findings, conflicts, required reviews, or other repository protections. If the pull request changes
+after permission is granted, restart the seven-minute window and require fresh merge permission.
+
 ## Monitor checks
 
 Poll the pull request's required checks with `gh pr checks` or equivalent structured `gh` queries.
@@ -52,15 +78,18 @@ When any required check fails:
 
 ## Confirm and merge
 
-After all required checks pass:
+After all required checks pass, the review window completes without unresolved findings, and the
+user explicitly permits the merge:
 
-1. Query the PR again and confirm it is open, not a draft, and GitHub reports it mergeable with no
+1. Query review feedback once more. If qualifying feedback appeared after the last poll, present it
+   through the review-finding workflow and stop.
+2. Query the PR again and confirm it is open, not a draft, and GitHub reports it mergeable with no
    blocked merge state or missing required review.
-2. If mergeability is unknown, keep polling briefly. If it is conflicted or blocked, report the
+3. If mergeability is unknown, keep polling briefly. If it is conflicted or blocked, report the
    reason and stop without merging.
-3. Merge with `gh pr merge --rebase --delete-branch`. Do not substitute a merge commit or squash
+4. Merge with `gh pr merge --rebase --delete-branch`. Do not substitute a merge commit or squash
    merge. If rebase merging is unavailable, report the repository restriction and stop.
-4. Verify GitHub reports the pull request as merged before changing local branches.
+5. Verify GitHub reports the pull request as merged before changing local branches.
 
 ## Synchronize and clean up locally
 
