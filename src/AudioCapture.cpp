@@ -230,8 +230,11 @@ bool AudioCapture::startSource(bool monitoring, QString *error) {
     });
   });
 
-  connect(m_device, &QIODevice::readyRead, this, [this] {
-    const QByteArray chunk = m_device->readAll();
+  const QPointer<QIODevice> sourceDevice = m_device;
+  connect(m_device, &QIODevice::readyRead, this, [this, sourceDevice] {
+    if (!sourceDevice || sourceDevice != m_device)
+      return;
+    const QByteArray chunk = sourceDevice->readAll();
     if (m_monitoring) {
       emit levelChanged(normalizedAudioPeak(chunk, m_format));
       return;
