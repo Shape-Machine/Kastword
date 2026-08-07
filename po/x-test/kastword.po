@@ -386,6 +386,10 @@ msgstr "xxCopied to clipboard; automatic paste scheduled.xx"
 msgid "Sent paste to the focused application."
 msgstr "xxSent paste to the focused application.xx"
 
+#: src/TextOutput.cpp:201
+msgid "Sent available paste shortcuts; Shift+Insert could not be prepared."
+msgstr "xxSent available paste shortcuts; Shift+Insert could not be prepared.xx"
+
 #: src/TextOutput.cpp:94
 msgid "Copied to clipboard; install %1 for automatic paste."
 msgstr "xxCopied to clipboard; install %1 for automatic paste.xx"

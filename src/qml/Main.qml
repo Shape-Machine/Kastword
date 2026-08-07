@@ -35,16 +35,15 @@ Kirigami.ApplicationWindow {
     function copyModelUrl(url) {
         appController.copyText(url)
         const message = i18n("Download URL copied to clipboard.")
-        root.showPassiveNotification(message, "short")
-        root.passiveNotificationShown(message)
+        root.passiveNotificationHandler(message)
     }
-
-    signal passiveNotificationShown(string message)
 
     property string pendingRemovalId: ""
     property int currentView: 0
     property bool shortcutChangeFailed: false
-    property real modelFooterBreakpoint: Kirigami.Units.gridUnit * 28
+    property var passiveNotificationHandler: function(message) {
+        root.showPassiveNotification(message, "short")
+    }
 
     Connections {
         target: appController
@@ -248,7 +247,9 @@ Kirigami.ApplicationWindow {
                                 id: modelFooter
                                 objectName: "modelFooter-" + modelData.id
                                 Layout.fillWidth: true
-                                readonly property bool compact: modelCard.width < root.modelFooterBreakpoint
+                                readonly property real singleRowWidth: modelStatusRow.implicitWidth
+                                    + modelActionsRow.implicitWidth + Kirigami.Units.smallSpacing
+                                readonly property bool compact: width < singleRowWidth
                                 readonly property int columns: compact ? 1 : 2
                                 implicitHeight: compact
                                     ? modelStatusRow.implicitHeight + Kirigami.Units.smallSpacing
