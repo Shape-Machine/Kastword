@@ -120,6 +120,8 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(bool audioInputSelectionEnabled READ audioInputSelectionEnabled NOTIFY stateChanged)
   Q_PROPERTY(
       bool dictationActionEnabled READ dictationActionEnabled NOTIFY dictationAvailabilityChanged)
+  Q_PROPERTY(bool audioInputMonitoringEnabled READ audioInputMonitoringEnabled NOTIFY
+                 audioInputMonitoringEnabledChanged)
   Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
   Q_PROPERTY(int toggleCount READ toggleCount NOTIFY toggleCountChanged)
@@ -174,6 +176,7 @@ public:
   bool dictationActionEnabled() const {
     return m_recording || (m_modelReady && audioInputReady() && !m_transcribing);
   }
+  bool audioInputMonitoringEnabled() const { return m_audioInputMonitoringEnabled; }
   QKeySequence shortcut() const { return m_shortcut; }
   QString shortcutText() const { return m_shortcut.toString(QKeySequence::NativeText); }
   int toggleCount() const { return m_toggleCount; }
@@ -202,6 +205,12 @@ public:
     m_audioInputId = id;
     emit audioInputsChanged();
     emit dictationAvailabilityChanged();
+  }
+  Q_INVOKABLE void setAudioInputMonitoringEnabled(bool enabled) {
+    if (m_audioInputMonitoringEnabled == enabled)
+      return;
+    m_audioInputMonitoringEnabled = enabled;
+    emit audioInputMonitoringEnabledChanged();
   }
   Q_INVOKABLE bool setShortcut(const QKeySequence &value) {
     if (!m_shortcutChangeAccepted)
@@ -281,6 +290,7 @@ signals:
   void copiedTextChanged();
   void audioInputsChanged();
   void dictationAvailabilityChanged();
+  void audioInputMonitoringEnabledChanged();
 
 private:
   void setPasteShortcut(bool &shortcut, bool value) {
@@ -311,6 +321,7 @@ private:
   bool m_shortcutChangeAccepted = true;
   QString m_audioInputId;
   bool m_usbAvailable = true;
+  bool m_audioInputMonitoringEnabled = false;
 };
 
 class QmlTestSetup final : public QObject {
