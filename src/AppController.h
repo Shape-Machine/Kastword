@@ -36,6 +36,11 @@ class AppController final : public QObject {
   Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
   Q_PROPERTY(QVariantList availableLanguages READ availableLanguages NOTIFY modelReadyChanged)
   Q_PROPERTY(bool autoPaste READ autoPaste WRITE setAutoPaste NOTIFY autoPasteChanged)
+  Q_PROPERTY(bool pasteCtrlV READ pasteCtrlV WRITE setPasteCtrlV NOTIFY pasteShortcutsChanged)
+  Q_PROPERTY(bool pasteCtrlShiftV READ pasteCtrlShiftV WRITE setPasteCtrlShiftV NOTIFY
+                 pasteShortcutsChanged)
+  Q_PROPERTY(bool pasteShiftInsert READ pasteShiftInsert WRITE setPasteShiftInsert NOTIFY
+                 pasteShortcutsChanged)
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
@@ -72,6 +77,9 @@ public:
   QString language() const { return m_language; }
   QVariantList availableLanguages() const;
   bool autoPaste() const { return m_autoPaste; }
+  bool pasteCtrlV() const { return m_pasteShortcuts.testFlag(TextOutput::CtrlV); }
+  bool pasteCtrlShiftV() const { return m_pasteShortcuts.testFlag(TextOutput::CtrlShiftV); }
+  bool pasteShiftInsert() const { return m_pasteShortcuts.testFlag(TextOutput::ShiftInsert); }
   int recordingLimitMinutes() const { return m_recordingLimitMinutes; }
   qreal level() const { return m_level; }
   QKeySequence shortcut() const { return m_shortcutSequence; }
@@ -80,6 +88,9 @@ public:
   void setModelPath(const QString &value);
   void setLanguage(const QString &value);
   void setAutoPaste(bool value);
+  void setPasteCtrlV(bool value);
+  void setPasteCtrlShiftV(bool value);
+  void setPasteShiftInsert(bool value);
   void setRecordingLimitMinutes(int value);
   Q_INVOKABLE bool setShortcut(const QKeySequence &value);
   QAction *shortcutAction() { return &m_shortcut; }
@@ -99,6 +110,7 @@ signals:
   void modelSetupRequested();
   void languageChanged();
   void autoPasteChanged();
+  void pasteShortcutsChanged();
   void recordingLimitMinutesChanged();
   void levelChanged();
   void shortcutChanged();
@@ -107,6 +119,7 @@ private:
   void setState(State value);
   void setStatus(const QString &value);
   void saveSettings();
+  void setPasteShortcut(TextOutput::PasteShortcut shortcut, bool enabled);
   void transcribe(QByteArray audio);
   void handleTranscriptionFinished(const QString &text, const QString &error);
   void handleCaptureFailure(const QString &error);
@@ -131,6 +144,7 @@ private:
   QString m_modelPath;
   QString m_language = QStringLiteral("en");
   bool m_autoPaste = false;
+  TextOutput::PasteShortcuts m_pasteShortcuts = TextOutput::ShiftInsert;
   int m_recordingLimitMinutes = 5;
   qreal m_level = 0.0;
 };

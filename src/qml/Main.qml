@@ -321,10 +321,36 @@ Kirigami.ApplicationWindow {
 
                 Controls.CheckBox {
                     id: autoPasteCheckBox
+                    objectName: "autoPasteCheckBox"
                     Kirigami.FormData.label: i18n("Output:")
                     text: i18n("Paste automatically")
                     checked: appController.autoPaste
                     onToggled: appController.autoPaste = checked
+                }
+
+                Controls.CheckBox {
+                    objectName: "pasteCtrlVCheckBox"
+                    Kirigami.FormData.label: i18n("Paste shortcuts:")
+                    text: i18n("Ctrl+V")
+                    visible: autoPasteCheckBox.checked
+                    checked: appController.pasteCtrlV
+                    onToggled: appController.pasteCtrlV = checked
+                }
+
+                Controls.CheckBox {
+                    objectName: "pasteCtrlShiftVCheckBox"
+                    text: i18n("Ctrl+Shift+V")
+                    visible: autoPasteCheckBox.checked
+                    checked: appController.pasteCtrlShiftV
+                    onToggled: appController.pasteCtrlShiftV = checked
+                }
+
+                Controls.CheckBox {
+                    objectName: "pasteShiftInsertCheckBox"
+                    text: i18n("Shift+Insert")
+                    visible: autoPasteCheckBox.checked
+                    checked: appController.pasteShiftInsert
+                    onToggled: appController.pasteShiftInsert = checked
                 }
 
                 Kirigami.InlineMessage {
@@ -332,7 +358,7 @@ Kirigami.ApplicationWindow {
                     Layout.fillWidth: true
                     visible: autoPasteCheckBox.checked
                     type: Kirigami.MessageType.Warning
-                    text: i18n("Automatic paste sends keystrokes to the focused application after a short delay. On Wayland, Kastword cannot verify that focus stayed unchanged.")
+                    text: i18n("Automatic paste sends each selected shortcut to the focused application after a short delay. On Wayland, Kastword cannot verify that focus stayed unchanged.")
                 }
 
                 KQuickControls.KeySequenceItem {

@@ -25,6 +25,10 @@ TestCase {
         appController.setModelReady(true)
         appController.setShortcutChangeAccepted(true)
         appController.setShortcut("Meta+Z")
+        appController.autoPaste = false
+        appController.pasteShiftInsert = true
+        appController.pasteCtrlV = false
+        appController.pasteCtrlShiftV = false
         const loader = createTemporaryObject(applicationComponent, testCase)
         verify(loader)
         tryCompare(loader, "status", Loader.Ready)
@@ -277,6 +281,37 @@ TestCase {
         editor.keySequence = "Meta+Shift+X"
         editor.keySequenceModified()
         compare(appController.shortcutText, "Meta+Shift+X")
+    }
+
+    function test_settingsConfiguresAutomaticPasteShortcuts() {
+        applicationWindow.openSettings()
+        const automaticPaste = findChild(settingsPage(), "autoPasteCheckBox")
+        const ctrlV = findChild(settingsPage(), "pasteCtrlVCheckBox")
+        const ctrlShiftV = findChild(settingsPage(), "pasteCtrlShiftVCheckBox")
+        const shiftInsert = findChild(settingsPage(), "pasteShiftInsertCheckBox")
+        verify(automaticPaste)
+        verify(ctrlV)
+        verify(ctrlShiftV)
+        verify(shiftInsert)
+
+        compare(ctrlV.visible, false)
+        compare(ctrlShiftV.visible, false)
+        compare(shiftInsert.visible, false)
+        mouseClick(automaticPaste)
+        compare(ctrlV.visible, true)
+        compare(ctrlShiftV.visible, true)
+        compare(shiftInsert.visible, true)
+        compare(ctrlV.checked, false)
+        compare(ctrlShiftV.checked, false)
+        compare(shiftInsert.checked, true)
+
+        appController.pasteCtrlV = true
+        tryCompare(appController, "pasteCtrlV", true)
+        appController.pasteCtrlShiftV = true
+        tryCompare(appController, "pasteCtrlShiftV", true)
+        tryCompare(ctrlV, "checked", true)
+        tryCompare(ctrlShiftV, "checked", true)
+        compare(shiftInsert.checked, true)
     }
 
     function test_settingsReportsRejectedGlobalShortcut() {

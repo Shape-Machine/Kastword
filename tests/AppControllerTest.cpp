@@ -65,6 +65,9 @@ public:
     deliveredWithAutoPaste = autoPaste;
     return result;
   }
+  void setPasteShortcuts(PasteShortcuts shortcuts) override {
+    configuredPasteShortcuts = shortcuts;
+  }
   void forget(const QString &text) override { forgottenText = text; }
   void reportDeliveryStatus(const QString &status) { emit deliveryStatus(status); }
   void reportDeliveryFailure(const QString &status) {
@@ -74,6 +77,7 @@ public:
 
   QString deliveredText;
   bool deliveredWithAutoPaste = false;
+  PasteShortcuts configuredPasteShortcuts = ShiftInsert;
   QString result = QStringLiteral("Delivered.");
   QString forgottenText;
   bool *destroyed = nullptr;
@@ -160,6 +164,7 @@ private slots:
   void forwardsAudioLevel();
   void emitsSettingChangesOnlyWhenValuesChange();
   void defaultsToPrivateOutputAndConfigurableRecordingLimit();
+  void configuresPasteShortcuts();
   void copiesTranscript();
   void forgetsTranscript();
   void clampsRecordingLimit();
@@ -460,19 +465,24 @@ void AppControllerTest::emitsSettingChangesOnlyWhenValuesChange() {
       false);
   QSignalSpy languageChanged(&controller, &AppController::languageChanged);
   QSignalSpy autoPasteChanged(&controller, &AppController::autoPasteChanged);
+  QSignalSpy pasteShortcutsChanged(&controller, &AppController::pasteShortcutsChanged);
 
   controller.setLanguage(QStringLiteral("nl"));
   controller.setLanguage(QStringLiteral("nl"));
   controller.setAutoPaste(!controller.autoPaste());
+  controller.setPasteCtrlV(true);
+  controller.setPasteCtrlV(true);
 
   QCOMPARE(controller.language(), QStringLiteral("nl"));
   QCOMPARE(languageChanged.count(), 1);
   QCOMPARE(autoPasteChanged.count(), 1);
+  QCOMPARE(pasteShortcutsChanged.count(), 1);
 }
 
 void AppControllerTest::defaultsToPrivateOutputAndConfigurableRecordingLimit() {
   auto audio = std::make_unique<FakeAudioCapture>();
   auto output = std::make_unique<FakeTextOutput>();
+  auto *outputPtr = output.get();
   AppController controller(
       std::move(audio), std::move(output),
       [](const QByteArray &, const QString &, const QString &) {
@@ -482,10 +492,50 @@ void AppControllerTest::defaultsToPrivateOutputAndConfigurableRecordingLimit() {
   QSignalSpy limitChanged(&controller, &AppController::recordingLimitMinutesChanged);
 
   QVERIFY(!controller.autoPaste());
+  QVERIFY(!controller.pasteCtrlV());
+  QVERIFY(!controller.pasteCtrlShiftV());
+  QVERIFY(controller.pasteShiftInsert());
+  QCOMPARE(outputPtr->configuredPasteShortcuts,
+           TextOutput::PasteShortcuts(TextOutput::ShiftInsert));
   QCOMPARE(controller.recordingLimitMinutes(), 5);
   controller.setRecordingLimitMinutes(12);
   QCOMPARE(controller.recordingLimitMinutes(), 12);
   QCOMPARE(limitChanged.count(), 1);
+}
+
+void AppControllerTest::configuresPasteShortcuts() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto *outputPtr = output.get();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+  QSignalSpy changed(&controller, &AppController::pasteShortcutsChanged);
+
+  controller.setPasteCtrlV(true);
+  controller.setPasteCtrlShiftV(true);
+  controller.setPasteShiftInsert(false);
+
+  QVERIFY(controller.pasteCtrlV());
+  QVERIFY(controller.pasteCtrlShiftV());
+  QVERIFY(!controller.pasteShiftInsert());
+  QCOMPARE(outputPtr->configuredPasteShortcuts,
+           TextOutput::PasteShortcuts(TextOutput::CtrlV | TextOutput::CtrlShiftV));
+  QCOMPARE(changed.count(), 3);
+
+  controller.setPasteCtrlV(false);
+  controller.setPasteCtrlShiftV(false);
+  QVERIFY(!controller.pasteCtrlV());
+  QVERIFY(controller.pasteCtrlShiftV());
+  QCOMPARE(outputPtr->configuredPasteShortcuts, TextOutput::PasteShortcuts(TextOutput::CtrlShiftV));
+  QCOMPARE(changed.count(), 5);
+
+  KConfig config(QStringLiteral("kastwordrc"));
+  const KConfigGroup group(&config, QStringLiteral("General"));
+  QCOMPARE(group.readEntry("PasteShortcuts", 0), int(TextOutput::CtrlShiftV));
 }
 
 void AppControllerTest::forgetsTranscript() {

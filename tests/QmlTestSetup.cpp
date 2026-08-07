@@ -95,6 +95,11 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged)
   Q_PROPERTY(QVariantList availableLanguages READ availableLanguages CONSTANT)
   Q_PROPERTY(bool autoPaste READ autoPaste WRITE setAutoPaste NOTIFY autoPasteChanged)
+  Q_PROPERTY(bool pasteCtrlV READ pasteCtrlV WRITE setPasteCtrlV NOTIFY pasteShortcutsChanged)
+  Q_PROPERTY(bool pasteCtrlShiftV READ pasteCtrlShiftV WRITE setPasteCtrlShiftV NOTIFY
+                 pasteShortcutsChanged)
+  Q_PROPERTY(bool pasteShiftInsert READ pasteShiftInsert WRITE setPasteShiftInsert NOTIFY
+                 pasteShortcutsChanged)
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
@@ -117,7 +122,10 @@ public:
     return {QVariantMap{{QStringLiteral("code"), QStringLiteral("en")},
                         {QStringLiteral("name"), i18n("English")}}};
   }
-  bool autoPaste() const { return false; }
+  bool autoPaste() const { return m_autoPaste; }
+  bool pasteCtrlV() const { return m_pasteCtrlV; }
+  bool pasteCtrlShiftV() const { return m_pasteCtrlShiftV; }
+  bool pasteShiftInsert() const { return m_pasteShiftInsert; }
   int recordingLimitMinutes() const { return 5; }
   qreal level() const { return 0.5; }
   QKeySequence shortcut() const { return m_shortcut; }
@@ -131,7 +139,15 @@ public:
     emit modelPathChanged();
   }
   void setLanguage(const QString &) {}
-  void setAutoPaste(bool) {}
+  void setAutoPaste(bool value) {
+    if (m_autoPaste == value)
+      return;
+    m_autoPaste = value;
+    emit autoPasteChanged();
+  }
+  void setPasteCtrlV(bool value) { setPasteShortcut(m_pasteCtrlV, value); }
+  void setPasteCtrlShiftV(bool value) { setPasteShortcut(m_pasteCtrlShiftV, value); }
+  void setPasteShiftInsert(bool value) { setPasteShortcut(m_pasteShiftInsert, value); }
   void setRecordingLimitMinutes(int) {}
   Q_INVOKABLE bool setShortcut(const QKeySequence &value) {
     if (!m_shortcutChangeAccepted)
@@ -186,6 +202,7 @@ signals:
   void modelPathChanged();
   void languageChanged();
   void autoPasteChanged();
+  void pasteShortcutsChanged();
   void recordingLimitMinutesChanged();
   void levelChanged();
   void toggleCountChanged();
@@ -194,6 +211,21 @@ signals:
   void modelReadyChanged();
 
 private:
+  void setPasteShortcut(bool &shortcut, bool value) {
+    if (shortcut == value)
+      return;
+    if (!value && (int(m_pasteCtrlV) + int(m_pasteCtrlShiftV) + int(m_pasteShiftInsert) == 1)) {
+      emit pasteShortcutsChanged();
+      return;
+    }
+    shortcut = value;
+    emit pasteShortcutsChanged();
+  }
+
+  bool m_autoPaste = false;
+  bool m_pasteCtrlV = false;
+  bool m_pasteCtrlShiftV = false;
+  bool m_pasteShiftInsert = true;
   bool m_recording = false;
   bool m_transcribing = false;
   QString m_status = QStringLiteral("Ready");
