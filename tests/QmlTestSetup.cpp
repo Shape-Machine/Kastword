@@ -117,6 +117,9 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(QString audioInputId READ audioInputId WRITE setAudioInputId NOTIFY audioInputsChanged)
   Q_PROPERTY(bool audioInputReady READ audioInputReady NOTIFY audioInputsChanged)
   Q_PROPERTY(QString audioInputStatus READ audioInputStatus NOTIFY audioInputsChanged)
+  Q_PROPERTY(bool audioInputSelectionEnabled READ audioInputSelectionEnabled NOTIFY stateChanged)
+  Q_PROPERTY(
+      bool dictationActionEnabled READ dictationActionEnabled NOTIFY dictationAvailabilityChanged)
   Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
   Q_PROPERTY(int toggleCount READ toggleCount NOTIFY toggleCountChanged)
@@ -167,6 +170,10 @@ public:
     return m_audioInputId.isEmpty() ? QStringLiteral("Using Built-in Mic")
                                     : QStringLiteral("Using USB Headset");
   }
+  bool audioInputSelectionEnabled() const { return !m_recording && !m_transcribing; }
+  bool dictationActionEnabled() const {
+    return m_recording || (m_modelReady && audioInputReady() && !m_transcribing);
+  }
   QKeySequence shortcut() const { return m_shortcut; }
   QString shortcutText() const { return m_shortcut.toString(QKeySequence::NativeText); }
   int toggleCount() const { return m_toggleCount; }
@@ -194,6 +201,7 @@ public:
       return;
     m_audioInputId = id;
     emit audioInputsChanged();
+    emit dictationAvailabilityChanged();
   }
   Q_INVOKABLE bool setShortcut(const QKeySequence &value) {
     if (!m_shortcutChangeAccepted)
@@ -227,12 +235,14 @@ public:
                : transcribing ? QStringLiteral("Transcribing")
                               : QStringLiteral("Ready");
     emit stateChanged();
+    emit dictationAvailabilityChanged();
     emit statusChanged();
   }
   Q_INVOKABLE void setModelReady(bool ready) {
     if (m_modelReady == ready)
       return;
     m_modelReady = ready;
+    emit dictationAvailabilityChanged();
     emit modelReadyChanged();
     if (!ready && !m_restoringModel)
       emit modelSetupRequested();
@@ -251,6 +261,7 @@ public:
       return;
     m_usbAvailable = available;
     emit audioInputsChanged();
+    emit dictationAvailabilityChanged();
   }
 
 signals:
@@ -269,6 +280,7 @@ signals:
   void modelReadyChanged();
   void copiedTextChanged();
   void audioInputsChanged();
+  void dictationAvailabilityChanged();
 
 private:
   void setPasteShortcut(bool &shortcut, bool value) {

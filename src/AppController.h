@@ -48,6 +48,9 @@ class AppController final : public QObject {
   Q_PROPERTY(QString audioInputId READ audioInputId WRITE setAudioInputId NOTIFY audioInputsChanged)
   Q_PROPERTY(bool audioInputReady READ audioInputReady NOTIFY audioInputsChanged)
   Q_PROPERTY(QString audioInputStatus READ audioInputStatus NOTIFY audioInputsChanged)
+  Q_PROPERTY(bool audioInputSelectionEnabled READ audioInputSelectionEnabled NOTIFY stateChanged)
+  Q_PROPERTY(
+      bool dictationActionEnabled READ dictationActionEnabled NOTIFY dictationAvailabilityChanged)
   Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
 
@@ -90,6 +93,10 @@ public:
   QString audioInputId() const { return m_audio->selectedDeviceId(); }
   bool audioInputReady() const { return m_audio->selectedDeviceAvailable(); }
   QString audioInputStatus() const;
+  bool audioInputSelectionEnabled() const { return !isRecording() && !isTranscribing(); }
+  bool dictationActionEnabled() const {
+    return isRecording() || (modelReady() && audioInputReady() && !isTranscribing());
+  }
   QKeySequence shortcut() const { return m_shortcutSequence; }
   QString shortcutText() const;
 
@@ -124,6 +131,7 @@ signals:
   void recordingLimitMinutesChanged();
   void levelChanged();
   void audioInputsChanged();
+  void dictationAvailabilityChanged();
   void shortcutChanged();
 
 private:
@@ -135,7 +143,7 @@ private:
   void handleTranscriptionFinished(const QString &text, const QString &error);
   void handleCaptureFailure(const QString &error);
   void initialize();
-  void updateShortcutEnabled();
+  void updateDictationAvailability();
   void showStatusNotification(const QString &title, const QString &text, const QString &iconName,
                               bool persistent = false);
 

@@ -440,6 +440,19 @@ TestCase {
         compare(combo.enabled, false)
         appController.setTestState(false, true)
         compare(combo.enabled, false)
+        appController.setTestState(false, false)
+        compare(combo.enabled, true)
+    }
+
+    function test_deviceLossKeepsRecordingStopActionEnabled() {
+        appController.audioInputId = "usb"
+        appController.setTestState(true, false)
+        const button = findChild(applicationWindow.contentItem, "dictationButton")
+        verify(button)
+        compare(button.enabled, true)
+        appController.setUsbAudioInputAvailable(false)
+        tryCompare(appController, "audioInputReady", false)
+        compare(button.enabled, true)
     }
 
     function test_navigationAdaptsToMinimumWidth() {

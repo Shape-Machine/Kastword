@@ -117,7 +117,7 @@ void AppController::initialize() {
       setStatus(audioInputReady() ? i18n("Ready") : audioInputStatus());
     else if (m_modelManager->verificationPending() && !recordingStopped)
       setStatus(i18n("Verifying the speech model…"));
-    updateShortcutEnabled();
+    updateDictationAvailability();
     emit modelReadyChanged();
   });
   connect(m_modelManager.get(), &ModelManager::changed, this, [this] {
@@ -131,6 +131,7 @@ void AppController::initialize() {
       emit modelPathChanged();
     }
     setStatus(i18n("Choose a speech model to enable dictation."));
+    updateDictationAvailability();
     emit modelReadyChanged();
     emit modelSetupRequested();
   });
@@ -175,14 +176,14 @@ void AppController::initialize() {
     });
     connect(&m_shortcut, &QAction::triggered, this, &AppController::toggle);
   }
-  updateShortcutEnabled();
+  updateDictationAvailability();
   connect(m_audio.get(), &AudioCapture::levelChanged, this, [this](qreal value) {
     m_level = value;
     emit levelChanged();
   });
   connect(m_audio.get(), &AudioCapture::captureFailed, this, &AppController::handleCaptureFailure);
   connect(m_audio.get(), &AudioCapture::audioInputsChanged, this, [this] {
-    updateShortcutEnabled();
+    updateDictationAvailability();
     emit audioInputsChanged();
     if (!isIdle())
       return;
@@ -265,14 +266,15 @@ QString AppController::audioInputStatus() const {
 }
 
 void AppController::setAudioInputId(const QString &value) {
-  if (!isIdle() || m_audio->selectedDeviceId() == value)
+  if (!audioInputSelectionEnabled() || m_audio->selectedDeviceId() == value)
     return;
   m_audio->setSelectedDeviceId(value);
   saveSettings();
 }
 
-void AppController::updateShortcutEnabled() {
-  m_shortcut.setEnabled(modelReady() && audioInputReady());
+void AppController::updateDictationAvailability() {
+  m_shortcut.setEnabled(dictationActionEnabled());
+  emit dictationAvailabilityChanged();
 }
 
 bool AppController::setShortcut(const QKeySequence &value) {
@@ -532,6 +534,7 @@ void AppController::setState(State value) {
   if (m_state == value)
     return;
   m_state = value;
+  updateDictationAvailability();
   emit stateChanged();
 }
 

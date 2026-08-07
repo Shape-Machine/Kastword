@@ -415,7 +415,7 @@ Kirigami.ApplicationWindow {
                     valueRole: "id"
                     currentIndex: appController.audioInputId.length === 0
                                   ? 0 : indexOfValue(appController.audioInputId)
-                    enabled: appController.idle
+                    enabled: appController.audioInputSelectionEnabled
                     onActivated: appController.audioInputId = currentIndex === 0 ? "" : currentValue
                     Accessible.name: i18n("Audio input device")
                     Accessible.description: i18n("Choose a microphone or follow the system default")
@@ -594,8 +594,7 @@ Kirigami.ApplicationWindow {
                     : appController.transcribing ? i18n("Transcribing…")
                     : i18n("Start dictation")
                 icon.name: appController.recording ? "media-playback-stop" : "audio-input-microphone"
-                enabled: appController.modelReady && appController.audioInputReady
-                         && !appController.transcribing
+                enabled: appController.dictationActionEnabled
                 onClicked: appController.toggle()
                 Accessible.name: text
                 Accessible.description: appController.recording

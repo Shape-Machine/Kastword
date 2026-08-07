@@ -65,7 +65,6 @@ int main(int argc, char **argv) {
   QMenu trayMenu;
   QAction openAction(i18n("Open Kastword"), &trayMenu);
   QAction dictateAction(i18n("Start Dictation"), &trayMenu);
-  dictateAction.setEnabled(controller.modelReady());
   trayMenu.addAction(&openAction);
   trayMenu.addAction(&dictateAction);
   tray.setContextMenu(&trayMenu);
@@ -88,21 +87,19 @@ int main(int argc, char **argv) {
                    [windowActivation] { activateWindow(windowActivation, true); });
   QObject::connect(&dictateAction, &QAction::triggered, &controller, &AppController::toggle);
 
-  QObject::connect(&controller, &AppController::stateChanged, &tray,
-                   [&controller, &tray, &dictateAction] {
-                     const TrayPresentation presentation =
-                         trayPresentation(int(controller.state()), controller.modelReady());
-                     tray.setIconByName(presentation.iconName);
-                     dictateAction.setText(presentation.actionText);
-                     dictateAction.setEnabled(presentation.actionEnabled);
-                     tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"),
-                                     controller.status());
-                   });
-  QObject::connect(&controller, &AppController::modelReadyChanged, &dictateAction,
-                   [&controller, &dictateAction] {
-                     dictateAction.setEnabled(controller.modelReady() &&
-                                              !controller.isTranscribing());
-                   });
+  const auto updateTrayPresentation = [&controller, &tray, &dictateAction] {
+    const TrayPresentation presentation =
+        trayPresentation(int(controller.state()), controller.dictationActionEnabled());
+    tray.setIconByName(presentation.iconName);
+    dictateAction.setText(presentation.actionText);
+    dictateAction.setEnabled(presentation.actionEnabled);
+    tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"),
+                    controller.status());
+  };
+  updateTrayPresentation();
+  QObject::connect(&controller, &AppController::stateChanged, &tray, updateTrayPresentation);
+  QObject::connect(&controller, &AppController::dictationAvailabilityChanged, &tray,
+                   updateTrayPresentation);
   QObject::connect(&controller, &AppController::statusChanged, &tray, [&controller, &tray] {
     tray.setToolTip(QStringLiteral("audio-input-microphone"), i18n("Kastword"),
                     controller.status());
@@ -119,7 +116,7 @@ int main(int argc, char **argv) {
     window->requestActivate();
   }
 
-  if (controller.modelReady()) {
+  if (controller.dictationActionEnabled()) {
     const QString readyText =
         controller.shortcut().isEmpty()
             ? i18n("Running in the system tray. Open Kastword or use the tray menu to dictate.")
