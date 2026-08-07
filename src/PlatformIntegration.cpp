@@ -72,7 +72,7 @@ TrayPresentation trayPresentation(int stateValue, bool modelReady) {
   if (state == AppController::State::Transcribing)
     return {QStringLiteral("view-refresh"), i18n("Transcribing…"), false};
   if (state == AppController::State::Success)
-    return {QStringLiteral("dialog-ok-apply"), i18n("Start Dictation"), modelReady};
+    return {QStringLiteral("dialog-information"), i18n("Start Dictation"), modelReady};
   return {QStringLiteral("audio-input-microphone"), i18n("Start Dictation"), modelReady};
 }
 

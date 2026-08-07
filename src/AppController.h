@@ -96,6 +96,7 @@ public:
   QAction *shortcutAction() { return &m_shortcut; }
 
   Q_INVOKABLE void toggle();
+  Q_INVOKABLE void copyText(const QString &text);
   Q_INVOKABLE void copyTranscript();
   Q_INVOKABLE void forgetTranscript();
   Q_INVOKABLE void setModelUrl(const QUrl &url);

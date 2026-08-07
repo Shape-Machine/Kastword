@@ -32,6 +32,11 @@ Kirigami.ApplicationWindow {
         root.currentView = 2
     }
 
+    function copyModelUrl(url) {
+        appController.copyText(url)
+        root.showPassiveNotification(i18n("Download URL copied to clipboard."), "short")
+    }
+
     property string pendingRemovalId: ""
     property int currentView: 0
     property bool shortcutChangeFailed: false
@@ -143,6 +148,7 @@ Kirigami.ApplicationWindow {
                     model: appController.modelManager.models
 
                     Controls.Frame {
+                        id: modelCard
                         required property var modelData
                         objectName: "modelCard-" + modelData.id
                         Layout.fillWidth: true
@@ -150,11 +156,30 @@ Kirigami.ApplicationWindow {
                             || (modelLanguageFilter.currentValue === "recommended" && modelData.recommended)
                             || (modelLanguageFilter.currentValue === "english" && modelData.englishOnly)
                             || (modelLanguageFilter.currentValue === "multilingual" && !modelData.englishOnly)
-                        implicitHeight: visible ? modelDetails.implicitHeight + padding * 2 : 0
+                        implicitHeight: visible
+                            ? modelDetails.implicitHeight + padding * 2 + Kirigami.Units.smallSpacing
+                            : 0
+                        padding: Kirigami.Units.smallSpacing
+
+                        Rectangle {
+                            objectName: "activeModelIndicator-" + modelData.id
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.max(2, Kirigami.Units.smallSpacing / 2)
+                            height: Math.max(0, parent.height - Kirigami.Units.smallSpacing * 2)
+                            radius: width / 2
+                            color: Kirigami.Theme.highlightColor
+                            visible: modelData.active
+                        }
 
                         ColumnLayout {
                             id: modelDetails
                             anchors.fill: parent
+                            anchors.leftMargin: modelCard.padding + Kirigami.Units.smallSpacing
+                            anchors.rightMargin: modelCard.padding + Kirigami.Units.smallSpacing
+                            anchors.topMargin: modelCard.padding
+                            anchors.bottomMargin: modelCard.padding + Kirigami.Units.smallSpacing
+                            spacing: Kirigami.Units.smallSpacing
 
                             RowLayout {
                                 Layout.fillWidth: true
@@ -162,11 +187,25 @@ Kirigami.ApplicationWindow {
                                 Controls.Label {
                                     Layout.fillWidth: true
                                     font.bold: true
-                                    text: modelData.name + (modelData.recommended ? i18n(" — Recommended") : "")
+                                    text: modelData.name
                                 }
 
-                                Controls.Label {
-                                    text: modelData.sizeText
+                                Kirigami.Icon {
+                                    id: recommendedIcon
+                                    objectName: "recommendedModel-" + modelData.id
+                                    visible: modelData.recommended
+                                    source: "emblem-favorite"
+                                    implicitWidth: Kirigami.Units.iconSizes.small
+                                    implicitHeight: implicitWidth
+                                    Accessible.role: Accessible.StaticText
+                                    Accessible.name: i18n("Recommended")
+
+                                    HoverHandler {
+                                        id: recommendedHover
+                                    }
+
+                                    Controls.ToolTip.visible: recommendedHover.hovered
+                                    Controls.ToolTip.text: i18n("Recommended")
                                 }
                             }
 
@@ -201,7 +240,48 @@ Kirigami.ApplicationWindow {
                             }
 
                             RowLayout {
-                                Layout.alignment: Qt.AlignRight
+                                Layout.fillWidth: true
+                                spacing: Kirigami.Units.smallSpacing
+
+                                Kirigami.Icon {
+                                    objectName: "installedModelStatusIcon-" + modelData.id
+                                    visible: modelData.installed
+                                    source: modelData.active ? "media-record" : "media-playback-start"
+                                    implicitWidth: Kirigami.Units.iconSizes.small
+                                    implicitHeight: implicitWidth
+                                    Accessible.ignored: true
+                                }
+
+                                Controls.Label {
+                                    objectName: "modelStatus-" + modelData.id
+                                    visible: modelData.installed
+                                    text: modelData.active ? i18n("In use") : i18n("Downloaded")
+                                    font.bold: modelData.active
+                                }
+
+                                Controls.Button {
+                                    objectName: "availableModelStatus-" + modelData.id
+                                    visible: !modelData.installed
+                                    flat: true
+                                    text: i18n("Available for download")
+                                    icon.name: "system-software-install"
+                                    display: Controls.AbstractButton.TextBesideIcon
+                                    opacity: 0.7
+                                    onClicked: root.copyModelUrl(modelData.url)
+                                    Accessible.description: modelData.url
+                                    Controls.ToolTip.visible: hovered
+                                    Controls.ToolTip.text: modelData.url
+                                }
+
+                                Controls.Label {
+                                    objectName: "modelSize-" + modelData.id
+                                    text: "· " + modelData.sizeText
+                                    opacity: modelData.installed ? 1 : 0.7
+                                }
+
+                                Item {
+                                    Layout.fillWidth: true
+                                }
 
                                 Controls.Button {
                                     objectName: "cancelModel-" + modelData.id
@@ -211,24 +291,23 @@ Kirigami.ApplicationWindow {
                                 }
 
                                 Controls.Button {
+                                    objectName: "downloadModel-" + modelData.id
                                     visible: !modelData.installed
                                     enabled: !appController.modelManager.busy
+                                    highlighted: true
                                     text: i18n("Download")
                                     onClicked: appController.modelManager.download(modelData.id)
                                     Accessible.name: i18n("Download %1", modelData.name)
                                 }
 
                                 Controls.Button {
+                                    objectName: "useModel-" + modelData.id
                                     visible: modelData.installed && !modelData.active
                                     enabled: !appController.modelManager.busy
+                                    highlighted: true
                                     text: i18n("Use")
                                     onClicked: appController.modelManager.selectModel(modelData.id)
                                     Accessible.name: i18n("Use %1", modelData.name)
-                                }
-
-                                Controls.Label {
-                                    visible: modelData.active
-                                    text: i18n("In use")
                                 }
 
                                 Controls.Button {
@@ -523,7 +602,7 @@ Kirigami.ApplicationWindow {
 
                     Controls.ToolButton {
                         objectName: "clearTranscriptButton"
-                        icon.name: "edit-clear-history"
+                        icon.name: "edit-clear"
                         text: i18n("Clear")
                         display: Controls.AbstractButton.TextBesideIcon
                         onClicked: appController.forgetTranscript()
@@ -590,7 +669,7 @@ Kirigami.ApplicationWindow {
                         objectName: "modelsTab"
                         Layout.fillWidth: true
                         text: i18n("Speech models")
-                        icon.name: "folder-download"
+                        icon.name: "system-software-install"
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 1
@@ -607,7 +686,7 @@ Kirigami.ApplicationWindow {
                         objectName: "settingsTab"
                         Layout.fillWidth: true
                         text: i18n("Settings")
-                        icon.name: "settings-configure"
+                        icon.name: "preferences-system"
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 2

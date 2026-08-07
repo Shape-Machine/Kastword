@@ -123,6 +123,7 @@ QVariantList ModelManager::models() const {
         {QStringLiteral("id"), item.id},
         {QStringLiteral("name"), localizedModelName(item.id)},
         {QStringLiteral("fileName"), item.fileName},
+        {QStringLiteral("url"), item.url.toString(QUrl::FullyEncoded)},
         {QStringLiteral("size"), item.size},
         {QStringLiteral("sizeText"), QLocale().formattedDataSize(item.size)},
         {QStringLiteral("englishOnly"), item.englishOnly},

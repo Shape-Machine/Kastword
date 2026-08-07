@@ -598,6 +598,18 @@ msgstr "xxUse %1xx"
 msgid "In use"
 msgstr "xxIn usexx"
 
+#: src/qml/Main.qml:193
+msgid "Downloaded"
+msgstr "xxDownloadedxx"
+
+#: src/qml/Main.qml:194
+msgid "Available for download"
+msgstr "xxAvailable for downloadxx"
+
+#: src/qml/Main.qml:39
+msgid "Download URL copied to clipboard."
+msgstr "xxDownload URL copied to clipboard.xx"
+
 #: src/qml/Main.qml:230
 msgid "Remove"
 msgstr "xxRemovexx"

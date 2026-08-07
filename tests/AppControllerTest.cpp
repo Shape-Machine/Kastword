@@ -165,6 +165,7 @@ private slots:
   void emitsSettingChangesOnlyWhenValuesChange();
   void defaultsToPrivateOutputAndConfigurableRecordingLimit();
   void configuresPasteShortcuts();
+  void copiesText();
   void copiesTranscript();
   void forgetsTranscript();
   void clampsRecordingLimit();
@@ -582,6 +583,19 @@ void AppControllerTest::copiesTranscript() {
   QCOMPARE(controller.status(), QStringLiteral("Delivered."));
 }
 
+void AppControllerTest::copiesText() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto *outputPtr = output.get();
+  AppController controller(std::move(audio), std::move(output), {}, false);
+
+  controller.copyText(QStringLiteral("https://example.test/model.bin"));
+
+  QCOMPARE(outputPtr->deliveredText, QStringLiteral("https://example.test/model.bin"));
+  QVERIFY(!outputPtr->deliveredWithAutoPaste);
+  QCOMPARE(controller.status(), QStringLiteral("Delivered."));
+}
+
 void AppControllerTest::clampsRecordingLimit() {
   auto audio = std::make_unique<FakeAudioCapture>();
   auto output = std::make_unique<FakeTextOutput>();
@@ -976,7 +990,7 @@ void AppControllerTest::presentsTrayStates_data() {
   QTest::newRow("transcribing") << int(State::Transcribing) << true
                                 << QStringLiteral("view-refresh") << QStringLiteral("Transcribing…")
                                 << false;
-  QTest::newRow("success") << int(State::Success) << true << QStringLiteral("dialog-ok-apply")
+  QTest::newRow("success") << int(State::Success) << true << QStringLiteral("dialog-information")
                            << QStringLiteral("Start Dictation") << true;
 }
 

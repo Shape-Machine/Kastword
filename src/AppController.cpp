@@ -333,7 +333,13 @@ void AppController::forgetTranscript() {
 void AppController::copyTranscript() {
   if (m_transcript.isEmpty())
     return;
-  setStatus(m_output->deliver(m_transcript, false));
+  copyText(m_transcript);
+}
+
+void AppController::copyText(const QString &text) {
+  if (text.isEmpty())
+    return;
+  setStatus(m_output->deliver(text, false));
 }
 
 void AppController::toggle() {
@@ -418,7 +424,8 @@ void AppController::handleTranscriptionFinished(const QString &text, const QStri
   const QString delivery = m_output->deliver(trimmedText, m_autoPaste);
   setStatus(delivery);
   setState(State::Success);
-  showStatusNotification(i18n("Dictation complete"), delivery, QStringLiteral("dialog-ok-apply"));
+  showStatusNotification(i18n("Dictation complete"), delivery,
+                         QStringLiteral("dialog-information"));
   QTimer::singleShot(1200, this, [this] {
     if (m_state == State::Success)
       setState(State::Idle);
