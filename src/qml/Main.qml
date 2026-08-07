@@ -44,6 +44,7 @@ Kirigami.ApplicationWindow {
     property string pendingRemovalId: ""
     property int currentView: 0
     property bool shortcutChangeFailed: false
+    property real modelFooterBreakpoint: Kirigami.Units.gridUnit * 28
 
     Connections {
         target: appController
@@ -245,12 +246,14 @@ Kirigami.ApplicationWindow {
 
                             GridLayout {
                                 id: modelFooter
+                                objectName: "modelFooter-" + modelData.id
                                 Layout.fillWidth: true
-                                columns: modelCard.width < Kirigami.Units.gridUnit * 28 ? 1 : 2
+                                columns: modelCard.width < root.modelFooterBreakpoint ? 1 : 2
                                 columnSpacing: Kirigami.Units.smallSpacing
                                 rowSpacing: Kirigami.Units.smallSpacing
 
                                 RowLayout {
+                                    id: modelStatusRow
                                     Layout.fillWidth: true
                                     spacing: Kirigami.Units.smallSpacing
 
@@ -294,6 +297,11 @@ Kirigami.ApplicationWindow {
 
                                 RowLayout {
                                     Layout.fillWidth: true
+                                    Layout.preferredWidth: modelFooter.columns === 1
+                                        ? modelFooter.width
+                                        : Math.max(implicitWidth,
+                                                   modelFooter.width - modelStatusRow.implicitWidth
+                                                   - modelFooter.columnSpacing)
                                     Layout.alignment: Qt.AlignRight
                                     spacing: Kirigami.Units.smallSpacing
 
