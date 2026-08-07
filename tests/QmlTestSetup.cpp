@@ -113,6 +113,10 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(int recordingLimitMinutes READ recordingLimitMinutes WRITE setRecordingLimitMinutes
                  NOTIFY recordingLimitMinutesChanged)
   Q_PROPERTY(qreal level READ level NOTIFY levelChanged)
+  Q_PROPERTY(QVariantList audioInputs READ audioInputs NOTIFY audioInputsChanged)
+  Q_PROPERTY(QString audioInputId READ audioInputId WRITE setAudioInputId NOTIFY audioInputsChanged)
+  Q_PROPERTY(bool audioInputReady READ audioInputReady NOTIFY audioInputsChanged)
+  Q_PROPERTY(QString audioInputStatus READ audioInputStatus NOTIFY audioInputsChanged)
   Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
   Q_PROPERTY(int toggleCount READ toggleCount NOTIFY toggleCountChanged)
@@ -139,6 +143,30 @@ public:
   bool pasteShiftInsert() const { return m_pasteShiftInsert; }
   int recordingLimitMinutes() const { return 5; }
   qreal level() const { return 0.5; }
+  QVariantList audioInputs() const {
+    QVariantList inputs = {
+        QVariantMap{{QStringLiteral("id"), QString()},
+                    {QStringLiteral("name"), QStringLiteral("System default (Built-in Mic)")},
+                    {QStringLiteral("available"), true}},
+        QVariantMap{
+            {QStringLiteral("id"), QStringLiteral("usb")},
+            {QStringLiteral("name"), !m_usbAvailable && m_audioInputId == QStringLiteral("usb")
+                                         ? QStringLiteral("Unavailable selected microphone")
+                                         : QStringLiteral("USB Headset")},
+            {QStringLiteral("available"), m_usbAvailable}},
+    };
+    return inputs;
+  }
+  QString audioInputId() const { return m_audioInputId; }
+  bool audioInputReady() const {
+    return m_audioInputId.isEmpty() || (m_audioInputId == QStringLiteral("usb") && m_usbAvailable);
+  }
+  QString audioInputStatus() const {
+    if (!audioInputReady())
+      return QStringLiteral("The selected microphone is unavailable. Choose another audio input.");
+    return m_audioInputId.isEmpty() ? QStringLiteral("Using Built-in Mic")
+                                    : QStringLiteral("Using USB Headset");
+  }
   QKeySequence shortcut() const { return m_shortcut; }
   QString shortcutText() const { return m_shortcut.toString(QKeySequence::NativeText); }
   int toggleCount() const { return m_toggleCount; }
@@ -161,6 +189,12 @@ public:
   void setPasteCtrlShiftV(bool value) { setPasteShortcut(m_pasteCtrlShiftV, value); }
   void setPasteShiftInsert(bool value) { setPasteShortcut(m_pasteShiftInsert, value); }
   void setRecordingLimitMinutes(int) {}
+  void setAudioInputId(const QString &id) {
+    if (!idle() || m_audioInputId == id)
+      return;
+    m_audioInputId = id;
+    emit audioInputsChanged();
+  }
   Q_INVOKABLE bool setShortcut(const QKeySequence &value) {
     if (!m_shortcutChangeAccepted)
       return false;
@@ -212,6 +246,12 @@ public:
     if (!restoring && !m_modelReady)
       emit modelSetupRequested();
   }
+  Q_INVOKABLE void setUsbAudioInputAvailable(bool available) {
+    if (m_usbAvailable == available)
+      return;
+    m_usbAvailable = available;
+    emit audioInputsChanged();
+  }
 
 signals:
   void stateChanged();
@@ -228,6 +268,7 @@ signals:
   void modelSetupRequested();
   void modelReadyChanged();
   void copiedTextChanged();
+  void audioInputsChanged();
 
 private:
   void setPasteShortcut(bool &shortcut, bool value) {
@@ -256,6 +297,8 @@ private:
   bool m_modelReady = true;
   bool m_restoringModel = false;
   bool m_shortcutChangeAccepted = true;
+  QString m_audioInputId;
+  bool m_usbAvailable = true;
 };
 
 class QmlTestSetup final : public QObject {

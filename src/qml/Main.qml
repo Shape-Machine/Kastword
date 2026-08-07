@@ -29,6 +29,10 @@ Kirigami.ApplicationWindow {
     }
 
     function openSettings() {
+        root.currentView = 3
+    }
+
+    function openAudioInput() {
         root.currentView = 2
     }
 
@@ -392,6 +396,66 @@ Kirigami.ApplicationWindow {
     }
 
     Component {
+        id: audioInputPage
+
+        Kirigami.ScrollablePage {
+            objectName: "audioInputPage"
+            title: i18n("Audio input")
+
+            Kirigami.FormLayout {
+                width: parent.width
+
+                Controls.ComboBox {
+                    id: audioInputComboBox
+                    objectName: "audioInputComboBox"
+                    Kirigami.FormData.label: i18n("Microphone:")
+                    Layout.fillWidth: true
+                    model: appController.audioInputs
+                    textRole: "name"
+                    valueRole: "id"
+                    currentIndex: appController.audioInputId.length === 0
+                                  ? 0 : indexOfValue(appController.audioInputId)
+                    enabled: appController.idle
+                    onActivated: appController.audioInputId = currentIndex === 0 ? "" : currentValue
+                    Accessible.name: i18n("Audio input device")
+                    Accessible.description: i18n("Choose a microphone or follow the system default")
+                }
+
+                Kirigami.InlineMessage {
+                    objectName: "audioInputStatus"
+                    Kirigami.FormData.isSection: true
+                    Layout.fillWidth: true
+                    visible: true
+                    type: appController.audioInputReady ? Kirigami.MessageType.Positive
+                                                         : Kirigami.MessageType.Warning
+                    text: appController.audioInputStatus
+                    Accessible.name: i18n("Audio input status")
+                    Accessible.description: text
+                }
+
+                Controls.ProgressBar {
+                    objectName: "audioInputLevel"
+                    Kirigami.FormData.label: i18n("Input level:")
+                    Layout.fillWidth: true
+                    from: 0
+                    to: 1
+                    value: appController.level
+                    Accessible.name: i18n("Microphone level")
+                    Accessible.description: i18n("Current level from the selected microphone while recording")
+                }
+
+                Controls.Label {
+                    Kirigami.FormData.isSection: true
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    opacity: 0.7
+                    text: i18n("A specific microphone is never replaced automatically if it becomes unavailable.")
+                }
+            }
+        }
+    }
+
+    Component {
         id: settingsPage
 
         Kirigami.ScrollablePage {
@@ -530,7 +594,8 @@ Kirigami.ApplicationWindow {
                     : appController.transcribing ? i18n("Transcribing…")
                     : i18n("Start dictation")
                 icon.name: appController.recording ? "media-playback-stop" : "audio-input-microphone"
-                enabled: appController.modelReady && !appController.transcribing
+                enabled: appController.modelReady && appController.audioInputReady
+                         && !appController.transcribing
                 onClicked: appController.toggle()
                 Accessible.name: text
                 Accessible.description: appController.recording
@@ -539,6 +604,8 @@ Kirigami.ApplicationWindow {
                     ? i18n("Local transcription is in progress")
                     : !appController.modelReady
                     ? i18n("Choose a speech model before starting dictation")
+                    : !appController.audioInputReady
+                    ? i18n("Choose an available microphone before starting dictation")
                     : i18n("Begin recording audio for local transcription")
             }
 
@@ -648,6 +715,7 @@ Kirigami.ApplicationWindow {
         padding: 0
         title: root.currentView === 0 ? i18n("Offline dictation")
              : root.currentView === 1 ? i18n("Speech models")
+             : root.currentView === 2 ? i18n("Audio input")
              : i18n("Settings")
 
         RowLayout {
@@ -657,8 +725,8 @@ Kirigami.ApplicationWindow {
             Controls.Pane {
                 id: navigationPane
                 objectName: "navigationPane"
-                readonly property bool compact: mainPage.width < Math.max(620,
-                                                                           Kirigami.Units.gridUnit * 32)
+                readonly property bool compact: mainPage.width < Math.max(680,
+                                                                           Kirigami.Units.gridUnit * 35)
 
                 Layout.fillHeight: true
                 Layout.preferredWidth: compact ? Kirigami.Units.gridUnit * 3
@@ -701,8 +769,25 @@ Kirigami.ApplicationWindow {
                         checked: root.currentView === 1
                         Controls.ButtonGroup.group: navigationGroup
                         KeyNavigation.up: dictationTab
-                        KeyNavigation.down: settingsTab
+                        KeyNavigation.down: audioInputTab
                         onClicked: root.currentView = 1
+                        Controls.ToolTip.visible: hovered && navigationPane.compact
+                        Controls.ToolTip.text: text
+                    }
+
+                    Controls.TabButton {
+                        id: audioInputTab
+                        objectName: "audioInputTab"
+                        Layout.fillWidth: true
+                        text: i18n("Audio input")
+                        icon.name: "audio-input-microphone"
+                        display: navigationPane.compact ? Controls.AbstractButton.IconOnly
+                                                        : Controls.AbstractButton.TextBesideIcon
+                        checked: root.currentView === 2
+                        Controls.ButtonGroup.group: navigationGroup
+                        KeyNavigation.up: modelsTab
+                        KeyNavigation.down: settingsTab
+                        onClicked: root.currentView = 2
                         Controls.ToolTip.visible: hovered && navigationPane.compact
                         Controls.ToolTip.text: text
                     }
@@ -715,11 +800,11 @@ Kirigami.ApplicationWindow {
                         icon.name: "preferences-system"
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
-                        checked: root.currentView === 2
+                        checked: root.currentView === 3
                         Controls.ButtonGroup.group: navigationGroup
-                        KeyNavigation.up: modelsTab
+                        KeyNavigation.up: audioInputTab
                         KeyNavigation.down: dictationTab
-                        onClicked: root.currentView = 2
+                        onClicked: root.currentView = 3
                         Controls.ToolTip.visible: hovered && navigationPane.compact
                         Controls.ToolTip.text: text
                     }
@@ -746,6 +831,10 @@ Kirigami.ApplicationWindow {
 
                 Loader {
                     sourceComponent: modelManagerPage
+                }
+
+                Loader {
+                    sourceComponent: audioInputPage
                 }
 
                 Loader {
