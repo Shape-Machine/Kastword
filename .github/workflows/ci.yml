@@ -90,6 +90,7 @@ jobs:
           pacman -Syu --noconfirm --needed
           base-devel cmake ninja git clang
           extra-cmake-modules qt6-base qt6-declarative qt6-multimedia
+          qt6-multimedia-gstreamer
           kirigami kconfig kcoreaddons kdbusaddons kdeclarative kglobalaccel ki18n
           knotifications kstatusnotifieritem
 
@@ -99,6 +100,7 @@ jobs:
       - name: Test with AddressSanitizer and UndefinedBehaviorSanitizer
         env:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          QT_MEDIA_BACKEND: gstreamer
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: >-
           make test
