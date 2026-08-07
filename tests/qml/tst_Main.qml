@@ -415,12 +415,14 @@ TestCase {
         compare(appController.audioInputMonitoringEnabled, true)
         const page = audioInputPage()
         const list = findChild(page, "audioInputList")
-        const systemDefault = findChild(page, "audioInputOption_0")
-        const usb = findChild(page, "audioInputOption_1")
+        const none = findChild(page, "audioInputOption_0")
+        const systemDefault = findChild(page, "audioInputOption_1")
+        const usb = findChild(page, "audioInputOption_2")
         const status = findChild(page, "audioInputStatus")
         const level = findChild(page, "audioInputLevel")
         const button = findChild(applicationWindow.contentItem, "dictationButton")
         verify(list)
+        verify(none)
         verify(systemDefault)
         verify(usb)
         verify(status)
@@ -428,6 +430,7 @@ TestCase {
         verify(button)
         compare(list.Accessible.name, "Audio input device")
         compare(level.Accessible.name, "Microphone level")
+        compare(none.checked, false)
         compare(systemDefault.checked, true)
         compare(usb.checked, false)
         compare(appController.audioInputId, "")
@@ -440,7 +443,7 @@ TestCase {
 
         appController.setUsbAudioInputAvailable(false)
         tryCompare(appController, "audioInputReady", false)
-        const unavailableUsb = findChild(page, "audioInputOption_1")
+        const unavailableUsb = findChild(page, "audioInputOption_2")
         verify(unavailableUsb)
         verify(status.text.indexOf("unavailable") >= 0)
         compare(unavailableUsb.enabled, false)
@@ -459,6 +462,23 @@ TestCase {
         tryCompare(appController, "audioInputMonitoringEnabled", false)
         applicationWindow.show()
         tryCompare(appController, "audioInputMonitoringEnabled", true)
+    }
+
+    function test_noneAudioInputDisablesDictation() {
+        applicationWindow.openAudioInput()
+        const page = audioInputPage()
+        const none = findChild(page, "audioInputOption_0")
+        const button = findChild(applicationWindow.contentItem, "dictationButton")
+        verify(none)
+        verify(button)
+        compare(none.Accessible.description, "Disable audio input")
+        none.clicked()
+        compare(appController.audioInputId, ":none")
+        verify(appController.audioInputStatus.indexOf("No audio input is selected") >= 0)
+        compare(button.enabled, false)
+        const note = findChild(page, "audioInputPrivacyNote")
+        verify(note)
+        compare(note.text, "Audio input is disabled.")
     }
 
     function test_audioInputMonitoringFailureCanBeRetried() {

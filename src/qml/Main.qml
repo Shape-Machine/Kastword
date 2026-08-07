@@ -443,7 +443,9 @@ Kirigami.ApplicationWindow {
                             checked: modelData.id === appController.audioInputId
                             Controls.ButtonGroup.group: audioInputGroup
                             onClicked: appController.audioInputId = modelData.id
-                            Accessible.description: modelData.available
+                            Accessible.description: modelData.id === ":none"
+                                ? i18n("Disable audio input")
+                                : modelData.available
                                 ? i18n("Use %1 for dictation", modelData.name)
                                 : i18n("This microphone is unavailable")
                         }
@@ -498,7 +500,9 @@ Kirigami.ApplicationWindow {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     opacity: 0.7
-                    text: appController.recording
+                    text: appController.audioInputId === ":none"
+                        ? i18n("Audio input is disabled.")
+                        : appController.recording
                         ? i18n("Dictation is recording audio for local transcription.")
                         : i18n("Level monitoring only; audio is not saved. A specific microphone is never replaced automatically if it becomes unavailable.")
                 }

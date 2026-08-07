@@ -230,6 +230,12 @@ QVariantList AppController::audioInputs() const {
   if (defaultDescription.isEmpty() && audioInputId().isEmpty())
     defaultDescription = m_audio->effectiveDeviceDescription();
   inputs.append(QVariantMap{
+      {QStringLiteral("id"), AudioCapture::noDeviceId()},
+      {QStringLiteral("name"), i18n("None")},
+      {QStringLiteral("available"), true},
+      {QStringLiteral("default"), false},
+  });
+  inputs.append(QVariantMap{
       {QStringLiteral("id"), QString()},
       {QStringLiteral("name"), defaultDescription.isEmpty()
                                    ? i18n("System default")
@@ -237,7 +243,7 @@ QVariantList AppController::audioInputs() const {
       {QStringLiteral("available"), !defaultDescription.isEmpty()},
       {QStringLiteral("default"), true},
   });
-  bool selectedListed = audioInputId().isEmpty();
+  bool selectedListed = audioInputId().isEmpty() || audioInputId() == AudioCapture::noDeviceId();
   for (const AudioInputDevice &device : devices) {
     selectedListed = selectedListed || device.id == audioInputId();
     inputs.append(QVariantMap{
@@ -260,6 +266,8 @@ QVariantList AppController::audioInputs() const {
 
 QString AppController::audioInputStatus() const {
   if (!audioInputReady()) {
+    if (audioInputId() == AudioCapture::noDeviceId())
+      return i18n("No audio input is selected. Choose an input to enable dictation.");
     return audioInputId().isEmpty()
                ? i18n("No microphone is available.")
                : i18n("The selected microphone is unavailable. Choose another audio input.");

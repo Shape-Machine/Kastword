@@ -64,6 +64,8 @@ public:
     emit audioInputsChanged();
   }
   bool selectedDeviceAvailable() const override {
+    if (selectedId == AudioCapture::noDeviceId())
+      return false;
     if (selectedId.isEmpty())
       return !inputs.isEmpty();
     return std::any_of(inputs.cbegin(), inputs.cend(),
@@ -630,14 +632,20 @@ void AppControllerTest::selectsAndPersistsAudioInput() {
       },
       false);
 
-  QCOMPARE(controller.audioInputs().size(), 3);
+  QCOMPARE(controller.audioInputs().size(), 4);
   QCOMPARE(controller.audioInputId(), QString());
   QCOMPARE(controller.audioInputStatus(), QStringLiteral("Using Built-in Microphone"));
+  QCOMPARE(controller.audioInputs().constFirst().toMap().value(QStringLiteral("name")).toString(),
+           QStringLiteral("None"));
+  QCOMPARE(controller.audioInputs().at(1).toMap().value(QStringLiteral("name")).toString(),
+           QStringLiteral("System default (Built-in Microphone)"));
+  controller.setAudioInputId(AudioCapture::noDeviceId());
+  QVERIFY(!controller.audioInputReady());
+  QCOMPARE(controller.audioInputStatus(),
+           QStringLiteral("No audio input is selected. Choose an input to enable dictation."));
   controller.setAudioInputId(QStringLiteral("headset"));
   QCOMPARE(controller.audioInputId(), QStringLiteral("headset"));
   QCOMPARE(controller.audioInputStatus(), QStringLiteral("Using USB Headset"));
-  QCOMPARE(controller.audioInputs().constFirst().toMap().value(QStringLiteral("name")).toString(),
-           QStringLiteral("System default (Built-in Microphone)"));
   QVERIFY(controller.audioInputReady());
   QCOMPARE(audioPtr->selectedId, QStringLiteral("headset"));
   controller.toggle();
@@ -1306,6 +1314,12 @@ void AppControllerTest::pausesMonitoringWhileRecording() {
   capture.retryMonitoring();
   QCOMPARE(backendCount, 4);
   QVERIFY(capture.monitoringError().isEmpty());
+
+  capture.setSelectedDeviceId(AudioCapture::noDeviceId());
+  QVERIFY(!capture.selectedDeviceAvailable());
+  QVERIFY(!capture.isRecording());
+  QVERIFY(capture.monitoringRequested());
+  QCOMPARE(backendCount, 4);
 
   capture.setMonitoringEnabled(false);
   QVERIFY(!capture.monitoringRequested());
