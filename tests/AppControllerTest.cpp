@@ -247,6 +247,7 @@ private slots:
   void presentsTrayStates();
   void reportsInjectedAudioDiscoveryAndBackendErrors_data();
   void reportsInjectedAudioDiscoveryAndBackendErrors();
+  void ignoresStaleAudioInputSignals();
   void pausesMonitoringWhileRecording();
   void activatesAndTogglesApplicationWindow();
 };
@@ -1303,6 +1304,46 @@ void AppControllerTest::reportsInjectedAudioDiscoveryAndBackendErrors() {
     QCOMPARE(failure.constFirst().constFirst().toString(), message);
     QVERIFY(!backendCapture.isRecording());
   }
+}
+
+void AppControllerTest::ignoresStaleAudioInputSignals() {
+  QAudioFormat format;
+  format.setSampleRate(16000);
+  format.setChannelCount(1);
+  format.setSampleFormat(QAudioFormat::Int16);
+  QBuffer monitoringInput;
+  QBuffer recordingInput;
+  QVERIFY(monitoringInput.open(QIODevice::ReadWrite));
+  QVERIFY(recordingInput.open(QIODevice::ReadWrite));
+  const qint16 sample = 16000;
+  monitoringInput.write(reinterpret_cast<const char *>(&sample), sizeof(sample));
+  recordingInput.write(reinterpret_cast<const char *>(&sample), sizeof(sample));
+  monitoringInput.seek(0);
+  recordingInput.seek(0);
+  int backendCount = 0;
+  AudioCapture capture(format, [&backendCount, &monitoringInput,
+                                &recordingInput](const QAudioDevice &, const QAudioFormat &) {
+    QIODevice *input = backendCount++ == 0 ? static_cast<QIODevice *>(&monitoringInput)
+                                           : static_cast<QIODevice *>(&recordingInput);
+    return std::make_unique<FakeAudioBackend>(input);
+  });
+
+  capture.setMonitoringEnabled(true);
+  QCOMPARE(backendCount, 1);
+  QString error;
+  QVERIFY(capture.start(&error));
+  QCOMPARE(backendCount, 2);
+
+  QSignalSpy levelChanged(&capture, &AudioCapture::levelChanged);
+  QVERIFY(QMetaObject::invokeMethod(&monitoringInput, "readyRead"));
+  QCOMPARE(levelChanged.count(), 0);
+  QCOMPARE(monitoringInput.pos(), 0);
+
+  QVERIFY(QMetaObject::invokeMethod(&recordingInput, "readyRead"));
+  QCOMPARE(levelChanged.count(), 1);
+  QVERIFY(levelChanged.constFirst().constFirst().toReal() > 0.0);
+  capture.setMonitoringEnabled(false);
+  capture.stop();
 }
 
 void AppControllerTest::pausesMonitoringWhileRecording() {
