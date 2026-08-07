@@ -405,20 +405,38 @@ Kirigami.ApplicationWindow {
             Kirigami.FormLayout {
                 width: parent.width
 
-                Controls.ComboBox {
-                    id: audioInputComboBox
-                    objectName: "audioInputComboBox"
+                ColumnLayout {
+                    id: audioInputList
+                    objectName: "audioInputList"
                     Kirigami.FormData.label: i18n("Microphone:")
                     Layout.fillWidth: true
-                    model: appController.audioInputs
-                    textRole: "name"
-                    valueRole: "id"
-                    currentIndex: appController.audioInputId.length === 0
-                                  ? 0 : indexOfValue(appController.audioInputId)
                     enabled: appController.audioInputSelectionEnabled
-                    onActivated: appController.audioInputId = currentIndex === 0 ? "" : currentValue
                     Accessible.name: i18n("Audio input device")
                     Accessible.description: i18n("Choose a microphone or follow the system default")
+
+                    Controls.ButtonGroup {
+                        id: audioInputGroup
+                    }
+
+                    Repeater {
+                        model: appController.audioInputs
+
+                        Controls.RadioDelegate {
+                            required property var modelData
+                            required property int index
+
+                            objectName: "audioInputOption_" + index
+                            Layout.fillWidth: true
+                            text: modelData.name
+                            enabled: modelData.available
+                            checked: modelData.id === appController.audioInputId
+                            Controls.ButtonGroup.group: audioInputGroup
+                            onClicked: appController.audioInputId = modelData.id
+                            Accessible.description: modelData.available
+                                ? i18n("Use %1 for dictation", modelData.name)
+                                : i18n("This microphone is unavailable")
+                        }
+                    }
                 }
 
                 Kirigami.InlineMessage {
