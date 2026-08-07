@@ -25,6 +25,7 @@ public:
     const auto model = [this](const QString &id, bool englishOnly, bool recommended) {
       return QVariantMap{{QStringLiteral("id"), id},
                          {QStringLiteral("name"), id},
+                         {QStringLiteral("url"), QStringLiteral("https://example.test/") + id},
                          {QStringLiteral("sizeText"), QStringLiteral("141 MiB")},
                          {QStringLiteral("englishOnly"), englishOnly},
                          {QStringLiteral("languageText"), englishOnly
@@ -33,10 +34,10 @@ public:
                          {QStringLiteral("recommended"), recommended},
                          {QStringLiteral("speed"), QStringLiteral("Fast")},
                          {QStringLiteral("accuracy"), QStringLiteral("Good accuracy")},
-                         {QStringLiteral("installed"), false},
+                         {QStringLiteral("installed"), id == m_activeId || id == m_installedId},
                          {QStringLiteral("partial"), m_partialId == id},
                          {QStringLiteral("partialSizeText"), QStringLiteral("42 MiB")},
-                         {QStringLiteral("active"), false},
+                         {QStringLiteral("active"), id == m_activeId},
                          {QStringLiteral("downloading"), false},
                          {QStringLiteral("verifying"), m_verifyingId == id}};
     };
@@ -71,6 +72,13 @@ public:
     m_partialId = id;
     emit changed();
   }
+  Q_INVOKABLE void setModelStates(const QString &activeId, const QString &installedId) {
+    if (m_activeId == activeId && m_installedId == installedId)
+      return;
+    m_activeId = activeId;
+    m_installedId = installedId;
+    emit changed();
+  }
 
 signals:
   void changed();
@@ -79,6 +87,8 @@ private:
   bool m_verificationPending = false;
   QString m_verifyingId;
   QString m_partialId;
+  QString m_activeId;
+  QString m_installedId;
 };
 
 class FakeAppController final : public QObject {
@@ -106,6 +116,7 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
   Q_PROPERTY(int toggleCount READ toggleCount NOTIFY toggleCountChanged)
+  Q_PROPERTY(QString copiedText READ copiedText NOTIFY copiedTextChanged)
 
 public:
   bool idle() const { return !m_recording && !m_transcribing; }
@@ -131,6 +142,7 @@ public:
   QKeySequence shortcut() const { return m_shortcut; }
   QString shortcutText() const { return m_shortcut.toString(QKeySequence::NativeText); }
   int toggleCount() const { return m_toggleCount; }
+  QString copiedText() const { return m_copiedText; }
 
   void setModelPath(const QString &path) {
     if (m_modelPath == path)
@@ -164,6 +176,12 @@ public:
   Q_INVOKABLE void toggle() {
     ++m_toggleCount;
     emit toggleCountChanged();
+  }
+  Q_INVOKABLE void copyText(const QString &text) {
+    if (m_copiedText == text)
+      return;
+    m_copiedText = text;
+    emit copiedTextChanged();
   }
   Q_INVOKABLE void forgetTranscript() {}
   Q_INVOKABLE void copyTranscript() {}
@@ -209,6 +227,7 @@ signals:
   void shortcutChanged();
   void modelSetupRequested();
   void modelReadyChanged();
+  void copiedTextChanged();
 
 private:
   void setPasteShortcut(bool &shortcut, bool value) {
@@ -231,6 +250,7 @@ private:
   QString m_status = QStringLiteral("Ready");
   QString m_modelPath;
   int m_toggleCount = 0;
+  QString m_copiedText;
   QKeySequence m_shortcut{QStringLiteral("Meta+Z")};
   FakeModelManager m_modelManager;
   bool m_modelReady = true;

@@ -184,6 +184,8 @@ void ModelManagerTest::labelsUnknownModelIdsExplicitly() {
   const QVariantMap model = manager.models().constFirst().toMap();
 
   QCOMPARE(model.value(QStringLiteral("name")).toString(), QStringLiteral("Unknown model"));
+  QCOMPARE(model.value(QStringLiteral("url")).toString(),
+           QStringLiteral("https://example.test/ggml-test.bin"));
 }
 
 void ModelManagerTest::downloadsVerifiesAndActivates() {
