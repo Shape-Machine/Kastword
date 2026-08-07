@@ -182,6 +182,8 @@ void AppController::initialize() {
     emit levelChanged();
   });
   connect(m_audio.get(), &AudioCapture::captureFailed, this, &AppController::handleCaptureFailure);
+  connect(m_audio.get(), &AudioCapture::monitoringErrorChanged, this,
+          &AppController::audioInputMonitoringErrorChanged);
   connect(m_audio.get(), &AudioCapture::audioInputsChanged, this, [this] {
     updateDictationAvailability();
     emit audioInputsChanged();

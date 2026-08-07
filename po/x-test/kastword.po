@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: kastword\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-07 18:28+0200\n"
+"POT-Creation-Date: 2026-08-07 20:05+0200\n"
 "PO-Revision-Date: 2026-08-02 00:00+0000\n"
 "Last-Translator: KDE Test Language <null@kde.org>\n"
 "Language-Team: KDE Test Language <kde-i18n-doc@kde.org>\n"
@@ -19,91 +19,91 @@ msgstr ""
 msgid "Toggle dictation"
 msgstr "xxToggle dictationxx"
 
-#: src/AppController.cpp:113 src/AppController.cpp:428
+#: src/AppController.cpp:113 src/AppController.cpp:430
 msgid "Recording stopped because the speech model is no longer available."
 msgstr "xxRecording stopped because the speech model is no longer available.xx"
 
-#: src/AppController.cpp:117 src/AppController.cpp:195
-#: src/AppController.cpp:204
+#: src/AppController.cpp:117 src/AppController.cpp:197
+#: src/AppController.cpp:206
 msgid "Ready"
 msgstr "xxReadyxx"
 
 #: src/AppController.cpp:119 src/AppController.cpp:125
-#: src/AppController.cpp:192 src/AppController.cpp:206
+#: src/AppController.cpp:194 src/AppController.cpp:208
 msgid "Verifying the speech model…"
 msgstr "xxVerifying the speech model…xx"
 
-#: src/AppController.cpp:133 src/AppController.cpp:193
-#: src/AppController.cpp:208
+#: src/AppController.cpp:133 src/AppController.cpp:195
+#: src/AppController.cpp:210
 msgid "Choose a speech model to enable dictation."
 msgstr "xxChoose a speech model to enable dictation.xx"
 
-#: src/AppController.cpp:201
+#: src/AppController.cpp:203
 msgid "Automatic paste failed"
 msgstr "xxAutomatic paste failedxx"
 
-#: src/AppController.cpp:214
+#: src/AppController.cpp:216
 msgid "None"
 msgstr "xxNonexx"
 
-#: src/AppController.cpp:233
+#: src/AppController.cpp:235
 msgid "System default"
 msgstr "xxSystem defaultxx"
 
-#: src/AppController.cpp:234
+#: src/AppController.cpp:236
 msgid "System default (%1)"
 msgstr "xxSystem default (%1)xx"
 
-#: src/AppController.cpp:251
+#: src/AppController.cpp:253
 msgid "Unavailable selected microphone"
 msgstr "xxUnavailable selected microphonexx"
 
-#: src/AppController.cpp:262 src/AudioCapture.cpp:170
+#: src/AppController.cpp:264 src/AudioCapture.cpp:175
 msgid "No microphone is available."
 msgstr "xxNo microphone is available.xx"
 
-#: src/AppController.cpp:263 src/AudioCapture.cpp:171
+#: src/AppController.cpp:265 src/AudioCapture.cpp:176
 msgid "The selected microphone is unavailable. Choose another audio input."
 msgstr ""
 "xxThe selected microphone is unavailable. Choose another audio input.xx"
 
-#: src/AppController.cpp:265
+#: src/AppController.cpp:267
 msgid "Using %1"
 msgstr "xxUsing %1xx"
 
-#: src/AppController.cpp:306
+#: src/AppController.cpp:308
 msgid "English"
 msgstr "xxEnglishxx"
 
-#: src/AppController.cpp:308
+#: src/AppController.cpp:310
 msgid "Automatic"
 msgstr "xxAutomaticxx"
 
-#: src/AppController.cpp:310
+#: src/AppController.cpp:312
 msgid "German"
 msgstr "xxGermanxx"
 
-#: src/AppController.cpp:312
+#: src/AppController.cpp:314
 msgid "French"
 msgstr "xxFrenchxx"
 
-#: src/AppController.cpp:314
+#: src/AppController.cpp:316
 msgid "Spanish"
 msgstr "xxSpanishxx"
 
-#: src/AppController.cpp:316
+#: src/AppController.cpp:318
 msgid "Dutch"
 msgstr "xxDutchxx"
 
-#: src/AppController.cpp:318
+#: src/AppController.cpp:320
 msgid "Italian"
 msgstr "xxItalianxx"
 
-#: src/AppController.cpp:320
+#: src/AppController.cpp:322
 msgid "Portuguese"
 msgstr "xxPortuguesexx"
 
-#: src/AppController.cpp:408
+#: src/AppController.cpp:410
 msgid ""
 "Cleared from Kastword and matching current clipboards. Clipboard history may "
 "retain it."
@@ -111,57 +111,57 @@ msgstr ""
 "xxCleared from Kastword and matching current clipboards. Clipboard history "
 "may retain it.xx"
 
-#: src/AppController.cpp:433 src/AppController.cpp:434
+#: src/AppController.cpp:435 src/AppController.cpp:436
 msgid "Transcribing locally…"
 msgstr "xxTranscribing locally…xx"
 
-#: src/AppController.cpp:434 src/AppController.cpp:457 src/main.cpp:45
+#: src/AppController.cpp:436 src/AppController.cpp:459 src/main.cpp:45
 #: src/main.cpp:62 src/main.cpp:63 src/main.cpp:96 src/main.cpp:104
 #: src/qml/Main.qml:21
 msgid "Kastword"
 msgstr "xxKastwordxx"
 
-#: src/AppController.cpp:440
+#: src/AppController.cpp:442
 msgid "Choose a speech model before starting dictation."
 msgstr "xxChoose a speech model before starting dictation.xx"
 
-#: src/AppController.cpp:449
+#: src/AppController.cpp:451
 msgid "Transcription is already in progress."
 msgstr "xxTranscription is already in progress.xx"
 
-#: src/AppController.cpp:462
+#: src/AppController.cpp:464
 msgid "Listening — use Stop Dictation to finish."
 msgstr "xxListening — use Stop Dictation to finish.xx"
 
-#: src/AppController.cpp:463 src/AppController.cpp:468
+#: src/AppController.cpp:465 src/AppController.cpp:470
 msgid "Dictation started"
 msgstr "xxDictation startedxx"
 
-#: src/AppController.cpp:464
+#: src/AppController.cpp:466
 msgid "Use the Kastword window or tray action to stop."
 msgstr "xxUse the Kastword window or tray action to stop.xx"
 
-#: src/AppController.cpp:467
+#: src/AppController.cpp:469
 msgid "Listening — press %1 to finish."
 msgstr "xxListening — press %1 to finish.xx"
 
-#: src/AppController.cpp:469
+#: src/AppController.cpp:471
 msgid "Press %1 again to stop."
 msgstr "xxPress %1 again to stop.xx"
 
-#: src/AppController.cpp:493
+#: src/AppController.cpp:495
 msgid "Transcription failed"
 msgstr "xxTranscription failedxx"
 
-#: src/AppController.cpp:499
+#: src/AppController.cpp:501
 msgid "No speech detected."
 msgstr "xxNo speech detected.xx"
 
-#: src/AppController.cpp:509
+#: src/AppController.cpp:511
 msgid "Dictation complete"
 msgstr "xxDictation completexx"
 
-#: src/AppController.cpp:530
+#: src/AppController.cpp:532
 msgid "Recording failed"
 msgstr "xxRecording failedxx"
 
@@ -181,15 +181,15 @@ msgstr "xxThe microphone backend failed.xx"
 msgid "Microphone capture stopped unexpectedly."
 msgstr "xxMicrophone capture stopped unexpectedly.xx"
 
-#: src/AudioCapture.cpp:177
+#: src/AudioCapture.cpp:182
 msgid "The microphone reported an invalid audio format."
 msgstr "xxThe microphone reported an invalid audio format.xx"
 
-#: src/AudioCapture.cpp:184 src/AudioCapture.cpp:189 src/AudioCapture.cpp:194
+#: src/AudioCapture.cpp:189 src/AudioCapture.cpp:194 src/AudioCapture.cpp:199
 msgid "Could not start microphone capture."
 msgstr "xxCould not start microphone capture.xx"
 
-#: src/AudioCapture.cpp:231
+#: src/AudioCapture.cpp:240
 msgid "Recording stopped after reaching the configured duration limit."
 msgstr "xxRecording stopped after reaching the configured duration limit.xx"
 
@@ -397,7 +397,7 @@ msgstr "xxThe active speech model is no longer valid.xx"
 msgid "Stop and Transcribe"
 msgstr "xxStop and Transcribexx"
 
-#: src/PlatformIntegration.cpp:73 src/qml/Main.qml:619
+#: src/PlatformIntegration.cpp:73 src/qml/Main.qml:641
 msgid "Transcribing…"
 msgstr "xxTranscribing…xx"
 
@@ -533,7 +533,7 @@ msgstr "xxRemove speech model?xx"
 msgid "The model file will be deleted from this user account."
 msgstr "xxThe model file will be deleted from this user account.xx"
 
-#: src/qml/Main.qml:99 src/qml/Main.qml:680 src/qml/Main.qml:690
+#: src/qml/Main.qml:99 src/qml/Main.qml:702 src/qml/Main.qml:712
 msgid "Last transcription"
 msgstr "xxLast transcriptionxx"
 
@@ -541,7 +541,7 @@ msgstr "xxLast transcriptionxx"
 msgid "Full transcription"
 msgstr "xxFull transcriptionxx"
 
-#: src/qml/Main.qml:126 src/qml/Main.qml:741 src/qml/Main.qml:789
+#: src/qml/Main.qml:126 src/qml/Main.qml:763 src/qml/Main.qml:811
 msgid "Speech models"
 msgstr "xxSpeech modelsxx"
 
@@ -657,7 +657,7 @@ msgstr "xxSelect an existing compatible Whisper model filexx"
 msgid "Model storage: %1"
 msgstr "xxModel storage: %1xx"
 
-#: src/qml/Main.qml:410 src/qml/Main.qml:742 src/qml/Main.qml:806
+#: src/qml/Main.qml:410 src/qml/Main.qml:764 src/qml/Main.qml:828
 msgid "Audio input"
 msgstr "xxAudio inputxx"
 
@@ -685,19 +685,35 @@ msgstr "xxThis microphone is unavailablexx"
 msgid "Audio input status"
 msgstr "xxAudio input statusxx"
 
-#: src/qml/Main.qml:463
+#: src/qml/Main.qml:467
+msgid "Input level monitoring failed: %1"
+msgstr "xxInput level monitoring failed: %1xx"
+
+#: src/qml/Main.qml:469
+msgid "Input level monitoring failed"
+msgstr "xxInput level monitoring failedxx"
+
+#: src/qml/Main.qml:473
+msgid "Retry"
+msgstr "xxRetryxx"
+
+#: src/qml/Main.qml:482
 msgid "Input level:"
 msgstr "xxInput level:xx"
 
-#: src/qml/Main.qml:468 src/qml/Main.qml:656
+#: src/qml/Main.qml:487 src/qml/Main.qml:678
 msgid "Microphone level"
 msgstr "xxMicrophone levelxx"
 
-#: src/qml/Main.qml:469
+#: src/qml/Main.qml:488
 msgid "Current level from the selected microphone"
 msgstr "xxCurrent level from the selected microphonexx"
 
-#: src/qml/Main.qml:477
+#: src/qml/Main.qml:498
+msgid "Dictation is recording audio for local transcription."
+msgstr "xxDictation is recording audio for local transcription.xx"
+
+#: src/qml/Main.qml:499
 msgid ""
 "Level monitoring only; audio is not saved. A specific microphone is never "
 "replaced automatically if it becomes unavailable."
@@ -705,57 +721,57 @@ msgstr ""
 "xxLevel monitoring only; audio is not saved. A specific microphone is never "
 "replaced automatically if it becomes unavailable.xx"
 
-#: src/qml/Main.qml:488 src/qml/Main.qml:743 src/qml/Main.qml:823
+#: src/qml/Main.qml:510 src/qml/Main.qml:765 src/qml/Main.qml:845
 msgid "Settings"
 msgstr "xxSettingsxx"
 
-#: src/qml/Main.qml:496
+#: src/qml/Main.qml:518
 msgid "Language:"
 msgstr "xxLanguage:xx"
 
-#: src/qml/Main.qml:503
+#: src/qml/Main.qml:525
 msgid "Dictation language"
 msgstr "xxDictation languagexx"
 
-#: src/qml/Main.qml:504
+#: src/qml/Main.qml:526
 msgid "Language supported by the selected Whisper model"
 msgstr "xxLanguage supported by the selected Whisper modelxx"
 
-#: src/qml/Main.qml:508
+#: src/qml/Main.qml:530
 msgid "Maximum recording:"
 msgstr "xxMaximum recording:xx"
 
-#: src/qml/Main.qml:512
+#: src/qml/Main.qml:534
 msgid "%1 minute"
 msgid_plural "%1 minutes"
 msgstr[0] "xx%1 minutexx"
 msgstr[1] "xx%1 minutesxx"
 
-#: src/qml/Main.qml:519
+#: src/qml/Main.qml:541
 msgid "Output:"
 msgstr "xxOutput:xx"
 
-#: src/qml/Main.qml:520
+#: src/qml/Main.qml:542
 msgid "Paste automatically"
 msgstr "xxPaste automaticallyxx"
 
-#: src/qml/Main.qml:527
+#: src/qml/Main.qml:549
 msgid "Paste shortcuts:"
 msgstr "xxPaste shortcuts:xx"
 
-#: src/qml/Main.qml:528
+#: src/qml/Main.qml:550
 msgid "Ctrl+V"
 msgstr "xxCtrl+Vxx"
 
-#: src/qml/Main.qml:536
+#: src/qml/Main.qml:558
 msgid "Ctrl+Shift+V"
 msgstr "xxCtrl+Shift+Vxx"
 
-#: src/qml/Main.qml:544
+#: src/qml/Main.qml:566
 msgid "Shift+Insert"
 msgstr "xxShift+Insertxx"
 
-#: src/qml/Main.qml:555
+#: src/qml/Main.qml:577
 msgid ""
 "Automatic paste sends each selected shortcut to the focused application "
 "after a short delay. On Wayland, Kastword cannot verify that focus stayed "
@@ -765,91 +781,91 @@ msgstr ""
 "after a short delay. On Wayland, Kastword cannot verify that focus stayed "
 "unchanged.xx"
 
-#: src/qml/Main.qml:561
+#: src/qml/Main.qml:583
 msgid "Shortcut:"
 msgstr "xxShortcut:xx"
 
-#: src/qml/Main.qml:568
+#: src/qml/Main.qml:590
 msgid "Global dictation shortcut"
 msgstr "xxGlobal dictation shortcutxx"
 
-#: src/qml/Main.qml:583
+#: src/qml/Main.qml:605
 msgid "The global shortcut could not be changed. Choose another shortcut."
 msgstr "xxThe global shortcut could not be changed. Choose another shortcut.xx"
 
-#: src/qml/Main.qml:593 src/qml/Main.qml:740 src/qml/Main.qml:772
+#: src/qml/Main.qml:615 src/qml/Main.qml:762 src/qml/Main.qml:794
 msgid "Offline dictation"
 msgstr "xxOffline dictationxx"
 
-#: src/qml/Main.qml:609
+#: src/qml/Main.qml:631
 msgid "Dictation status"
 msgstr "xxDictation statusxx"
 
-#: src/qml/Main.qml:618
+#: src/qml/Main.qml:640
 msgid "Stop dictation"
 msgstr "xxStop dictationxx"
 
-#: src/qml/Main.qml:620
+#: src/qml/Main.qml:642
 msgid "Start dictation"
 msgstr "xxStart dictationxx"
 
-#: src/qml/Main.qml:626
+#: src/qml/Main.qml:648
 msgid "Stop recording and begin local transcription"
 msgstr "xxStop recording and begin local transcriptionxx"
 
-#: src/qml/Main.qml:628 src/qml/Main.qml:658
+#: src/qml/Main.qml:650 src/qml/Main.qml:680
 msgid "Local transcription is in progress"
 msgstr "xxLocal transcription is in progressxx"
 
-#: src/qml/Main.qml:630
+#: src/qml/Main.qml:652
 msgid "Choose a speech model before starting dictation"
 msgstr "xxChoose a speech model before starting dictationxx"
 
-#: src/qml/Main.qml:632
+#: src/qml/Main.qml:654
 msgid "Choose an available microphone before starting dictation"
 msgstr "xxChoose an available microphone before starting dictationxx"
 
-#: src/qml/Main.qml:633
+#: src/qml/Main.qml:655
 msgid "Begin recording audio for local transcription"
 msgstr "xxBegin recording audio for local transcriptionxx"
 
-#: src/qml/Main.qml:655
+#: src/qml/Main.qml:677
 msgid "Transcription progress"
 msgstr "xxTranscription progressxx"
 
-#: src/qml/Main.qml:659
+#: src/qml/Main.qml:681
 msgid "Current microphone input level"
 msgstr "xxCurrent microphone input levelxx"
 
-#: src/qml/Main.qml:666
+#: src/qml/Main.qml:688
 msgid "Global shortcut: %1"
 msgstr "xxGlobal shortcut: %1xx"
 
-#: src/qml/Main.qml:691
+#: src/qml/Main.qml:713
 msgid "Preview of the most recent dictation"
 msgstr "xxPreview of the most recent dictationxx"
 
-#: src/qml/Main.qml:701
+#: src/qml/Main.qml:723
 msgid "Copy"
 msgstr "xxCopyxx"
 
-#: src/qml/Main.qml:712
+#: src/qml/Main.qml:734
 msgid "View"
 msgstr "xxViewxx"
 
-#: src/qml/Main.qml:715
+#: src/qml/Main.qml:737
 msgid "Show full transcription"
 msgstr "xxShow full transcriptionxx"
 
-#: src/qml/Main.qml:723
+#: src/qml/Main.qml:745
 msgid "Clear"
 msgstr "xxClearxx"
 
-#: src/qml/Main.qml:726
+#: src/qml/Main.qml:748
 msgid "Clear transcription"
 msgstr "xxClear transcriptionxx"
 
-#: src/qml/Main.qml:727
+#: src/qml/Main.qml:749
 msgid "Remove the transcription from Kastword and matching current clipboards"
 msgstr ""
 "xxRemove the transcription from Kastword and matching current clipboardsxx"

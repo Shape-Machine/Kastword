@@ -1256,10 +1256,14 @@ void AppControllerTest::pausesMonitoringWhileRecording() {
   input.write(reinterpret_cast<const char *>(&sample), sizeof(sample));
   input.seek(0);
   int backendCount = 0;
-  AudioCapture capture(format, [&backendCount, &input](const QAudioDevice &, const QAudioFormat &) {
-    ++backendCount;
-    return std::make_unique<FakeAudioBackend>(&input);
-  });
+  FakeAudioBackend *backend = nullptr;
+  AudioCapture capture(
+      format, [&backendCount, &backend, &input](const QAudioDevice &, const QAudioFormat &) {
+        ++backendCount;
+        auto created = std::make_unique<FakeAudioBackend>(&input);
+        backend = created.get();
+        return created;
+      });
 
   capture.setMonitoringEnabled(true);
   QVERIFY(capture.monitoringRequested());
@@ -1279,6 +1283,14 @@ void AppControllerTest::pausesMonitoringWhileRecording() {
   QVERIFY(!capture.isRecording());
   QVERIFY(capture.monitoringRequested());
   QCOMPARE(backendCount, 3);
+
+  backend->fail(QAudio::FatalError);
+  QTRY_VERIFY(!capture.monitoringError().isEmpty());
+  QVERIFY(capture.monitoringRequested());
+  QVERIFY(!capture.isRecording());
+  capture.retryMonitoring();
+  QCOMPARE(backendCount, 4);
+  QVERIFY(capture.monitoringError().isEmpty());
 
   capture.setMonitoringEnabled(false);
   QVERIFY(!capture.monitoringRequested());

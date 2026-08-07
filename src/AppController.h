@@ -49,6 +49,8 @@ class AppController final : public QObject {
   Q_PROPERTY(bool audioInputReady READ audioInputReady NOTIFY audioInputsChanged)
   Q_PROPERTY(QString audioInputStatus READ audioInputStatus NOTIFY audioInputsChanged)
   Q_PROPERTY(bool audioInputSelectionEnabled READ audioInputSelectionEnabled NOTIFY stateChanged)
+  Q_PROPERTY(QString audioInputMonitoringError READ audioInputMonitoringError NOTIFY
+                 audioInputMonitoringErrorChanged)
   Q_PROPERTY(
       bool dictationActionEnabled READ dictationActionEnabled NOTIFY dictationAvailabilityChanged)
   Q_PROPERTY(QKeySequence shortcut READ shortcut NOTIFY shortcutChanged)
@@ -93,6 +95,7 @@ public:
   QString audioInputId() const { return m_audio->selectedDeviceId(); }
   bool audioInputReady() const { return m_audio->selectedDeviceAvailable(); }
   QString audioInputStatus() const;
+  QString audioInputMonitoringError() const { return m_audio->monitoringError(); }
   bool audioInputSelectionEnabled() const { return !isRecording() && !isTranscribing(); }
   bool dictationActionEnabled() const {
     return isRecording() || (modelReady() && audioInputReady() && !isTranscribing());
@@ -111,6 +114,7 @@ public:
   Q_INVOKABLE void setAudioInputMonitoringEnabled(bool enabled) {
     m_audio->setMonitoringEnabled(enabled);
   }
+  Q_INVOKABLE void retryAudioInputMonitoring() { m_audio->retryMonitoring(); }
   Q_INVOKABLE bool setShortcut(const QKeySequence &value);
   QAction *shortcutAction() { return &m_shortcut; }
 
@@ -134,6 +138,7 @@ signals:
   void recordingLimitMinutesChanged();
   void levelChanged();
   void audioInputsChanged();
+  void audioInputMonitoringErrorChanged();
   void dictationAvailabilityChanged();
   void shortcutChanged();
 

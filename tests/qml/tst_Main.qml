@@ -32,6 +32,8 @@ TestCase {
         appController.pasteCtrlShiftV = false
         appController.setTestState(false, false)
         appController.setUsbAudioInputAvailable(true)
+        appController.setAudioInputMonitoringError("")
+        appController.resetMonitoringRetryCount()
         appController.audioInputId = ""
         const loader = createTemporaryObject(applicationComponent, testCase)
         verify(loader)
@@ -450,6 +452,32 @@ TestCase {
         tryCompare(appController, "audioInputMonitoringEnabled", false)
         applicationWindow.show()
         tryCompare(appController, "audioInputMonitoringEnabled", true)
+    }
+
+    function test_audioInputMonitoringFailureCanBeRetried() {
+        applicationWindow.openAudioInput()
+        const page = audioInputPage()
+        const errorMessage = findChild(page, "audioInputMonitoringError")
+        verify(errorMessage)
+        compare(errorMessage.visible, false)
+
+        appController.setAudioInputMonitoringError("The microphone backend failed.")
+        tryCompare(errorMessage, "visible", true)
+        verify(errorMessage.text.indexOf("microphone backend failed") >= 0)
+        compare(errorMessage.actions.length, 1)
+        errorMessage.actions[0].trigger()
+        compare(appController.monitoringRetryCount, 1)
+        tryCompare(errorMessage, "visible", false)
+    }
+
+    function test_audioInputPrivacyNoteReflectsRecording() {
+        applicationWindow.openAudioInput()
+        const note = findChild(audioInputPage(), "audioInputPrivacyNote")
+        verify(note)
+        verify(note.text.indexOf("not saved") >= 0)
+        appController.setTestState(true, false)
+        verify(note.text.indexOf("recording audio") >= 0)
+        verify(note.text.indexOf("not saved") < 0)
     }
 
     function test_audioInputSelectionIsLockedWhileBusy() {
