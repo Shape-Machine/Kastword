@@ -49,8 +49,12 @@ QString AudioCapture::errorMessageFor(QAudio::Error error) {
 }
 
 AudioCapture::AudioCapture(QObject *parent) : QObject(parent), m_backendFactory(createBackend) {
-  connect(&m_mediaDevices, &QMediaDevices::audioInputsChanged, this,
-          &AudioCapture::audioInputsChanged);
+  connect(&m_mediaDevices, &QMediaDevices::audioInputsChanged, this, [this] {
+    if (m_monitoring)
+      stopSource();
+    emit audioInputsChanged();
+    restartMonitoring();
+  });
 }
 
 AudioCapture::AudioCapture(DeviceProvider deviceProvider, QObject *parent)
@@ -101,8 +105,11 @@ QList<AudioInputDevice> AudioCapture::audioInputs() const {
 void AudioCapture::setSelectedDeviceId(const QString &id) {
   if (m_selectedDeviceId == id)
     return;
+  if (m_monitoring)
+    stopSource();
   m_selectedDeviceId = id;
   emit audioInputsChanged();
+  restartMonitoring();
 }
 
 QAudioDevice AudioCapture::selectedDevice() const {
@@ -127,8 +134,31 @@ bool AudioCapture::selectedDeviceAvailable() const {
 QString AudioCapture::effectiveDeviceDescription() const { return selectedDevice().description(); }
 
 bool AudioCapture::start(QString *error) {
-  if (m_source)
+  if (isRecording())
     return true;
+  if (m_monitoring)
+    stopSource();
+  if (startSource(false, error))
+    return true;
+  restartMonitoring();
+  return false;
+}
+
+void AudioCapture::setMonitoringEnabled(bool enabled) {
+  if (m_monitoringRequested == enabled)
+    return;
+  m_monitoringRequested = enabled;
+  if (!enabled) {
+    if (m_monitoring)
+      stopSource();
+    return;
+  }
+  restartMonitoring();
+}
+
+bool AudioCapture::startSource(bool monitoring, QString *error) {
+  if (m_source)
+    return false;
 
   const QAudioDevice device = m_hasInjectedBackend ? QAudioDevice() : selectedDevice();
   if (device.isNull() && !m_hasInjectedBackend) {
@@ -144,7 +174,8 @@ bool AudioCapture::start(QString *error) {
     return false;
   }
 
-  m_buffer.configure(m_format, m_maximumDurationSeconds);
+  if (!monitoring)
+    m_buffer.configure(m_format, m_maximumDurationSeconds);
   if (!m_backendFactory) {
     *error = i18n("Could not start microphone capture.");
     return false;
@@ -160,6 +191,7 @@ bool AudioCapture::start(QString *error) {
     m_source.reset();
     return false;
   }
+  m_monitoring = monitoring;
 
   connect(m_source.get(), &AudioCaptureBackend::stateChanged, this, [this](QAudio::State state) {
     if (state != QAudio::StoppedState || !m_source || m_source->error() == QAudio::NoError)
@@ -169,22 +201,31 @@ bool AudioCapture::start(QString *error) {
     QTimer::singleShot(0, this, [this, failedSource, captureError] {
       if (!failedSource || m_source.get() != failedSource)
         return;
+      const bool monitoring = m_monitoring;
       m_device = nullptr;
       m_source.reset();
-      m_buffer.configure(m_format, m_maximumDurationSeconds);
+      m_monitoring = false;
+      if (!monitoring)
+        m_buffer.configure(m_format, m_maximumDurationSeconds);
       emit levelChanged(0.0);
-      emit captureFailed(errorMessageFor(captureError));
+      if (!monitoring)
+        emit captureFailed(errorMessageFor(captureError));
     });
   });
 
   connect(m_device, &QIODevice::readyRead, this, [this] {
     const QByteArray chunk = m_device->readAll();
+    if (m_monitoring) {
+      emit levelChanged(normalizedAudioPeak(chunk, m_format));
+      return;
+    }
     if (!m_buffer.append(chunk)) {
       m_device = nullptr;
       m_source->stop();
       m_source.reset();
       emit levelChanged(0.0);
       emit captureFailed(i18n("Recording stopped after reaching the configured duration limit."));
+      restartMonitoring();
       return;
     }
     emit levelChanged(normalizedAudioPeak(chunk, m_format));
@@ -193,11 +234,27 @@ bool AudioCapture::start(QString *error) {
 }
 
 QByteArray AudioCapture::stop() {
-  if (!m_source)
+  if (!isRecording())
     return {};
+  stopSource();
+  QByteArray audio = m_buffer.takeForWhisper();
+  restartMonitoring();
+  return audio;
+}
+
+void AudioCapture::stopSource() {
+  if (!m_source)
+    return;
   m_source->stop();
   m_device = nullptr;
   m_source.reset();
+  m_monitoring = false;
   emit levelChanged(0.0);
-  return m_buffer.takeForWhisper();
+}
+
+void AudioCapture::restartMonitoring() {
+  if (!m_monitoringRequested || m_source || !selectedDeviceAvailable())
+    return;
+  QString ignoredError;
+  startSource(true, &ignoredError);
 }

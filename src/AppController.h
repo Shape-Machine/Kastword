@@ -108,6 +108,9 @@ public:
   void setPasteShiftInsert(bool value);
   void setRecordingLimitMinutes(int value);
   void setAudioInputId(const QString &value);
+  Q_INVOKABLE void setAudioInputMonitoringEnabled(bool enabled) {
+    m_audio->setMonitoringEnabled(enabled);
+  }
   Q_INVOKABLE bool setShortcut(const QKeySequence &value);
   QAction *shortcutAction() { return &m_shortcut; }
 

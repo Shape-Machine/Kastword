@@ -50,6 +50,11 @@ public:
   }
 
   bool isRecording() const override { return recording; }
+  void setMonitoringEnabled(bool enabled) override {
+    monitoringRequestedValue = enabled;
+    monitoring = enabled && !recording;
+  }
+  bool monitoringRequested() const override { return monitoringRequestedValue; }
   QList<AudioInputDevice> audioInputs() const override { return inputs; }
   QString selectedDeviceId() const override { return selectedId; }
   void setSelectedDeviceId(const QString &id) override {
@@ -90,6 +95,8 @@ public:
 
   bool startResult = true;
   bool recording = false;
+  bool monitoring = false;
+  bool monitoringRequestedValue = false;
   QString startError = QStringLiteral("Microphone unavailable.");
   QByteArray audio = QByteArrayLiteral("captured audio");
   QList<AudioInputDevice> inputs = {
@@ -210,6 +217,7 @@ private slots:
   void ownsInjectedDependencies();
   void rejectsToggleWhileTranscribing();
   void forwardsAudioLevel();
+  void monitorsSelectedAudioInput();
   void emitsSettingChangesOnlyWhenValuesChange();
   void defaultsToPrivateOutputAndConfigurableRecordingLimit();
   void configuresPasteShortcuts();
@@ -236,6 +244,7 @@ private slots:
   void presentsTrayStates();
   void reportsInjectedAudioDiscoveryAndBackendErrors_data();
   void reportsInjectedAudioDiscoveryAndBackendErrors();
+  void pausesMonitoringWhileRecording();
   void activatesAndTogglesApplicationWindow();
 };
 
@@ -267,6 +276,24 @@ void AppControllerTest::startsRecording() {
   QVERIFY(audioPtr->recording);
   QCOMPARE(stateChanged.count(), 1);
   QVERIFY(controller.status().contains(controller.shortcutText()));
+}
+
+void AppControllerTest::monitorsSelectedAudioInput() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto *audioPtr = audio.get();
+  AppController controller(
+      std::move(audio), std::make_unique<FakeTextOutput>(),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+
+  controller.setAudioInputMonitoringEnabled(true);
+  QVERIFY(audioPtr->monitoringRequestedValue);
+  QVERIFY(audioPtr->monitoring);
+  controller.setAudioInputMonitoringEnabled(false);
+  QVERIFY(!audioPtr->monitoringRequestedValue);
+  QVERIFY(!audioPtr->monitoring);
 }
 
 void AppControllerTest::reportsMicrophoneFailure() {
@@ -1216,6 +1243,45 @@ void AppControllerTest::reportsInjectedAudioDiscoveryAndBackendErrors() {
     QCOMPARE(failure.constFirst().constFirst().toString(), message);
     QVERIFY(!backendCapture.isRecording());
   }
+}
+
+void AppControllerTest::pausesMonitoringWhileRecording() {
+  QAudioFormat format;
+  format.setSampleRate(16000);
+  format.setChannelCount(1);
+  format.setSampleFormat(QAudioFormat::Int16);
+  QBuffer input;
+  QVERIFY(input.open(QIODevice::ReadWrite));
+  const qint16 sample = 16000;
+  input.write(reinterpret_cast<const char *>(&sample), sizeof(sample));
+  input.seek(0);
+  int backendCount = 0;
+  AudioCapture capture(format, [&backendCount, &input](const QAudioDevice &, const QAudioFormat &) {
+    ++backendCount;
+    return std::make_unique<FakeAudioBackend>(&input);
+  });
+
+  capture.setMonitoringEnabled(true);
+  QVERIFY(capture.monitoringRequested());
+  QVERIFY(!capture.isRecording());
+  QCOMPARE(backendCount, 1);
+  QSignalSpy levelChanged(&capture, &AudioCapture::levelChanged);
+  QVERIFY(QMetaObject::invokeMethod(&input, "readyRead"));
+  QCOMPARE(levelChanged.count(), 1);
+  QVERIFY(levelChanged.constFirst().constFirst().toReal() > 0.0);
+
+  QString error;
+  QVERIFY(capture.start(&error));
+  QVERIFY(capture.isRecording());
+  QCOMPARE(backendCount, 2);
+
+  capture.stop();
+  QVERIFY(!capture.isRecording());
+  QVERIFY(capture.monitoringRequested());
+  QCOMPARE(backendCount, 3);
+
+  capture.setMonitoringEnabled(false);
+  QVERIFY(!capture.monitoringRequested());
 }
 
 void AppControllerTest::activatesAndTogglesApplicationWindow() {

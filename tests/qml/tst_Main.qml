@@ -360,11 +360,13 @@ TestCase {
 
         mouseClick(audioInputTab)
         tryCompare(applicationWindow, "currentView", 2)
+        compare(appController.audioInputMonitoringEnabled, true)
         compare(audioInputTab.checked, true)
         compare(audioInputPage().visible, true)
 
         mouseClick(settingsTab)
         tryCompare(applicationWindow, "currentView", 3)
+        compare(appController.audioInputMonitoringEnabled, false)
         compare(settingsTab.checked, true)
         compare(settingsPage().visible, true)
         compare(applicationWindow.pageStack.depth, 1)
@@ -401,6 +403,7 @@ TestCase {
 
     function test_audioInputPageSelectsAndReportsDevices() {
         applicationWindow.openAudioInput()
+        compare(appController.audioInputMonitoringEnabled, true)
         const page = audioInputPage()
         const list = findChild(page, "audioInputList")
         const systemDefault = findChild(page, "audioInputOption_0")
@@ -438,6 +441,15 @@ TestCase {
         appController.setUsbAudioInputAvailable(true)
         tryCompare(appController, "audioInputReady", true)
         compare(button.enabled, true)
+    }
+
+    function test_audioInputMonitoringStopsWhenWindowIsHidden() {
+        applicationWindow.openAudioInput()
+        compare(appController.audioInputMonitoringEnabled, true)
+        applicationWindow.hide()
+        tryCompare(appController, "audioInputMonitoringEnabled", false)
+        applicationWindow.show()
+        tryCompare(appController, "audioInputMonitoringEnabled", true)
     }
 
     function test_audioInputSelectionIsLockedWhileBusy() {

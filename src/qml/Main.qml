@@ -36,6 +36,10 @@ Kirigami.ApplicationWindow {
         root.currentView = 2
     }
 
+    function updateAudioInputMonitoring() {
+        appController.setAudioInputMonitoringEnabled(root.visible && root.currentView === 2)
+    }
+
     function copyModelUrl(url) {
         appController.copyText(url)
         const message = i18n("Download URL copied to clipboard.")
@@ -48,6 +52,9 @@ Kirigami.ApplicationWindow {
     property var passiveNotificationHandler: function(message) {
         root.showPassiveNotification(message, "short")
     }
+
+    onVisibleChanged: updateAudioInputMonitoring()
+    onCurrentViewChanged: updateAudioInputMonitoring()
 
     Connections {
         target: appController
@@ -459,7 +466,7 @@ Kirigami.ApplicationWindow {
                     to: 1
                     value: appController.level
                     Accessible.name: i18n("Microphone level")
-                    Accessible.description: i18n("Current level from the selected microphone while recording")
+                    Accessible.description: i18n("Current level from the selected microphone")
                 }
 
                 Controls.Label {
@@ -467,7 +474,7 @@ Kirigami.ApplicationWindow {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     opacity: 0.7
-                    text: i18n("A specific microphone is never replaced automatically if it becomes unavailable.")
+                    text: i18n("Level monitoring only; audio is not saved. A specific microphone is never replaced automatically if it becomes unavailable.")
                 }
             }
         }
