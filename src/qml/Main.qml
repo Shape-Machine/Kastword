@@ -244,17 +244,22 @@ Kirigami.ApplicationWindow {
                                 Accessible.description: i18n("The model is being verified")
                             }
 
-                            GridLayout {
+                            Item {
                                 id: modelFooter
                                 objectName: "modelFooter-" + modelData.id
                                 Layout.fillWidth: true
-                                columns: modelCard.width < root.modelFooterBreakpoint ? 1 : 2
-                                columnSpacing: Kirigami.Units.smallSpacing
-                                rowSpacing: Kirigami.Units.smallSpacing
+                                readonly property bool compact: modelCard.width < root.modelFooterBreakpoint
+                                readonly property int columns: compact ? 1 : 2
+                                implicitHeight: compact
+                                    ? modelStatusRow.implicitHeight + Kirigami.Units.smallSpacing
+                                      + modelActionsRow.implicitHeight
+                                    : Math.max(modelStatusRow.implicitHeight,
+                                               modelActionsRow.implicitHeight)
 
                                 RowLayout {
                                     id: modelStatusRow
-                                    Layout.fillWidth: true
+                                    anchors.left: parent.left
+                                    anchors.top: parent.top
                                     spacing: Kirigami.Units.smallSpacing
 
                                     Kirigami.Icon {
@@ -296,18 +301,11 @@ Kirigami.ApplicationWindow {
                                 }
 
                                 RowLayout {
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: modelFooter.columns === 1
-                                        ? modelFooter.width
-                                        : Math.max(implicitWidth,
-                                                   modelFooter.width - modelStatusRow.implicitWidth
-                                                   - modelFooter.columnSpacing)
-                                    Layout.alignment: Qt.AlignRight
+                                    id: modelActionsRow
+                                    anchors.right: parent.right
+                                    anchors.top: modelFooter.compact ? modelStatusRow.bottom : parent.top
+                                    anchors.topMargin: modelFooter.compact ? Kirigami.Units.smallSpacing : 0
                                     spacing: Kirigami.Units.smallSpacing
-
-                                    Item {
-                                        Layout.fillWidth: modelFooter.columns === 1
-                                    }
 
                                     Controls.Button {
                                         objectName: "cancelModel-" + modelData.id
