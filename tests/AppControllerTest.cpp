@@ -224,6 +224,7 @@ private slots:
   void defaultsToPrivateOutputAndConfigurableRecordingLimit();
   void configuresPasteShortcuts();
   void selectsAndPersistsAudioInput();
+  void followsSystemDefaultAudioInputChanges();
   void recoversAudioInputWithoutSilentFallback();
   void copiesText();
   void copiesTranscript();
@@ -672,6 +673,33 @@ void AppControllerTest::selectsAndPersistsAudioInput() {
       false);
   QCOMPARE(restored.audioInputId(), QStringLiteral("headset"));
   QCOMPARE(restoredAudioPtr->selectedId, QStringLiteral("headset"));
+}
+
+void AppControllerTest::followsSystemDefaultAudioInputChanges() {
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto *audioPtr = audio.get();
+  AppController controller(
+      std::move(audio), std::make_unique<FakeTextOutput>(),
+      [](const QByteArray &, const QString &, const QString &) {
+        return QPair<QString, QString>();
+      },
+      false);
+
+  QCOMPARE(controller.audioInputId(), QString());
+  QCOMPARE(controller.audioInputStatus(), QStringLiteral("Using Built-in Microphone"));
+
+  audioPtr->setInputs({
+      {QStringLiteral("built-in"), QStringLiteral("Built-in Microphone"), false},
+      {QStringLiteral("dock"), QStringLiteral("Dock Microphone"), true},
+  });
+
+  QCOMPARE(controller.audioInputId(), QString());
+  QCOMPARE(controller.audioInputStatus(), QStringLiteral("Using Dock Microphone"));
+  QCOMPARE(controller.audioInputs().at(1).toMap().value(QStringLiteral("name")).toString(),
+           QStringLiteral("System default (Dock Microphone)"));
+
+  controller.toggle();
+  QCOMPARE(audioPtr->startedDeviceId, QStringLiteral("dock"));
 }
 
 void AppControllerTest::recoversAudioInputWithoutSilentFallback() {
@@ -1134,6 +1162,15 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
   QCOMPARE(desktopPtr->notifications.constLast().title, QStringLiteral("Microphone unavailable"));
   QCOMPARE(desktopPtr->notifications.constLast().text,
            QStringLiteral("No microphone is available."));
+
+  controller.setAudioInputId(AudioCapture::noDeviceId());
+  controller.toggle();
+  QCOMPARE(audioInputSetupRequested.count(), 2);
+  QCOMPARE(desktopPtr->notifications.size(), 4);
+  QCOMPARE(desktopPtr->notifications.constLast().kind, DesktopIntegration::NotificationKind::Error);
+  QCOMPARE(desktopPtr->notifications.constLast().title, QStringLiteral("Audio input disabled"));
+  QCOMPARE(desktopPtr->notifications.constLast().text,
+           QStringLiteral("No audio input is selected. Choose an input to enable dictation."));
 }
 
 void AppControllerTest::reportsAutomaticPasteFailuresToDesktop_data() {
