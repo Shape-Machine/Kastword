@@ -188,15 +188,20 @@ QString TextOutput::deliver(const QString &text, bool autoPaste) {
     return i18n("Copied to clipboard; automatic paste scheduled.");
   }
   if (method == PasteMethod::Ydotool) {
-    const QStringList arguments = waylandPasteArguments(m_pasteShortcuts);
-    const bool requiresPrimarySelection = m_pasteShortcuts.testFlag(ShiftInsert);
-    QTimer::singleShot(150, this, [this, ydotool, arguments, text, requiresPrimarySelection] {
-      if (requiresPrimarySelection &&
+    const PasteShortcuts shortcuts = m_pasteShortcuts;
+    QTimer::singleShot(150, this, [this, ydotool, shortcuts, text] {
+      PasteShortcuts usableShortcuts = shortcuts;
+      QString success = i18n("Sent paste to the focused application.");
+      if (shortcuts.testFlag(ShiftInsert) &&
           (!m_platform->supportsSelection() || m_platform->clipboardText(true) != text)) {
-        reportDeliveryFailure(i18n("Automatic paste could not prepare Shift+Insert on Wayland."));
-        return;
+        usableShortcuts.setFlag(ShiftInsert, false);
+        if (usableShortcuts == PasteShortcuts{}) {
+          reportDeliveryFailure(i18n("Automatic paste could not prepare Shift+Insert on Wayland."));
+          return;
+        }
+        success = i18n("Sent available paste shortcuts; Shift+Insert could not be prepared.");
       }
-      startPaste(ydotool, arguments, i18n("Sent paste to the focused application."));
+      startPaste(ydotool, waylandPasteArguments(usableShortcuts), success);
     });
     return i18n("Copied to clipboard; automatic paste scheduled.");
   }

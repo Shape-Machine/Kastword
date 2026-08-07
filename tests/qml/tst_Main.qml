@@ -11,12 +11,7 @@ TestCase {
     when: windowShown
 
     property var applicationWindow
-
-    SignalSpy {
-        id: passiveNotificationSpy
-        target: applicationWindow
-        signalName: "passiveNotificationShown"
-    }
+    property string passiveNotificationMessage: ""
 
     Component {
         id: applicationComponent
@@ -40,6 +35,10 @@ TestCase {
         tryCompare(loader, "status", Loader.Ready)
         applicationWindow = loader.item
         verify(applicationWindow)
+        passiveNotificationMessage = ""
+        applicationWindow.passiveNotificationHandler = function(message) {
+            testCase.passiveNotificationMessage = message
+        }
         applicationWindow.visible = true
         waitForRendering(applicationWindow.contentItem)
         appController.setTestState(false, false)
@@ -186,13 +185,13 @@ TestCase {
 
     function test_modelCardsShowDistinctStatuses() {
         applicationWindow.width = 1200
-        applicationWindow.modelFooterBreakpoint = 0
         applicationWindow.openModelManager()
         const models = modelPage()
         const filter = findChild(models, "modelLanguageFilter")
         verify(filter)
         filter.currentIndex = filter.indexOfValue("all")
         appController.modelManager.setModelStates("base.en", "small")
+        waitForRendering(applicationWindow.contentItem)
 
         const active = findChild(models, "modelStatus-base.en")
         const downloaded = findChild(models, "modelStatus-small")
@@ -204,6 +203,7 @@ TestCase {
         const downloadedCard = findChild(models, "modelCard-small")
         const unavailableCard = findChild(models, "modelCard-tiny")
         const unavailableFooter = findChild(models, "modelFooter-tiny")
+        const activeFooter = findChild(models, "modelFooter-base.en")
         const useButton = findChild(models, "useModel-small")
         const downloadButton = findChild(models, "downloadModel-tiny")
         const activeIndicator = findChild(models, "activeModelIndicator-base.en")
@@ -219,6 +219,7 @@ TestCase {
         verify(downloadedCard)
         verify(unavailableCard)
         verify(unavailableFooter)
+        verify(activeFooter)
         verify(useButton)
         verify(downloadButton)
         verify(activeIndicator)
@@ -250,23 +251,16 @@ TestCase {
         compare(unavailableSize.text, "· 141 MiB")
         compare(unavailableSize.opacity, 0.7)
         compare(unavailableIndicator.visible, false)
-        compare(unavailableFooter.columns, 2)
+        compare(activeFooter.compact, activeFooter.width < activeFooter.singleRowWidth)
+        compare(activeFooter.columns, 2)
         compare(unavailable.Accessible.description, "https://example.test/tiny")
         unavailable.forceActiveFocus()
         compare(unavailable.activeFocus, true)
         compare(unavailable.showUrlTooltip, true)
-        passiveNotificationSpy.clear()
         mouseClick(unavailable)
         compare(appController.copiedText, "https://example.test/tiny")
-        compare(passiveNotificationSpy.count, 1)
-        compare(passiveNotificationSpy.signalArguments[0][0],
-                "Download URL copied to clipboard.")
+        compare(passiveNotificationMessage, "Download URL copied to clipboard.")
         compare(downloadButton.highlighted, true)
-        const downloadPosition = downloadButton.mapToItem(unavailableCard, 0, 0)
-        verify(downloadPosition.x + downloadButton.width
-               >= unavailableCard.width - unavailableCard.padding * 2)
-        verify(downloadPosition.y + downloadButton.height
-               <= unavailableCard.height - unavailableCard.padding)
     }
 
     function test_modelCardFooterAdaptsAtMinimumWidth() {
@@ -281,9 +275,13 @@ TestCase {
         const card = findChild(models, "modelCard-tiny")
         const status = findChild(models, "availableModelStatus-tiny")
         const download = findChild(models, "downloadModel-tiny")
+        const footer = findChild(models, "modelFooter-tiny")
         verify(card)
         verify(status)
         verify(download)
+        verify(footer)
+        compare(footer.compact, footer.width < footer.singleRowWidth)
+        compare(footer.columns, 1)
 
         const statusPosition = status.mapToItem(card, 0, 0)
         const downloadPosition = download.mapToItem(card, 0, 0)

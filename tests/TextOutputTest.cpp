@@ -95,6 +95,7 @@ private slots:
   void usesRegularClipboardShortcutOnWayland();
   void injectsClipboardDbusFocusAndProcessBoundaries();
   void injectsConfiguredWaylandPasteArguments();
+  void preservesWaylandClipboardShortcutsWithoutPrimarySelection();
   void rejectsWaylandShiftInsertWithoutPrimarySelection();
   void reportsInjectedProcessError();
 };
@@ -394,6 +395,27 @@ void TextOutputTest::rejectsWaylandShiftInsertWithoutPrimarySelection() {
            QStringLiteral("Automatic paste could not prepare Shift+Insert on Wayland."));
   QCOMPARE(failures.count(), 1);
   QVERIFY(platformPtr->launchedProgram.isEmpty());
+}
+
+void TextOutputTest::preservesWaylandClipboardShortcutsWithoutPrimarySelection() {
+  auto platform = std::make_unique<FakeTextOutputPlatform>();
+  auto *platformPtr = platform.get();
+  platformPtr->session = QStringLiteral("wayland");
+  platformPtr->executables = {QStringLiteral("ydotool")};
+  platformPtr->selectionSupported = false;
+  TextOutput output(std::move(platform));
+  output.setPasteShortcuts(TextOutput::CtrlV | TextOutput::ShiftInsert);
+  QSignalSpy status(&output, &TextOutput::deliveryStatus);
+  QSignalSpy failures(&output, &TextOutput::deliveryFailed);
+
+  QCOMPARE(output.deliver(QStringLiteral("private dictation"), true),
+           QStringLiteral("Copied to clipboard; automatic paste scheduled."));
+
+  QTRY_COMPARE(platformPtr->launchedProgram, QStringLiteral("/fake/ydotool"));
+  QCOMPARE(platformPtr->launchedArguments, TextOutput::waylandPasteArguments(TextOutput::CtrlV));
+  QCOMPARE(status.constFirst().constFirst().toString(),
+           QStringLiteral("Sent available paste shortcuts; Shift+Insert could not be prepared."));
+  QCOMPARE(failures.count(), 0);
 }
 
 void TextOutputTest::reportsInjectedProcessError() {
