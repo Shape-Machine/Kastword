@@ -34,8 +34,12 @@ Kirigami.ApplicationWindow {
 
     function copyModelUrl(url) {
         appController.copyText(url)
-        root.showPassiveNotification(i18n("Download URL copied to clipboard."), "short")
+        const message = i18n("Download URL copied to clipboard.")
+        root.showPassiveNotification(message, "short")
+        root.passiveNotificationShown(message)
     }
+
+    signal passiveNotificationShown(string message)
 
     property string pendingRemovalId: ""
     property int currentView: 0
@@ -239,87 +243,102 @@ Kirigami.ApplicationWindow {
                                 Accessible.description: i18n("The model is being verified")
                             }
 
-                            RowLayout {
+                            GridLayout {
+                                id: modelFooter
                                 Layout.fillWidth: true
-                                spacing: Kirigami.Units.smallSpacing
+                                columns: modelCard.width < Kirigami.Units.gridUnit * 28 ? 1 : 2
+                                columnSpacing: Kirigami.Units.smallSpacing
+                                rowSpacing: Kirigami.Units.smallSpacing
 
-                                Kirigami.Icon {
-                                    objectName: "installedModelStatusIcon-" + modelData.id
-                                    visible: modelData.installed
-                                    source: modelData.active ? "media-record" : "media-playback-start"
-                                    implicitWidth: Kirigami.Units.iconSizes.small
-                                    implicitHeight: implicitWidth
-                                    Accessible.ignored: true
-                                }
-
-                                Controls.Label {
-                                    objectName: "modelStatus-" + modelData.id
-                                    visible: modelData.installed
-                                    text: modelData.active ? i18n("In use") : i18n("Downloaded")
-                                    font.bold: modelData.active
-                                }
-
-                                Controls.Button {
-                                    objectName: "availableModelStatus-" + modelData.id
-                                    visible: !modelData.installed
-                                    flat: true
-                                    text: i18n("Available for download")
-                                    icon.name: "system-software-install"
-                                    display: Controls.AbstractButton.TextBesideIcon
-                                    opacity: 0.7
-                                    onClicked: root.copyModelUrl(modelData.url)
-                                    Accessible.description: modelData.url
-                                    Controls.ToolTip.visible: hovered
-                                    Controls.ToolTip.text: modelData.url
-                                }
-
-                                Controls.Label {
-                                    objectName: "modelSize-" + modelData.id
-                                    text: "· " + modelData.sizeText
-                                    opacity: modelData.installed ? 1 : 0.7
-                                }
-
-                                Item {
+                                RowLayout {
                                     Layout.fillWidth: true
-                                }
+                                    spacing: Kirigami.Units.smallSpacing
 
-                                Controls.Button {
-                                    objectName: "cancelModel-" + modelData.id
-                                    visible: modelData.downloading || modelData.verifying
-                                    text: i18n("Cancel")
-                                    onClicked: appController.modelManager.cancel()
-                                }
-
-                                Controls.Button {
-                                    objectName: "downloadModel-" + modelData.id
-                                    visible: !modelData.installed
-                                    enabled: !appController.modelManager.busy
-                                    highlighted: true
-                                    text: i18n("Download")
-                                    onClicked: appController.modelManager.download(modelData.id)
-                                    Accessible.name: i18n("Download %1", modelData.name)
-                                }
-
-                                Controls.Button {
-                                    objectName: "useModel-" + modelData.id
-                                    visible: modelData.installed && !modelData.active
-                                    enabled: !appController.modelManager.busy
-                                    highlighted: true
-                                    text: i18n("Use")
-                                    onClicked: appController.modelManager.selectModel(modelData.id)
-                                    Accessible.name: i18n("Use %1", modelData.name)
-                                }
-
-                                Controls.Button {
-                                    objectName: "removeModel-" + modelData.id
-                                    visible: modelData.installed || modelData.partial
-                                    enabled: !appController.modelManager.busy && appController.idle
-                                    text: i18n("Remove")
-                                    onClicked: {
-                                        root.pendingRemovalId = modelData.id
-                                        removeDialog.open()
+                                    Kirigami.Icon {
+                                        objectName: "installedModelStatusIcon-" + modelData.id
+                                        visible: modelData.installed
+                                        source: modelData.active ? "media-record" : "media-playback-start"
+                                        implicitWidth: Kirigami.Units.iconSizes.small
+                                        implicitHeight: implicitWidth
+                                        Accessible.ignored: true
                                     }
-                                    Accessible.name: i18n("Remove %1", modelData.name)
+
+                                    Controls.Label {
+                                        objectName: "modelStatus-" + modelData.id
+                                        visible: modelData.installed
+                                        text: modelData.active ? i18n("In use") : i18n("Downloaded")
+                                        font.bold: modelData.active
+                                    }
+
+                                    Controls.Button {
+                                        objectName: "availableModelStatus-" + modelData.id
+                                        readonly property bool showUrlTooltip: hovered || activeFocus
+                                        visible: !modelData.installed
+                                        flat: true
+                                        text: i18n("Available for download")
+                                        icon.name: "system-software-install"
+                                        display: Controls.AbstractButton.TextBesideIcon
+                                        opacity: 0.7
+                                        onClicked: root.copyModelUrl(modelData.url)
+                                        Accessible.description: modelData.url
+                                        Controls.ToolTip.visible: showUrlTooltip
+                                        Controls.ToolTip.text: modelData.url
+                                    }
+
+                                    Controls.Label {
+                                        objectName: "modelSize-" + modelData.id
+                                        text: "· " + modelData.sizeText
+                                        opacity: modelData.installed ? 1 : 0.7
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: modelFooter.columns === 1
+                                    Layout.alignment: Qt.AlignRight
+                                    spacing: Kirigami.Units.smallSpacing
+
+                                    Item {
+                                        Layout.fillWidth: modelFooter.columns === 1
+                                    }
+
+                                    Controls.Button {
+                                        objectName: "cancelModel-" + modelData.id
+                                        visible: modelData.downloading || modelData.verifying
+                                        text: i18n("Cancel")
+                                        onClicked: appController.modelManager.cancel()
+                                    }
+
+                                    Controls.Button {
+                                        objectName: "downloadModel-" + modelData.id
+                                        visible: !modelData.installed
+                                        enabled: !appController.modelManager.busy
+                                        highlighted: true
+                                        text: i18n("Download")
+                                        onClicked: appController.modelManager.download(modelData.id)
+                                        Accessible.name: i18n("Download %1", modelData.name)
+                                    }
+
+                                    Controls.Button {
+                                        objectName: "useModel-" + modelData.id
+                                        visible: modelData.installed && !modelData.active
+                                        enabled: !appController.modelManager.busy
+                                        highlighted: true
+                                        text: i18n("Use")
+                                        onClicked: appController.modelManager.selectModel(modelData.id)
+                                        Accessible.name: i18n("Use %1", modelData.name)
+                                    }
+
+                                    Controls.Button {
+                                        objectName: "removeModel-" + modelData.id
+                                        visible: modelData.installed || modelData.partial
+                                        enabled: !appController.modelManager.busy && appController.idle
+                                        text: i18n("Remove")
+                                        onClicked: {
+                                            root.pendingRemovalId = modelData.id
+                                            removeDialog.open()
+                                        }
+                                        Accessible.name: i18n("Remove %1", modelData.name)
+                                    }
                                 }
                             }
                         }
