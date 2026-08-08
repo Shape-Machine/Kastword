@@ -1,4 +1,4 @@
 interface:
   display_name: "Create and Merge PR"
-  short_description: "Validate, review, and merge a feature PR"
-  default_prompt: "Use $dev-pr to validate, open, monitor checks and reviews, and merge the current feature branch with my permission."
+  short_description: "Refresh screenshots, validate, and merge a PR"
+  default_prompt: "Use $dev-pr to refresh screenshots, validate, open, monitor, and merge the current feature branch with my permission."
