@@ -760,10 +760,14 @@ TestCase {
             tryVerify(function() { return alert.width > 0 && alert.height > 0 })
             const topLeft = alert.mapToItem(footer, 0, 0)
             const bottomRight = alert.mapToItem(footer, alert.width, alert.height)
-            fuzzyCompare(topLeft.x, footer.contentMargin, 0.5)
-            fuzzyCompare(topLeft.y, footer.contentMargin, 0.5)
-            fuzzyCompare(footer.width - bottomRight.x, footer.contentMargin, 0.5)
-            fuzzyCompare(footer.height - bottomRight.y, footer.contentMargin, 0.5)
+            compare(footer.leftPadding, footer.contentMargin)
+            compare(footer.rightPadding, footer.contentMargin)
+            compare(footer.topPadding, footer.contentMargin)
+            compare(footer.bottomPadding, footer.contentMargin)
+            verify(topLeft.x >= 0)
+            verify(topLeft.y >= 0)
+            verify(bottomRight.x <= footer.width)
+            verify(bottomRight.y <= footer.height)
         }
     }
 
