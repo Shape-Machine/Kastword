@@ -132,8 +132,17 @@ install(TARGETS kastword RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT K
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.shape_machine.Kastword.desktop
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications COMPONENT Kastword)
 install(FILES data/io.github.shape_machine.Kastword.metainfo.xml DESTINATION share/metainfo COMPONENT Kastword)
-install(FILES README.md LICENSES/GPL-3.0-or-later.txt
-        DESTINATION share/doc/kastword COMPONENT Kastword)
+install(FILES README.md DESTINATION share/doc/kastword COMPONENT Kastword)
+install(FILES docs/DEVELOPMENT.md docs/AUTOMATIC_PASTE.md
+        DESTINATION share/doc/kastword/docs COMPONENT Kastword)
+install(FILES
+        screenshots/01-offline-dictation.png
+        screenshots/02-speech-models.png
+        screenshots/03-audio-input.png
+        screenshots/04-settings.png
+        DESTINATION share/doc/kastword/screenshots COMPONENT Kastword)
+install(FILES LICENSES/GPL-3.0-or-later.txt
+        DESTINATION share/doc/kastword/LICENSES COMPONENT Kastword)
 if(KASTWORD_FETCH_DEFAULT_MODEL)
     install(FILES "${KASTWORD_DEFAULT_MODEL}" DESTINATION share/kastword/models COMPONENT Kastword)
 endif()
