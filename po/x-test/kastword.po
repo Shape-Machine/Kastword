@@ -744,8 +744,8 @@ msgid "Clear all history"
 msgstr "xxClear all historyxx"
 
 #: src/qml/Main.qml:242
-msgid "Save encrypted dictation history"
-msgstr "xxSave encrypted dictation historyxx"
+msgid "Enable history"
+msgstr "xxEnable historyxx"
 
 #: src/qml/Main.qml:251
 msgid ""
@@ -758,10 +758,6 @@ msgstr ""
 #: src/qml/Main.qml:266
 msgid "Reset encrypted history"
 msgstr "xxReset encrypted historyxx"
-
-#: src/qml/Main.qml:269
-msgid "Delete an unreadable history file and its KDE Wallet key"
-msgstr "xxDelete an unreadable history file and its KDE Wallet keyxx"
 
 #: src/qml/Main.qml:278
 msgid "Maximum entries:"
@@ -800,8 +796,8 @@ msgid "Delete the dictation from encrypted history"
 msgstr "xxDelete the dictation from encrypted historyxx"
 
 #: src/qml/Main.qml:368 src/qml/Main.qml:1049 src/qml/Main.qml:1114
-msgid "Speech models"
-msgstr "xxSpeech modelsxx"
+msgid "Models"
+msgstr "xxModelsxx"
 
 #: src/qml/Main.qml:380
 msgid "Choose and download a model before using dictation."
@@ -912,8 +908,8 @@ msgid "Model storage: %1"
 msgstr "xxModel storage: %1xx"
 
 #: src/qml/Main.qml:652 src/qml/Main.qml:1050 src/qml/Main.qml:1131
-msgid "Audio input"
-msgstr "xxAudio inputxx"
+msgid "Audio"
+msgstr "xxAudioxx"
 
 #: src/qml/Main.qml:659
 msgid "Microphone:"
@@ -1056,8 +1052,8 @@ msgid "The global shortcut could not be changed. Choose another shortcut."
 msgstr "xxThe global shortcut could not be changed. Choose another shortcut.xx"
 
 #: src/qml/Main.qml:865 src/qml/Main.qml:1047 src/qml/Main.qml:1080
-msgid "Offline dictation"
-msgstr "xxOffline dictationxx"
+msgid "Dictation"
+msgstr "xxDictationxx"
 
 #: src/qml/Main.qml:881
 msgid "Dictation status"

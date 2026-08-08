@@ -20,7 +20,7 @@
 
 namespace {
 constexpr int screenshotWidth = 760;
-constexpr int screenshotHeight = 520;
+constexpr int screenshotHeight = 700;
 
 struct ScreenshotView {
   int index;
