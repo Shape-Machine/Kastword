@@ -168,24 +168,34 @@ TestCase {
     function test_modelControlsHaveAccessibleNames() {
         applicationWindow.openModelManager()
         const models = modelPage()
-        const filter = findChild(models, "modelLanguageFilter")
+        const filter = findChild(models, "modelFilterRecommended")
+        const storagePath = findChild(models, "modelStoragePath")
         const warning = findChild(models, "modelSetupWarning")
         verify(filter)
+        verify(storagePath)
         verify(warning)
-        compare(filter.Accessible.name, "Filter speech models")
+        compare(filter.text, "Recommended")
+        compare(storagePath.Accessible.name, "Model storage path")
+        storagePath.copyPath()
+        compare(appController.copiedText, "/tmp/models")
+        compare(passiveNotificationMessage, "Storage path copied to clipboard.")
         compare(warning.visible, true)
     }
 
     function test_modelFiltersDefaultToRecommendedAndSeparateCapabilities() {
         applicationWindow.openModelManager()
         const models = modelPage()
-        const filter = findChild(models, "modelLanguageFilter")
+        const recommendedFilter = findChild(models, "modelFilterRecommended")
+        const englishFilter = findChild(models, "modelFilterEnglish")
+        const multilingualFilter = findChild(models, "modelFilterMultilingual")
         const english = findChild(models, "modelCard-base.en")
         const recommendedMultilingual = findChild(models, "modelCard-small")
         const otherMultilingual = findChild(models, "modelCard-tiny")
         const recommendedIcon = findChild(models, "recommendedModel-base.en")
         const regularIcon = findChild(models, "recommendedModel-tiny")
-        verify(filter)
+        verify(recommendedFilter)
+        verify(englishFilter)
+        verify(multilingualFilter)
         verify(english)
         verify(recommendedMultilingual)
         verify(otherMultilingual)
@@ -195,17 +205,17 @@ TestCase {
         compare(recommendedIcon.Accessible.name, "Recommended")
         compare(regularIcon.visible, false)
 
-        compare(filter.currentValue, "recommended")
+        compare(recommendedFilter.checked, true)
         compare(english.visible, true)
         compare(recommendedMultilingual.visible, true)
         compare(otherMultilingual.visible, false)
 
-        filter.currentIndex = filter.indexOfValue("multilingual")
+        multilingualFilter.clicked()
         compare(english.visible, false)
         compare(recommendedMultilingual.visible, true)
         compare(otherMultilingual.visible, true)
 
-        filter.currentIndex = filter.indexOfValue("english")
+        englishFilter.clicked()
         compare(english.visible, true)
         compare(recommendedMultilingual.visible, false)
         compare(otherMultilingual.visible, false)
@@ -215,9 +225,9 @@ TestCase {
         applicationWindow.width = 1200
         applicationWindow.openModelManager()
         const models = modelPage()
-        const filter = findChild(models, "modelLanguageFilter")
+        const filter = findChild(models, "modelFilterAll")
         verify(filter)
-        filter.currentIndex = filter.indexOfValue("all")
+        filter.clicked()
         appController.modelManager.setModelStates("base.en", "small")
         waitForRendering(applicationWindow.contentItem)
 
@@ -295,9 +305,9 @@ TestCase {
         applicationWindow.width = applicationWindow.minimumWidth
         applicationWindow.openModelManager()
         const models = modelPage()
-        const filter = findChild(models, "modelLanguageFilter")
+        const filter = findChild(models, "modelFilterAll")
         verify(filter)
-        filter.currentIndex = filter.indexOfValue("all")
+        filter.clicked()
         waitForRendering(applicationWindow.contentItem)
 
         const card = findChild(models, "modelCard-tiny")
@@ -322,9 +332,9 @@ TestCase {
     function test_verificationCanBeCancelled() {
         applicationWindow.openModelManager()
         const models = modelPage()
-        const filter = findChild(models, "modelLanguageFilter")
+        const filter = findChild(models, "modelFilterAll")
         verify(filter)
-        filter.currentIndex = filter.indexOfValue("all")
+        filter.clicked()
         appController.modelManager.setVerifyingId("tiny")
 
         const cancel = findChild(models, "cancelModel-tiny")
@@ -336,9 +346,9 @@ TestCase {
     function test_partialDownloadCanBeRemoved() {
         applicationWindow.openModelManager()
         const models = modelPage()
-        const filter = findChild(models, "modelLanguageFilter")
+        const filter = findChild(models, "modelFilterAll")
         verify(filter)
-        filter.currentIndex = filter.indexOfValue("all")
+        filter.clicked()
         appController.modelManager.setPartialId("tiny")
 
         const partial = findChild(models, "partialModel-tiny")
@@ -451,16 +461,21 @@ TestCase {
         const count = findChild(page, "historyMaximumEntries")
         const age = findChild(page, "historyMaximumAgeDays")
         const clear = findChild(page, "clearHistoryButton")
+        const storagePath = findChild(page, "historyStoragePath")
         verify(enabled)
         verify(count)
         verify(age)
         verify(clear)
+        verify(storagePath)
         compare(enabled.checked, true)
         compare(enabled.text, "Enable history")
         verify(enabled.Accessible.description.indexOf("authenticated encryption") >= 0)
         compare(count.Accessible.name, "Maximum history entries")
         compare(age.Accessible.name, "Maximum history age in days")
         compare(clear.visible, true)
+        storagePath.copyPath()
+        compare(appController.copiedText, "/tmp/history.enc")
+        compare(passiveNotificationMessage, "Storage path copied to clipboard.")
         verify(Math.abs(enabled.mapToItem(page, 0, 0).y
                         - clear.mapToItem(page, 0, 0).y) <= 4)
         const list = findChild(page, "historyList")
@@ -476,6 +491,22 @@ TestCase {
         const arabicLocale = Qt.locale("ar_EG")
         const localizedAge = age.textFromValue(123, arabicLocale)
         compare(age.valueFromText(localizedAge, arabicLocale), 123)
+    }
+
+    function test_cancellingHistoryDisableKeepsSwitchEnabled() {
+        applicationWindow.currentView = 1
+        const enabled = findChild(historyPage(), "historyEnabledSwitch")
+        const dialog = findChild(applicationWindow.contentItem, "disableHistoryDialog")
+        verify(enabled)
+        verify(dialog)
+        compare(enabled.checked, true)
+
+        mouseClick(enabled)
+        compare(enabled.checked, true)
+        compare(dialog.visible, true)
+        dialog.reject()
+        tryCompare(dialog, "visible", false)
+        compare(enabled.checked, true)
     }
 
     function test_historyResetIsLimitedToUnreadableData() {

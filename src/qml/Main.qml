@@ -46,6 +46,11 @@ Kirigami.ApplicationWindow {
         root.passiveNotificationHandler(message)
     }
 
+    function copyStoragePath(path) {
+        appController.copyText(path)
+        root.passiveNotificationHandler(i18n("Storage path copied to clipboard."))
+    }
+
     property string pendingRemovalId: ""
     property string pendingHistoryId: ""
     property int currentView: 0
@@ -235,6 +240,7 @@ Kirigami.ApplicationWindow {
                         objectName: "historyEnabledSwitch"
                         text: i18n("Enable history")
                         checked: appController.history.enabled
+                        checkable: false
                         enabled: !appController.history.busy
                         onClicked: {
                             if (appController.history.enabled)
@@ -303,12 +309,25 @@ Kirigami.ApplicationWindow {
                         }
                     }
 
-                    Controls.Label {
+                    Controls.TextField {
+                        objectName: "historyStoragePath"
                         Layout.fillWidth: true
                         visible: appController.history.enabled
-                        wrapMode: Text.WrapAnywhere
-                        opacity: 0.7
-                        text: i18n("Encrypted storage: %1", appController.history.storagePath)
+                        readOnly: true
+                        selectByMouse: true
+                        text: appController.history.storagePath
+                        Accessible.name: i18n("Encrypted history storage path")
+                        Accessible.description: i18n("Click to copy the storage path")
+                        function copyPath() {
+                            selectAll()
+                            root.copyStoragePath(text)
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: parent.copyPath()
+                        }
                     }
 
                     Controls.Label {
@@ -376,8 +395,76 @@ Kirigami.ApplicationWindow {
         id: modelManagerPage
 
         Kirigami.ScrollablePage {
+            id: modelsPage
             objectName: "modelManagerPage"
             title: i18n("Models")
+            property string selectedFilter: "recommended"
+
+            header: Controls.Pane {
+                padding: Kirigami.Units.smallSpacing
+
+                contentItem: ColumnLayout {
+                    spacing: Kirigami.Units.smallSpacing
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        Controls.TabButton {
+                            objectName: "modelFilterRecommended"
+                            Layout.fillWidth: true
+                            text: i18n("Recommended")
+                            checked: modelsPage.selectedFilter === "recommended"
+                            checkable: false
+                            onClicked: modelsPage.selectedFilter = "recommended"
+                        }
+                        Controls.TabButton {
+                            objectName: "modelFilterEnglish"
+                            Layout.fillWidth: true
+                            text: i18n("English")
+                            checked: modelsPage.selectedFilter === "english"
+                            checkable: false
+                            onClicked: modelsPage.selectedFilter = "english"
+                        }
+                        Controls.TabButton {
+                            objectName: "modelFilterMultilingual"
+                            Layout.fillWidth: true
+                            text: i18n("Multilingual")
+                            checked: modelsPage.selectedFilter === "multilingual"
+                            checkable: false
+                            onClicked: modelsPage.selectedFilter = "multilingual"
+                        }
+                        Controls.TabButton {
+                            objectName: "modelFilterAll"
+                            Layout.fillWidth: true
+                            text: i18n("All")
+                            checked: modelsPage.selectedFilter === "all"
+                            checkable: false
+                            onClicked: modelsPage.selectedFilter = "all"
+                        }
+                    }
+
+                    Controls.TextField {
+                        objectName: "modelStoragePath"
+                        Layout.fillWidth: true
+                        readOnly: true
+                        selectByMouse: true
+                        text: appController.modelManager.storagePath
+                        Accessible.name: i18n("Model storage path")
+                        Accessible.description: i18n("Click to copy the storage path")
+                        function copyPath() {
+                            selectAll()
+                            root.copyStoragePath(text)
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: parent.copyPath()
+                        }
+                    }
+                }
+            }
 
             footer: Kirigami.InlineMessage {
                 objectName: "modelSetupWarning"
@@ -400,27 +487,6 @@ Kirigami.ApplicationWindow {
                 width: parent.width
                 spacing: Kirigami.Units.largeSpacing
 
-                Controls.Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: i18n("Models are downloaded only when you request them. Transcription remains offline after the download.")
-                }
-
-                Controls.ComboBox {
-                    id: modelLanguageFilter
-                    objectName: "modelLanguageFilter"
-                    Layout.fillWidth: true
-                    textRole: "text"
-                    valueRole: "code"
-                    model: [
-                        { text: i18n("Recommended"), code: "recommended" },
-                        { text: i18n("English-only models"), code: "english" },
-                        { text: i18n("Multilingual models"), code: "multilingual" },
-                        { text: i18n("All models"), code: "all" }
-                    ]
-                    Accessible.name: i18n("Filter speech models")
-                }
-
                 Repeater {
                     model: appController.modelManager.models
 
@@ -429,10 +495,10 @@ Kirigami.ApplicationWindow {
                         required property var modelData
                         objectName: "modelCard-" + modelData.id
                         Layout.fillWidth: true
-                        visible: modelLanguageFilter.currentValue === "all"
-                            || (modelLanguageFilter.currentValue === "recommended" && modelData.recommended)
-                            || (modelLanguageFilter.currentValue === "english" && modelData.englishOnly)
-                            || (modelLanguageFilter.currentValue === "multilingual" && !modelData.englishOnly)
+                        visible: modelsPage.selectedFilter === "all"
+                            || (modelsPage.selectedFilter === "recommended" && modelData.recommended)
+                            || (modelsPage.selectedFilter === "english" && modelData.englishOnly)
+                            || (modelsPage.selectedFilter === "multilingual" && !modelData.englishOnly)
                         implicitHeight: visible
                             ? modelDetails.implicitHeight + padding * 2 + Kirigami.Units.smallSpacing
                             : 0
@@ -632,12 +698,6 @@ Kirigami.ApplicationWindow {
                     Accessible.description: i18n("Select an existing compatible Whisper model file")
                 }
 
-                Controls.Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WrapAnywhere
-                    opacity: 0.7
-                    text: i18n("Model storage: %1", appController.modelManager.storagePath)
-                }
             }
         }
     }
@@ -1046,11 +1106,6 @@ Kirigami.ApplicationWindow {
     pageStack.initialPage: Kirigami.Page {
         id: mainPage
         padding: 0
-        title: root.currentView === 0 ? i18n("Dictation")
-             : root.currentView === 1 ? i18n("History")
-             : root.currentView === 2 ? i18n("Models")
-             : root.currentView === 3 ? i18n("Audio")
-             : i18n("Settings")
 
         RowLayout {
             anchors.fill: parent
