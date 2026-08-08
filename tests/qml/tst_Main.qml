@@ -101,7 +101,8 @@ TestCase {
         const models = modelPage()
         const warning = findChild(models, "modelSetupWarning")
         verify(warning)
-        compare(warning.visible, false)
+        compare(warning.visible, true)
+        verify(warning.text.indexOf("sources you trust") >= 0)
 
         appController.setRestoringModel(false)
         compare(applicationWindow.currentView, 2)
@@ -168,7 +169,7 @@ TestCase {
         applicationWindow.openModelManager()
         const models = modelPage()
         const filter = findChild(models, "modelLanguageFilter")
-        const warning = findChild(models, "externalModelWarning")
+        const warning = findChild(models, "modelSetupWarning")
         verify(filter)
         verify(warning)
         compare(filter.Accessible.name, "Filter speech models")
@@ -372,6 +373,14 @@ TestCase {
         verify(audioInputTab)
         verify(settingsTab)
         compare(dictationTab.checked, true)
+        compare(applicationWindow.height, 700)
+        compare(dictationTab.text, "Dictation")
+        compare(historyTab.text, "History")
+        compare(modelsTab.text, "Models")
+        compare(audioInputTab.text, "Audio")
+        compare(settingsTab.text, "Settings")
+        const navigation = findChild(applicationWindow.contentItem, "navigationPane")
+        verify(navigation.width < 200)
 
         mouseClick(historyTab)
         tryCompare(applicationWindow, "currentView", 1)
@@ -447,10 +456,13 @@ TestCase {
         verify(age)
         verify(clear)
         compare(enabled.checked, true)
+        compare(enabled.text, "Enable history")
         verify(enabled.Accessible.description.indexOf("authenticated encryption") >= 0)
         compare(count.Accessible.name, "Maximum history entries")
         compare(age.Accessible.name, "Maximum history age in days")
         compare(clear.visible, true)
+        verify(Math.abs(enabled.mapToItem(page, 0, 0).y
+                        - clear.mapToItem(page, 0, 0).y) <= 4)
         const list = findChild(page, "historyList")
         list.positionViewAtIndex(0, ListView.Beginning)
         tryVerify(function() {
@@ -468,7 +480,7 @@ TestCase {
 
     function test_historyResetIsLimitedToUnreadableData() {
         applicationWindow.currentView = 1
-        const reset = findChild(historyPage(), "resetHistoryButton")
+        const reset = findChild(historyPage(), "resetHistoryAction")
         verify(reset)
         compare(reset.visible, false)
 
