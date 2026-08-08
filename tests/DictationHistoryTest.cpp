@@ -55,6 +55,16 @@ public:
   LoadCallback pendingLoad;
 };
 
+class DeferredRemovalKeyProvider final : public HistoryKeyProvider {
+public:
+  void loadOrCreate(QObject *, LoadCallback callback) override {
+    callback(QByteArray(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'r'), {});
+  }
+  void remove(QObject *, RemoveCallback callback) override { pendingRemoval = std::move(callback); }
+
+  RemoveCallback pendingRemoval;
+};
+
 std::unique_ptr<FakeKeyProvider> provider(QByteArray key = {}) {
   auto result = std::make_unique<FakeKeyProvider>();
   if (!key.isEmpty())
@@ -112,7 +122,7 @@ private slots:
     auto *keysPtr = keys.get();
     DictationHistory history(directory.filePath(QStringLiteral("history.enc")), std::move(keys));
 
-    QVERIFY(history.enable());
+    history.enable();
     QVERIFY(history.busy());
     QVERIFY(!history.enabled());
     QVERIFY(keysPtr->pendingLoad);
@@ -128,7 +138,7 @@ private slots:
     const QDateTime now(QDate(2026, 8, 8), QTime(12, 0), QTimeZone::UTC);
     {
       DictationHistory history(path, provider(key), [now] { return now; });
-      QVERIFY(history.enable());
+      history.enable();
       QVERIFY(history.add(QStringLiteral("sensitive dictation")));
       QCOMPARE(history.entries().size(), 1);
     }
@@ -143,7 +153,7 @@ private slots:
              QFileDevice::Permissions{});
 
     DictationHistory restored(path, provider(key), [now] { return now; });
-    QVERIFY(restored.enable());
+    restored.enable();
     QCOMPARE(restored.entries().size(), 1);
     QCOMPARE(restored.entries().constFirst().toMap().value(QStringLiteral("text")).toString(),
              QStringLiteral("sensitive dictation"));
@@ -154,12 +164,12 @@ private slots:
     const QString path = directory.filePath(QStringLiteral("history.enc"));
     const QByteArray key(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'a');
     DictationHistory history(path, provider(key));
-    QVERIFY(history.enable());
+    history.enable();
     QVERIFY(history.add(QStringLiteral("private")));
 
     DictationHistory wrongKey(
         path, provider(QByteArray(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'b')));
-    QVERIFY(wrongKey.enable());
+    wrongKey.enable();
     QVERIFY(!wrongKey.available());
     QVERIFY(wrongKey.entries().isEmpty());
 
@@ -173,7 +183,7 @@ private slots:
     QCOMPARE(file.write(&byte, 1), 1);
     file.close();
     DictationHistory tampered(path, provider(key));
-    QVERIFY(tampered.enable());
+    tampered.enable();
     QVERIFY(tampered.entries().isEmpty());
   }
 
@@ -191,7 +201,7 @@ private slots:
     writeEncryptedHistory(path, key, entries);
 
     DictationHistory history(path, provider(key));
-    QVERIFY(history.enable());
+    history.enable();
     QVERIFY(!history.enabled());
     QVERIFY(!history.available());
     QVERIFY(history.entries().isEmpty());
@@ -204,7 +214,7 @@ private slots:
     failingKeys->failLoad = true;
     DictationHistory noKey(directory.filePath(QStringLiteral("history.enc")),
                            std::move(failingKeys));
-    QVERIFY(noKey.enable());
+    noKey.enable();
     QVERIFY(!noKey.enabled());
     QVERIFY(!noKey.available());
     QVERIFY(!QFileInfo::exists(noKey.storagePath()));
@@ -214,7 +224,7 @@ private slots:
                                *error = QStringLiteral("Atomic write failed");
                                return false;
                              });
-    QVERIFY(noWrite.enable());
+    noWrite.enable();
     QVERIFY(!noWrite.add(QStringLiteral("must not leak")));
     QVERIFY(!noWrite.available());
     QVERIFY(!QFileInfo::exists(noWrite.storagePath()));
@@ -236,7 +246,7 @@ private slots:
             return false;
           return true;
         });
-    QVERIFY(history.enable());
+    history.enable();
     QVERIFY(history.add(QStringLiteral("persisted")));
     QFile beforeFile(path);
     QVERIFY(beforeFile.open(QIODevice::ReadOnly));
@@ -267,7 +277,7 @@ private slots:
           return file.open(QIODevice::WriteOnly) && file.write(data) == data.size() &&
                  file.commit();
         });
-    QVERIFY(history.enable());
+    history.enable();
     QVERIFY(!history.add(QStringLiteral("first")));
     QVERIFY(!history.available());
 
@@ -293,7 +303,7 @@ private slots:
           return file.open(QIODevice::WriteOnly) && file.write(data) == data.size() &&
                  file.commit();
         });
-    QVERIFY(history.enable());
+    history.enable();
     QVERIFY(history.add(QStringLiteral("first")));
     now = now.addDays(2);
     QVERIFY(history.add(QStringLiteral("second")));
@@ -318,7 +328,7 @@ private slots:
     QDateTime now(QDate(2026, 8, 8), QTime(12, 0), QTimeZone::UTC);
     DictationHistory history(directory.filePath(QStringLiteral("history.enc")), provider(),
                              [&now] { return now; });
-    QVERIFY(history.enable());
+    history.enable();
     history.setMaximumEntries(2);
     history.setMaximumAgeDays(2);
     QVERIFY(history.add(QStringLiteral("first")));
@@ -341,7 +351,7 @@ private slots:
     QDateTime now(QDate(2026, 8, 8), QTime(12, 0), QTimeZone::UTC);
     DictationHistory history(directory.filePath(QStringLiteral("history.enc")), provider(),
                              [&now] { return now; });
-    QVERIFY(history.enable());
+    history.enable();
     history.setMaximumAgeDays(1);
     QVERIFY(history.add(QStringLiteral("expires")));
     QSignalSpy settingsChanged(&history, &DictationHistory::settingsChanged);
@@ -361,7 +371,7 @@ private slots:
     file.close();
 
     DictationHistory history(path, provider());
-    QVERIFY(history.enable());
+    history.enable();
     QVERIFY(!history.enabled());
     QVERIFY(!history.available());
     QVERIFY(history.entries().isEmpty());
@@ -370,7 +380,7 @@ private slots:
   void contentChangesDoNotEmitSettingsChanges() {
     QTemporaryDir directory;
     DictationHistory history(directory.filePath(QStringLiteral("history.enc")), provider());
-    QVERIFY(history.enable());
+    history.enable();
     QSignalSpy settingsChanged(&history, &DictationHistory::settingsChanged);
     QVERIFY(history.add(QStringLiteral("entry")));
     const QString id =
@@ -385,7 +395,7 @@ private slots:
     auto keys = provider();
     auto *keysPtr = keys.get();
     DictationHistory history(path, std::move(keys));
-    QVERIFY(history.enable());
+    history.enable();
     QVERIFY(history.add(QStringLiteral("one")));
     QVERIFY(history.add(QStringLiteral("two")));
     const QString id =
@@ -398,9 +408,35 @@ private slots:
     history.disable(false);
     QVERIFY(history.entries().isEmpty());
     QVERIFY(QFileInfo::exists(path));
-    QVERIFY(history.enable());
+    history.enable();
     history.disable(true);
     QVERIFY(!QFileInfo::exists(path));
+    QCOMPARE(keysPtr->removals, 1);
+  }
+
+  void retriesInterruptedKeyDeletionAfterRestart() {
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("history.enc"));
+    {
+      auto keys = std::make_unique<DeferredRemovalKeyProvider>();
+      auto *keysPtr = keys.get();
+      DictationHistory history(path, std::move(keys));
+      history.enable();
+      QVERIFY(history.add(QStringLiteral("delete me")));
+      history.disable(true);
+      QVERIFY(history.busy());
+      QVERIFY(history.deletionPending());
+      QVERIFY(keysPtr->pendingRemoval);
+      QVERIFY(!QFileInfo::exists(path));
+    }
+
+    auto keys = provider();
+    auto *keysPtr = keys.get();
+    DictationHistory restarted(path, std::move(keys));
+    QVERIFY(restarted.deletionPending());
+    restarted.resumePendingDeletion();
+    QVERIFY(!restarted.busy());
+    QVERIFY(!restarted.deletionPending());
     QCOMPARE(keysPtr->removals, 1);
   }
 };

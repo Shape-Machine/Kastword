@@ -35,6 +35,9 @@ encrypted data for later or delete both the file and its KDE Wallet key. Deletio
 from reading those records, but cannot guarantee forensic erasure from solid-state storage,
 filesystem snapshots, swap, crash dumps, or backups.
 
+If Kastword closes while KDE Wallet key deletion is still pending, it records that intent in the
+private history directory and retries the deletion the next time it starts.
+
 ## Security boundaries
 
 Encryption at rest protects the history file when the wallet key is unavailable. It does not

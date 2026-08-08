@@ -352,11 +352,10 @@ public:
   }
   Q_INVOKABLE void forgetTranscript() {}
   Q_INVOKABLE void copyTranscript() {}
-  Q_INVOKABLE bool enableHistory() {
+  Q_INVOKABLE void enableHistory() {
     if (!m_history.available())
-      return false;
+      return;
     m_history.setEnabled(true);
-    return true;
   }
   Q_INVOKABLE void disableHistory(bool deleteData) {
     if (deleteData)
