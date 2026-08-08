@@ -14,18 +14,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
 > are no supported binary releases or stable compatibility guarantees yet.
 
 Kastword records speech, transcribes it locally with `whisper.cpp`, and pastes the result into the
-application you were using. No dictated audio or text is sent to a cloud service. Launch Kastword
-manually and it stays out of the way in the system tray until you press **Meta+Z**.
+application you were using. No dictated audio or text is sent to a cloud service. After first-run
+setup, Kastword stays out of the way in the system tray until you press the configurable global
+shortcut, **Meta+Z** by default.
 
 Kastword is an independent project built with KDE technology; it is not currently an official KDE
 project or endorsed by KDE e.V.
 
 ## What works today
 
-- KDE global push-to-talk shortcut
+- configurable KDE global dictation shortcut
 - tray-first operation with recording, transcription, and success indicators
 - selectable Qt Multimedia audio input with hot-plug recovery, downmixing, and resampling
-- completely local transcription using a user-selected official Whisper model
+- completely local transcription using a downloaded or user-selected compatible Whisper model
 - clipboard output with optional automatic paste
 - X11 paste through `xdotool`
 - Plasma Wayland paste through `ydotool`
@@ -47,7 +48,7 @@ project or endorsed by KDE e.V.
 sudo pacman -S --needed \
   base-devel cmake ninja git \
   qt6-base qt6-declarative qt6-multimedia \
-  extra-cmake-modules kirigami \
+  extra-cmake-modules kirigami kdeclarative \
   kconfig kcoreaddons kdbusaddons kglobalaccel ki18n \
   knotifications kstatusnotifieritem
 ```
@@ -136,6 +137,9 @@ To uninstall:
 make uninstall
 ```
 
+Uninstalling removes the installed application files but preserves downloaded models and user
+settings.
+
 The application ID is `io.github.shape_machine.Kastword`; the underscore follows D-Bus guidance
 for the hyphen in the `Shape-Machine` organization name.
 
@@ -157,16 +161,18 @@ speech model; users choose models after installation. The legacy
 1. Start Kastword. On first run, choose an English-only or multilingual speech model.
 2. Explicitly download a recommended model or select an existing compatible `.bin` file.
 3. Focus the text field or terminal where the result should go.
-4. Press **Meta+Z** and speak, then press **Meta+Z** again.
-5. Kastword transcribes locally, updates the clipboard, and pastes when a helper is available.
+4. Press **Meta+Z** (or your configured shortcut) and speak, then press it again.
+5. Kastword transcribes locally and updates the clipboard. If automatic paste is enabled and its
+   helper is available, Kastword also sends the configured paste shortcut.
 
 Downloaded models are checksum-verified and stored per user under
 `~/.local/share/kastword/models/`. Speech Models can switch models, show their disk usage, resume or
 retry downloads, and remove managed models. Audio Input can disable microphone use with None, follow
 the system default microphone, or use a specific device. A specific selection is never silently
 replaced when disconnected; dictation remains disabled until that device returns or another input is
-chosen. Settings controls dictation behavior and the global keyboard shortcut. Dictation remains
-disabled whenever no valid model or audio input is available.
+chosen. Settings controls the transcription language, recording limit, automatic-paste behavior,
+paste shortcuts, and global keyboard shortcut. Dictation remains disabled whenever no valid model or
+audio input is available.
 
 Click the tray icon to open or hide the Kastword window. The tray menu can start or stop
 dictation and quit the application.
@@ -179,7 +185,8 @@ dictation and quit the application.
 - Raw audio and transcription history are not written to disk.
 - Transcribed text is placed on the desktop clipboard and primary selection.
 - The selected model remains in per-user local storage.
-- No telemetry is included. Network access is used only after an explicit model-download action.
+- No telemetry is included. At runtime, network access is used only after an explicit model-download
+  action.
 - Model downloads use immutable HTTPS URLs and are activated only after size, format, and SHA-256
   verification. Transcription remains offline.
 - Automatic Wayland paste relies on the separately installed `ydotool`/`ydotoold` service.
@@ -196,7 +203,6 @@ does not expose an equivalent global focus check, so focus can change during the
 
 ## Known limitations
 
-- The shortcut is currently fixed to Meta+Z in Kastword's UI, though KDE can manage it.
 - Full-size Large models require substantial disk space and memory.
 - Paste reliability depends on the session, helper, and target application.
 - `ydotool` requires privileged input-device access configured outside Kastword.
@@ -215,8 +221,9 @@ Global shortcut / tray
     └── TextOutput ───── clipboard + optional paste helper
 ```
 
-Inference runs away from the UI thread. The on-screen indicator is non-focusable so showing it
-does not change the application receiving pasted text.
+Inference runs away from the UI thread. Recording and transcription status is reported through the
+application window, system tray, and desktop notifications without opening the main window during a
+normal dictation.
 
 ## Development and validation
 
@@ -259,24 +266,6 @@ plugins. `.kateproject` provides Build, Run, Test, and Clean targets, while CMak
 - reproducible distribution packages and signed binary releases
 
 Roadmap items are intentions, not promised dates.
-
-## Maintainer TODO before making the repository public
-
-The following tasks require decisions, accounts, credentials, or creative assets from the owner:
-
-- [ ] Confirm that “Kastword” is acceptable from a naming and trademark perspective.
-- [ ] Capture a screenshot and short demo showing dictation into KWrite and Konsole.
-- [ ] Create a project icon and GitHub social-preview image with confirmed licensing.
-- [ ] Confirm the tested Plasma, Qt, KDE Frameworks, CachyOS, and hardware versions.
-- [ ] Decide whether to adopt a Code of Conduct and provide a private enforcement contact.
-- [ ] Enable GitHub private vulnerability reporting.
-- [ ] Configure repository description, topics, Issues, labels, and optional Discussions.
-- [ ] Enable secret scanning, push protection, and appropriate GitHub Actions permissions.
-- [ ] Protect `main` and require the CI workflow before merging once collaboration begins.
-- [ ] Decide whether the initial public state stays untagged or receives an explicitly unsupported
-      `v0.1.0-alpha` source tag.
-- [ ] Plan binary packaging, signing, update delivery, and release support separately; none of that
-      is implied by publishing this source repository.
 
 ## License
 
