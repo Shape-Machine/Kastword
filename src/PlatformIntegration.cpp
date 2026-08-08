@@ -9,8 +9,11 @@
 #include <KNotification>
 #include <QDBusConnection>
 #include <QDBusInterface>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
 #include <QDesktopServices>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QPointer>
 #include <QUrl>
 
@@ -62,17 +65,31 @@ public:
   }
 
   void revealFile(const QString &path) override {
+    const QFileInfo file(path);
+    const QUrl parentUrl = QUrl::fromLocalFile(file.absolutePath());
+    if (!file.exists()) {
+      QDesktopServices::openUrl(parentUrl);
+      return;
+    }
     const QUrl url = QUrl::fromLocalFile(path);
     QDBusInterface fileManager(QStringLiteral("org.freedesktop.FileManager1"),
                                QStringLiteral("/org/freedesktop/FileManager1"),
                                QStringLiteral("org.freedesktop.FileManager1"),
                                QDBusConnection::sessionBus());
     if (fileManager.isValid()) {
-      fileManager.call(QDBus::NoBlock, QStringLiteral("ShowItems"), QStringList{url.toString()},
-                       QString());
+      auto *watcher =
+          new QDBusPendingCallWatcher(fileManager.asyncCall(QStringLiteral("ShowItems"),
+                                                            QStringList{url.toString()}, QString()),
+                                      QGuiApplication::instance());
+      QObject::connect(watcher, &QDBusPendingCallWatcher::finished, watcher, [watcher, parentUrl] {
+        const QDBusPendingReply<> reply = *watcher;
+        if (reply.isError())
+          QDesktopServices::openUrl(parentUrl);
+        watcher->deleteLater();
+      });
       return;
     }
-    QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
+    QDesktopServices::openUrl(parentUrl);
   }
 
   void openDirectory(const QString &path) override {
