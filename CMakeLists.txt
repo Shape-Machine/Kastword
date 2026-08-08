@@ -257,6 +257,10 @@ if(BUILD_TESTING)
     kastword_enable_sanitizers(kastword_screenshot_platform_test)
     add_test(NAME screenshot-platform COMMAND kastword_screenshot_platform_test)
 
+    add_test(NAME documentation-links
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tools/check-documentation-links.sh
+            ${CMAKE_CURRENT_SOURCE_DIR})
+
     add_test(NAME translation-catalog
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/check-translations.sh)
     set_tests_properties(translation-catalog PROPERTIES
