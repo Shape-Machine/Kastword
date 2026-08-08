@@ -6,6 +6,7 @@
 #include <QByteArray>
 #include <QDateTime>
 #include <QObject>
+#include <QTimer>
 #include <QVariantList>
 #include <functional>
 #include <memory>
@@ -13,9 +14,11 @@
 
 class HistoryKeyProvider {
 public:
+  using LoadCallback = std::function<void(std::optional<QByteArray>, const QString &)>;
+  using RemoveCallback = std::function<void(bool, const QString &)>;
   virtual ~HistoryKeyProvider() = default;
-  virtual std::optional<QByteArray> loadOrCreate(QString *error) = 0;
-  virtual bool remove(QString *error) = 0;
+  virtual void loadOrCreate(QObject *context, LoadCallback callback) = 0;
+  virtual void remove(QObject *context, RemoveCallback callback) = 0;
 };
 
 std::unique_ptr<HistoryKeyProvider> createHistoryKeyProvider();
@@ -23,6 +26,7 @@ std::unique_ptr<HistoryKeyProvider> createHistoryKeyProvider();
 class DictationHistory final : public QObject {
   Q_OBJECT
   Q_PROPERTY(bool enabled READ enabled NOTIFY changed)
+  Q_PROPERTY(bool busy READ busy NOTIFY changed)
   Q_PROPERTY(bool available READ available NOTIFY changed)
   Q_PROPERTY(QString status READ status NOTIFY changed)
   Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
@@ -46,6 +50,7 @@ public:
   ~DictationHistory() override;
 
   bool enabled() const { return m_enabled; }
+  bool busy() const { return m_busy; }
   bool available() const { return m_available; }
   QString status() const { return m_status; }
   QString storagePath() const { return m_storagePath; }
@@ -64,13 +69,16 @@ public:
 
 signals:
   void changed();
+  void settingsChanged();
 
 private:
+  Q_SLOT void expireEntries();
   bool load();
   bool save();
   bool saveEntries(const QList<Entry> &entries);
   bool prune();
   bool pruneEntries(QList<Entry> &entries, int maximumEntries, int maximumAgeDays) const;
+  void scheduleExpiry();
   void fail(const QString &message);
   static bool commitAtomically(const QString &path, const QByteArray &data, QString *error);
   QVariantMap entryMap(const Entry &entry) const;
@@ -79,9 +87,11 @@ private:
   std::unique_ptr<HistoryKeyProvider> m_keyProvider;
   Clock m_clock;
   CommitFunction m_commit;
+  QTimer m_expiryTimer;
   QByteArray m_key;
   QList<Entry> m_entries;
   bool m_enabled = false;
+  bool m_busy = false;
   bool m_available = true;
   bool m_cryptoAvailable = true;
   QString m_status;

@@ -228,6 +228,7 @@ Kirigami.ApplicationWindow {
                         Layout.fillWidth: true
                         text: i18n("Save encrypted dictation history")
                         checked: appController.history.enabled
+                        enabled: !appController.history.busy
                         onClicked: {
                             if (appController.history.enabled)
                                 disableHistoryDialog.open()
@@ -290,6 +291,15 @@ Kirigami.ApplicationWindow {
                         text: i18n("Encrypted storage: %1", appController.history.storagePath)
                     }
 
+                    Controls.Button {
+                        objectName: "clearHistoryButton"
+                        Layout.alignment: Qt.AlignRight
+                        visible: appController.history.enabled && historyList.count > 0
+                        text: i18n("Clear all history")
+                        icon.name: "edit-clear-history"
+                        onClicked: clearHistoryDialog.open()
+                    }
+
                     Controls.Label {
                         Layout.fillWidth: true
                         visible: appController.history.enabled && historyList.count === 0
@@ -342,15 +352,6 @@ Kirigami.ApplicationWindow {
                     }
                 }
 
-                footer: Controls.Button {
-                    objectName: "clearHistoryButton"
-                    width: historyList.width
-                    visible: appController.history.enabled && historyList.count > 0
-                    height: visible ? implicitHeight : 0
-                    text: i18n("Clear all history")
-                    icon.name: "edit-clear-history"
-                    onClicked: clearHistoryDialog.open()
-                }
             }
         }
     }
