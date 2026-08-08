@@ -21,10 +21,9 @@ esac
 exec 9< "$repository_root"
 flock 9
 
-transaction_directory=$(mktemp -d "$repository_root/.screenshots-transaction.XXXXXX")
-stage_directory="$transaction_directory/stage"
-backup_directory="$transaction_directory/backup"
-cmake -E make_directory "$stage_directory"
+transaction_directory=
+stage_directory=
+backup_directory=
 replacement_complete=false
 preserve_transaction=false
 
@@ -32,7 +31,7 @@ cleanup() {
     status=$?
     trap - EXIT HUP INT TERM
 
-    if [ "$replacement_complete" != true ]; then
+    if [ -n "$transaction_directory" ] && [ "$replacement_complete" != true ]; then
         if [ -e "$backup_directory" ] || [ -L "$backup_directory" ]; then
             if [ -e "$output_directory" ] || [ -L "$output_directory" ]; then
                 cmake -E remove_directory "$output_directory"
@@ -47,7 +46,7 @@ cleanup() {
         fi
     fi
 
-    if [ "$preserve_transaction" != true ]; then
+    if [ -n "$transaction_directory" ] && [ "$preserve_transaction" != true ]; then
         cmake -E remove_directory "$transaction_directory"
     fi
 
@@ -57,6 +56,11 @@ trap cleanup EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+transaction_directory=$(mktemp -d "$repository_root/.screenshots-transaction.XXXXXX")
+stage_directory="$transaction_directory/stage"
+backup_directory="$transaction_directory/backup"
+cmake -E make_directory "$stage_directory"
 
 "$generator" "$stage_directory"
 
