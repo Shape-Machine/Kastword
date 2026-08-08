@@ -171,6 +171,7 @@ private slots:
         path, provider(QByteArray(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'b')));
     wrongKey.enable();
     QVERIFY(!wrongKey.available());
+    QVERIFY(wrongKey.resetRequired());
     QVERIFY(wrongKey.entries().isEmpty());
 
     QFile file(path);
@@ -185,6 +186,7 @@ private slots:
     DictationHistory tampered(path, provider(key));
     tampered.enable();
     QVERIFY(tampered.entries().isEmpty());
+    QVERIFY(tampered.resetRequired());
   }
 
   void failedLoadNeverPublishesPartiallyDecryptedEntries() {
@@ -217,6 +219,7 @@ private slots:
     noKey.enable();
     QVERIFY(!noKey.enabled());
     QVERIFY(!noKey.available());
+    QVERIFY(!noKey.resetRequired());
     QVERIFY(!QFileInfo::exists(noKey.storagePath()));
 
     DictationHistory noWrite(directory.filePath(QStringLiteral("failed.enc")), provider(), {},
@@ -227,7 +230,24 @@ private slots:
     noWrite.enable();
     QVERIFY(!noWrite.add(QStringLiteral("must not leak")));
     QVERIFY(!noWrite.available());
+    QVERIFY(!noWrite.resetRequired());
     QVERIFY(!QFileInfo::exists(noWrite.storagePath()));
+  }
+
+  void exposesEntriesThroughStableItemModel() {
+    QTemporaryDir directory;
+    DictationHistory history(directory.filePath(QStringLiteral("history.enc")), provider());
+    history.enable();
+    QSignalSpy modelReset(&history, &QAbstractItemModel::modelReset);
+    QVERIFY(history.add(QStringLiteral("model entry")));
+    QCOMPARE(history.rowCount(), 1);
+    QCOMPARE(history.data(history.index(0), DictationHistory::TextRole).toString(),
+             QStringLiteral("model entry"));
+    const int resetsAfterContentChange = modelReset.count();
+
+    history.setMaximumEntries(200);
+    QCOMPARE(modelReset.count(), resetsAfterContentChange);
+    QCOMPARE(history.rowCount(), 1);
   }
 
   void failedAtomicUpdatePreservesFileAndVisibleEntries() {

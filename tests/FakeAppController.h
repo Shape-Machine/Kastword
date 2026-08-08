@@ -96,9 +96,10 @@ class FakeDictationHistory final : public QObject {
   Q_PROPERTY(bool enabled READ enabled NOTIFY changed)
   Q_PROPERTY(bool busy READ busy NOTIFY changed)
   Q_PROPERTY(bool available READ available NOTIFY changed)
+  Q_PROPERTY(bool resetRequired READ resetRequired NOTIFY changed)
   Q_PROPERTY(QString status READ status NOTIFY changed)
   Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
-  Q_PROPERTY(QVariantList entries READ entries NOTIFY changed)
+  Q_PROPERTY(QVariantList entryModel READ entries NOTIFY changed)
   Q_PROPERTY(QVariantList recentEntries READ recentEntries NOTIFY changed)
   Q_PROPERTY(int maximumEntries READ maximumEntries WRITE setMaximumEntries NOTIFY changed)
   Q_PROPERTY(int maximumAgeDays READ maximumAgeDays WRITE setMaximumAgeDays NOTIFY changed)
@@ -106,10 +107,10 @@ class FakeDictationHistory final : public QObject {
 public:
   FakeDictationHistory() {
     m_entries = {
-        QVariantMap{{QStringLiteral("id"), QStringLiteral("recent")},
+        QVariantMap{{QStringLiteral("entryId"), QStringLiteral("recent")},
                     {QStringLiteral("createdText"), QStringLiteral("8 Aug 2026, 12:00")},
                     {QStringLiteral("text"), QStringLiteral("Recent private dictation")}},
-        QVariantMap{{QStringLiteral("id"), QStringLiteral("older")},
+        QVariantMap{{QStringLiteral("entryId"), QStringLiteral("older")},
                     {QStringLiteral("createdText"), QStringLiteral("7 Aug 2026, 09:30")},
                     {QStringLiteral("text"), QStringLiteral("Earlier dictation")}},
     };
@@ -117,6 +118,7 @@ public:
   bool enabled() const { return m_enabled; }
   bool busy() const { return false; }
   bool available() const { return m_available; }
+  bool resetRequired() const { return m_resetRequired; }
   QString status() const {
     return m_available
                ? QStringLiteral("History is encrypted locally. The key is stored in KDE Wallet.")
@@ -139,8 +141,12 @@ public:
     m_enabled = enabled;
     emit changed();
   }
-  void setAvailable(bool available) {
+  Q_INVOKABLE void setAvailable(bool available) {
     m_available = available;
+    emit changed();
+  }
+  Q_INVOKABLE void setResetRequired(bool required) {
+    m_resetRequired = required;
     emit changed();
   }
   Q_INVOKABLE void setEntryCount(int count) {
@@ -148,7 +154,7 @@ public:
     m_entries.reserve(count);
     for (int i = 0; i < count; ++i) {
       m_entries.append(
-          QVariantMap{{QStringLiteral("id"), QString::number(i)},
+          QVariantMap{{QStringLiteral("entryId"), QString::number(i)},
                       {QStringLiteral("createdText"), QStringLiteral("8 Aug 2026, 12:00")},
                       {QStringLiteral("text"), QStringLiteral("Private dictation %1").arg(i)}});
     }
@@ -156,7 +162,7 @@ public:
   }
   Q_INVOKABLE bool removeEntry(const QString &id) {
     m_entries.removeIf([&id](const QVariant &entry) {
-      return entry.toMap().value(QStringLiteral("id")).toString() == id;
+      return entry.toMap().value(QStringLiteral("entryId")).toString() == id;
     });
     emit changed();
     return true;
@@ -173,6 +179,7 @@ signals:
 private:
   bool m_enabled = true;
   bool m_available = true;
+  bool m_resetRequired = false;
   int m_maximumEntries = 100;
   int m_maximumAgeDays = 30;
   QVariantList m_entries;

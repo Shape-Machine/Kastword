@@ -772,14 +772,8 @@ msgid "Maximum history entries"
 msgstr "xxMaximum history entriesxx"
 
 #: src/qml/Main.qml:288
-msgid "Maximum age:"
-msgstr "xxMaximum age:xx"
-
-#: src/qml/Main.qml:292
-msgid "1 day"
-msgid_plural "%1 days"
-msgstr[0] "xx1 dayxx"
-msgstr[1] "xx%1 daysxx"
+msgid "Maximum age (days):"
+msgstr "xxMaximum age (days):xx"
 
 #: src/qml/Main.qml:295
 msgid "Maximum history age in days"
