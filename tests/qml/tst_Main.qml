@@ -457,7 +457,7 @@ TestCase {
         const list = findChild(historyPage(), "historyList")
         verify(list)
         tryCompare(list, "count", 10000)
-        verify(list.itemAtIndex(0) !== null)
+        tryVerify(function() { return list.itemAtIndex(0) !== null })
         verify(list.itemAtIndex(9999) === null)
         verify(list.reuseItems)
     }

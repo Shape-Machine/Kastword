@@ -123,43 +123,32 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    Kirigami.Dialog {
+    Kirigami.PromptDialog {
         id: disableHistoryDialog
         objectName: "disableHistoryDialog"
         title: i18n("Disable dictation history?")
-        standardButtons: Kirigami.Dialog.NoButton
-
-        ColumnLayout {
-            Controls.Label {
-                Layout.preferredWidth: Kirigami.Units.gridUnit * 24
-                wrapMode: Text.Wrap
-                text: i18n("You can keep the encrypted history for later, or delete it together with its KDE Wallet key.")
-            }
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-                Controls.Button {
-                    text: i18n("Cancel")
-                    onClicked: disableHistoryDialog.close()
+        subtitle: i18n("You can keep the encrypted history for later, or delete it together with its KDE Wallet key.")
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: [
+            Kirigami.Action {
+                objectName: "disableKeepHistoryAction"
+                text: i18n("Disable and keep")
+                icon.name: "document-save"
+                onTriggered: {
+                    appController.disableHistory(false)
+                    disableHistoryDialog.close()
                 }
-                Controls.Button {
-                    objectName: "disableKeepHistoryButton"
-                    text: i18n("Disable and keep")
-                    onClicked: {
-                        appController.disableHistory(false)
-                        disableHistoryDialog.close()
-                    }
-                }
-                Controls.Button {
-                    objectName: "disableDeleteHistoryButton"
-                    text: i18n("Disable and delete")
-                    highlighted: true
-                    onClicked: {
-                        appController.disableHistory(true)
-                        disableHistoryDialog.close()
-                    }
+            },
+            Kirigami.Action {
+                objectName: "disableDeleteHistoryAction"
+                text: i18n("Disable and delete")
+                icon.name: "edit-delete"
+                onTriggered: {
+                    appController.disableHistory(true)
+                    disableHistoryDialog.close()
                 }
             }
-        }
+        ]
     }
 
     MessageDialog {
@@ -193,13 +182,14 @@ Kirigami.ApplicationWindow {
     Component {
         id: historyPage
 
-        Kirigami.ScrollablePage {
+        Kirigami.Page {
             objectName: "historyPage"
             title: i18n("History")
 
             ListView {
                 id: historyList
                 objectName: "historyList"
+                anchors.fill: parent
                 model: appController.history.enabled ? appController.history.entries : []
                 spacing: Kirigami.Units.smallSpacing
                 clip: true
