@@ -783,13 +783,13 @@ msgstr "xxHistory storage:xx"
 msgid "Encrypted history storage path"
 msgstr "xxEncrypted history storage pathxx"
 
-#: src/qml/Main.qml:320
-msgid "Click to show the history file in the file manager"
-msgstr "xxClick to show the history file in the file managerxx"
+#: src/qml/Main.qml:323
+msgid "Show history file in file manager"
+msgstr "xxShow history file in file managerxx"
 
-#: src/qml/Main.qml:454
-msgid "Click to open the model storage folder"
-msgstr "xxClick to open the model storage folderxx"
+#: src/qml/Main.qml:431
+msgid "Open model storage folder"
+msgstr "xxOpen model storage folderxx"
 
 #: src/qml/Main.qml:311
 msgid "No saved dictations yet"
@@ -1132,10 +1132,6 @@ msgstr "xxView allxx"
 #: src/qml/Main.qml:1024
 msgid "View all dictation history"
 msgstr "xxView all dictation historyxx"
-
-#: src/qml/Main.qml:1036
-msgid "Copy dictation from %1"
-msgstr "xxCopy dictation from %1xx"
 
 #~ msgid "Ready — press %1 to dictate."
 #~ msgstr "xxReady — press %1 to dictate.xx"

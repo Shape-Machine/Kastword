@@ -303,24 +303,26 @@ Kirigami.ApplicationWindow {
                             Accessible.name: i18n("Maximum history age in days")
                         }
 
-                        Controls.TextField {
-                            objectName: "historyStoragePath"
+                        RowLayout {
                             Kirigami.FormData.label: i18n("History storage:")
                             Layout.fillWidth: true
-                            readOnly: true
-                            selectByMouse: true
-                            text: appController.history.storagePath
-                            Accessible.name: i18n("Encrypted history storage path")
-                            Accessible.description: i18n("Click to show the history file in the file manager")
-                            function openPath() {
-                                selectAll()
-                                appController.revealHistoryStorage()
+
+                            Controls.TextField {
+                                objectName: "historyStoragePath"
+                                Layout.fillWidth: true
+                                readOnly: true
+                                selectByMouse: true
+                                text: appController.history.storagePath
+                                Accessible.name: i18n("Encrypted history storage path")
                             }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: parent.openPath()
+                            Controls.ToolButton {
+                                objectName: "openHistoryStorageButton"
+                                icon.name: "document-open-folder"
+                                onClicked: appController.revealHistoryStorage()
+                                Accessible.name: i18n("Show history file in file manager")
+                                Controls.ToolTip.visible: hovered
+                                Controls.ToolTip.text: Accessible.name
                             }
                         }
                     }
@@ -334,51 +336,25 @@ Kirigami.ApplicationWindow {
                     }
                 }
 
-                delegate: Controls.Frame {
-                    id: historyEntry
+                delegate: HistoryEntryCard {
                     required property string entryId
                     required property string createdText
                     required property string text
                     width: historyList.width
-                    implicitHeight: historyEntryLayout.implicitHeight + topPadding + bottomPadding
-
-                    ColumnLayout {
-                        id: historyEntryLayout
-                        anchors.fill: parent
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            text: historyEntry.createdText
-                            opacity: 0.7
-                        }
-                        Controls.Label {
-                            objectName: "historyEntryText"
-                            Layout.fillWidth: true
-                            text: historyEntry.text
-                            wrapMode: Text.Wrap
-                            maximumLineCount: 4
-                            elide: Text.ElideRight
-                            Accessible.name: historyEntry.text
-                            Accessible.description: i18n("Dictation from %1", historyEntry.createdText)
-                        }
-                        RowLayout {
-                            Layout.alignment: Qt.AlignRight
-                            Controls.ToolButton {
-                                text: i18n("Copy")
-                                icon.name: "edit-copy"
-                                display: Controls.AbstractButton.TextBesideIcon
-                                onClicked: appController.copyText(historyEntry.text)
-                            }
-                            Controls.ToolButton {
-                                text: i18n("Delete")
-                                icon.name: "edit-delete"
-                                display: Controls.AbstractButton.TextBesideIcon
-                                onClicked: {
-                                    root.pendingHistoryId = historyEntry.entryId
-                                    deleteHistoryEntryDialog.open()
-                                }
-                                Accessible.description: i18n("Delete the dictation from encrypted history")
-                            }
-                        }
+                    entryIdentifier: entryId
+                    timestampText: createdText
+                    transcriptText: text
+                    timestampDescription: i18n("Dictation from %1", createdText)
+                    copyLabel: i18n("Copy")
+                    deleteLabel: i18n("Delete")
+                    deleteDescription: i18n("Delete the dictation from encrypted history")
+                    showDelete: true
+                    onCopyRequested: function(entryText) {
+                        appController.copyText(entryText)
+                    }
+                    onDeleteRequested: function(id) {
+                        root.pendingHistoryId = id
+                        deleteHistoryEntryDialog.open()
                     }
                 }
                 }
@@ -442,24 +418,26 @@ Kirigami.ApplicationWindow {
                     Kirigami.FormLayout {
                         Layout.fillWidth: true
 
-                        Controls.TextField {
-                            objectName: "modelStoragePath"
+                        RowLayout {
                             Kirigami.FormData.label: i18n("Model storage:")
                             Layout.fillWidth: true
-                            readOnly: true
-                            selectByMouse: true
-                            text: appController.modelManager.storagePath
-                            Accessible.name: i18n("Model storage path")
-                            Accessible.description: i18n("Click to open the model storage folder")
-                            function openPath() {
-                                selectAll()
-                                appController.openModelStorage()
+
+                            Controls.TextField {
+                                objectName: "modelStoragePath"
+                                Layout.fillWidth: true
+                                readOnly: true
+                                selectByMouse: true
+                                text: appController.modelManager.storagePath
+                                Accessible.name: i18n("Model storage path")
                             }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: parent.openPath()
+                            Controls.ToolButton {
+                                objectName: "openModelStorageButton"
+                                icon.name: "document-open-folder"
+                                onClicked: appController.openModelStorage()
+                                Accessible.name: i18n("Open model storage folder")
+                                Controls.ToolTip.visible: hovered
+                                Controls.ToolTip.text: Accessible.name
                             }
                         }
                     }
@@ -1089,13 +1067,17 @@ Kirigami.ApplicationWindow {
 
                 Repeater {
                     model: appController.history.recentEntries
-                    Controls.ItemDelegate {
+                    HistoryEntryCard {
                         required property var modelData
                         Layout.fillWidth: true
-                        text: modelData.text
-                        icon.name: "edit-copy"
-                        onClicked: appController.copyText(modelData.text)
-                        Accessible.description: i18n("Copy dictation from %1", modelData.createdText)
+                        entryIdentifier: modelData.id || ""
+                        timestampText: modelData.createdText
+                        transcriptText: modelData.text
+                        timestampDescription: i18n("Dictation from %1", modelData.createdText)
+                        copyLabel: i18n("Copy")
+                        onCopyRequested: function(entryText) {
+                            appController.copyText(entryText)
+                        }
                     }
                 }
             }
