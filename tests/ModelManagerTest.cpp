@@ -544,7 +544,7 @@ void ModelManagerTest::invalidatesChangedManagedModel() {
 
   QTRY_VERIFY(!manager.modelReady());
   QTRY_VERIFY(!manager.busy());
-  QVERIFY(!QFileInfo::exists(path));
+  QTRY_VERIFY(!QFileInfo::exists(path));
 }
 
 void ModelManagerTest::invalidatesChangedLocalModel() {
