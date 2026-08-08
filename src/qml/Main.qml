@@ -86,14 +86,19 @@ Kirigami.ApplicationWindow {
         onAccepted: root.selectModel(selectedFile)
     }
 
-    MessageDialog {
+    Kirigami.PromptDialog {
         id: removeDialog
         title: i18n("Remove speech model?")
-        text: i18n("The model file will be deleted from this user account.")
-        buttons: MessageDialog.Ok | MessageDialog.Cancel
-        onAccepted: {
-            appController.removeModel(root.pendingRemovalId)
-            root.pendingRemovalId = ""
+        subtitle: i18n("The model file will be deleted from this user account.")
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: Kirigami.Action {
+            text: i18n("Remove")
+            icon.name: "edit-delete"
+            onTriggered: {
+                appController.removeModel(root.pendingRemovalId)
+                root.pendingRemovalId = ""
+                removeDialog.close()
+            }
         }
         onRejected: root.pendingRemovalId = ""
     }
@@ -151,30 +156,49 @@ Kirigami.ApplicationWindow {
         ]
     }
 
-    MessageDialog {
+    Kirigami.PromptDialog {
         id: clearHistoryDialog
         title: i18n("Clear all dictation history?")
-        text: i18n("All entries in Kastword's encrypted history will be deleted. This cannot remove copies retained by other applications or backups.")
-        buttons: MessageDialog.Ok | MessageDialog.Cancel
-        onAccepted: appController.history.clear()
+        subtitle: i18n("All entries in Kastword's encrypted history will be deleted. This cannot remove copies retained by other applications or backups.")
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: Kirigami.Action {
+            text: i18n("Clear all")
+            icon.name: "edit-clear-history"
+            onTriggered: {
+                appController.history.clear()
+                clearHistoryDialog.close()
+            }
+        }
     }
 
-    MessageDialog {
+    Kirigami.PromptDialog {
         id: resetHistoryDialog
         title: i18n("Reset encrypted history?")
-        text: i18n("The unreadable encrypted file and its KDE Wallet key will be deleted. Existing entries cannot be recovered afterward.")
-        buttons: MessageDialog.Ok | MessageDialog.Cancel
-        onAccepted: appController.disableHistory(true)
+        subtitle: i18n("The unreadable encrypted file and its KDE Wallet key will be deleted. Existing entries cannot be recovered afterward.")
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: Kirigami.Action {
+            text: i18n("Reset and delete")
+            icon.name: "edit-delete"
+            onTriggered: {
+                appController.disableHistory(true)
+                resetHistoryDialog.close()
+            }
+        }
     }
 
-    MessageDialog {
+    Kirigami.PromptDialog {
         id: deleteHistoryEntryDialog
         title: i18n("Delete this history entry?")
-        text: i18n("The selected entry will be removed from Kastword's encrypted history.")
-        buttons: MessageDialog.Ok | MessageDialog.Cancel
-        onAccepted: {
-            appController.history.removeEntry(root.pendingHistoryId)
-            root.pendingHistoryId = ""
+        subtitle: i18n("The selected entry will be removed from Kastword's encrypted history.")
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: Kirigami.Action {
+            text: i18n("Delete")
+            icon.name: "edit-delete"
+            onTriggered: {
+                appController.history.removeEntry(root.pendingHistoryId)
+                root.pendingHistoryId = ""
+                deleteHistoryEntryDialog.close()
+            }
         }
         onRejected: root.pendingHistoryId = ""
     }
