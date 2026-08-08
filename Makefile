@@ -81,6 +81,14 @@ install-smoke: ensure-configured
 		"$$smoke_prefix/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml"; \
 	test -f "$$smoke_prefix/share/locale/x-test/LC_MESSAGES/kastword.mo"; \
 	test ! -e "$$smoke_prefix/share/kastword/models/ggml-base.en.bin"; \
+	test -f "$$smoke_prefix/share/doc/kastword/README.md"; \
+	test -f "$$smoke_prefix/share/doc/kastword/docs/DEVELOPMENT.md"; \
+	test -f "$$smoke_prefix/share/doc/kastword/docs/AUTOMATIC_PASTE.md"; \
+	test -f "$$smoke_prefix/share/doc/kastword/screenshots/01-offline-dictation.png"; \
+	test -f "$$smoke_prefix/share/doc/kastword/screenshots/02-speech-models.png"; \
+	test -f "$$smoke_prefix/share/doc/kastword/screenshots/03-audio-input.png"; \
+	test -f "$$smoke_prefix/share/doc/kastword/screenshots/04-settings.png"; \
+	test -f "$$smoke_prefix/share/doc/kastword/LICENSES/GPL-3.0-or-later.txt"; \
 	find "$$smoke_prefix" -type f -print > "$$installed_files"; \
 	user_model="$$smoke_prefix/share/kastword/models/ggml-base.en.bin"; \
 	cmake -E make_directory "$$(dirname "$$user_model")"; \
@@ -97,7 +105,13 @@ uninstall:
 		"$(PREFIX)/share/metainfo/io.github.shape_machine.Kastword.metainfo.xml" \
 		"$(PREFIX)/share/locale/x-test/LC_MESSAGES/kastword.mo" \
 		"$(PREFIX)/share/doc/kastword/README.md" \
-		"$(PREFIX)/share/doc/kastword/GPL-3.0-or-later.txt"
+		"$(PREFIX)/share/doc/kastword/docs/DEVELOPMENT.md" \
+		"$(PREFIX)/share/doc/kastword/docs/AUTOMATIC_PASTE.md" \
+		"$(PREFIX)/share/doc/kastword/screenshots/01-offline-dictation.png" \
+		"$(PREFIX)/share/doc/kastword/screenshots/02-speech-models.png" \
+		"$(PREFIX)/share/doc/kastword/screenshots/03-audio-input.png" \
+		"$(PREFIX)/share/doc/kastword/screenshots/04-settings.png" \
+		"$(PREFIX)/share/doc/kastword/LICENSES/GPL-3.0-or-later.txt"
 	@if command -v update-desktop-database >/dev/null 2>&1; then \
 		update-desktop-database "$(PREFIX)/share/applications"; \
 	fi
