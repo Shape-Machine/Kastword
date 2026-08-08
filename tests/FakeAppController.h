@@ -116,10 +116,12 @@ public:
     };
   }
   bool enabled() const { return m_enabled; }
-  bool busy() const { return false; }
+  bool busy() const { return m_busy; }
   bool available() const { return m_available; }
   bool resetRequired() const { return m_resetRequired; }
   QString status() const {
+    if (m_busy)
+      return QStringLiteral("Saving encrypted history…");
     return m_available
                ? QStringLiteral("History is encrypted locally. The key is stored in KDE Wallet.")
                : QStringLiteral("Secure history requires an available, unlocked KDE Wallet.");
@@ -143,6 +145,12 @@ public:
   }
   Q_INVOKABLE void setAvailable(bool available) {
     m_available = available;
+    emit changed();
+  }
+  Q_INVOKABLE void setBusy(bool busy) {
+    if (m_busy == busy)
+      return;
+    m_busy = busy;
     emit changed();
   }
   Q_INVOKABLE void setResetRequired(bool required) {
@@ -178,6 +186,7 @@ signals:
 
 private:
   bool m_enabled = true;
+  bool m_busy = false;
   bool m_available = true;
   bool m_resetRequired = false;
   int m_maximumEntries = 100;

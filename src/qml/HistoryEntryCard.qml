@@ -54,6 +54,7 @@ Controls.Frame {
             }
 
             Controls.ToolButton {
+                objectName: "historyEntryDeleteButton"
                 visible: root.showDelete
                 enabled: root.deleteEnabled
                 text: root.deleteLabel
