@@ -214,6 +214,7 @@ private slots:
     QTRY_VERIFY_WITH_TIMEOUT(history.enabled(), 1000);
 
     QVERIFY(history.add(QStringLiteral("not persisted")));
+    QCOMPARE(history.status(), QStringLiteral("Saving encrypted history…"));
     QTRY_VERIFY_WITH_TIMEOUT(!history.busy(), 1000);
     QVERIFY(history.entries().isEmpty());
     QVERIFY(!history.available());
@@ -331,6 +332,24 @@ private slots:
              QStringList({QStringLiteral("second"), QStringLiteral("first")}));
   }
 
+  void doesNotRepeatCompletedSaveDuringShutdown() {
+    QTemporaryDir directory;
+    std::atomic_int commits = 0;
+    {
+      DictationHistory history(
+          directory.filePath(QStringLiteral("history.enc")), provider(), {},
+          [&commits](const QString &, const QByteArray &, QString *) {
+            ++commits;
+            return true;
+          },
+          nullptr, true);
+      history.enable();
+      QTRY_VERIFY_WITH_TIMEOUT(history.enabled(), 1000);
+      QVERIFY(history.add(QStringLiteral("only once")));
+    }
+    QCOMPARE(commits.load(), 1);
+  }
+
   void encryptsAndReloadsWithoutPlaintext() {
     QTemporaryDir directory;
     const QString path = directory.filePath(QStringLiteral("private/history.enc"));
@@ -391,6 +410,44 @@ private slots:
     tampered.enable();
     QVERIFY(tampered.entries().isEmpty());
     QVERIFY(tampered.resetRequired());
+  }
+
+  void rejectsTamperingAndWrongKeysAsynchronously() {
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("history.enc"));
+    const QByteArray key(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'a');
+    const QJsonArray entries{
+        QJsonObject{{QStringLiteral("id"), QStringLiteral("private")},
+                    {QStringLiteral("createdAt"), QStringLiteral("2026-08-08T12:00:00.000Z")},
+                    {QStringLiteral("text"), QStringLiteral("private")}}};
+    writeEncryptedHistory(path, key, entries);
+
+    DictationHistory wrongKey(
+        path, provider(QByteArray(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'b')), {}, {},
+        nullptr, true);
+    wrongKey.enable();
+    QTRY_VERIFY_WITH_TIMEOUT(!wrongKey.busy(), 1000);
+    QVERIFY(!wrongKey.enabled());
+    QVERIFY(!wrongKey.available());
+    QVERIFY(wrongKey.resetRequired());
+    QVERIFY(wrongKey.entries().isEmpty());
+
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::ReadWrite));
+    QVERIFY(file.seek(file.size() - 1));
+    char byte = 0;
+    QCOMPARE(file.read(&byte, 1), 1);
+    QVERIFY(file.seek(file.size() - 1));
+    byte ^= 1;
+    QCOMPARE(file.write(&byte, 1), 1);
+    file.close();
+
+    DictationHistory tampered(path, provider(key), {}, {}, nullptr, true);
+    tampered.enable();
+    QTRY_VERIFY_WITH_TIMEOUT(!tampered.busy(), 1000);
+    QVERIFY(!tampered.enabled());
+    QVERIFY(tampered.resetRequired());
+    QVERIFY(tampered.entries().isEmpty());
   }
 
   void failedLoadNeverPublishesPartiallyDecryptedEntries() {
@@ -596,6 +653,22 @@ private slots:
 
     DictationHistory history(path, provider());
     history.enable();
+    QVERIFY(!history.enabled());
+    QVERIFY(!history.available());
+    QVERIFY(history.entries().isEmpty());
+  }
+
+  void rejectsOversizedOpenedFileAsynchronously() {
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("history.enc"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    QVERIFY(file.resize(64LL * 1024 * 1024 + 1));
+    file.close();
+
+    DictationHistory history(path, provider(), {}, {}, nullptr, true);
+    history.enable();
+    QTRY_VERIFY_WITH_TIMEOUT(!history.busy(), 1000);
     QVERIFY(!history.enabled());
     QVERIFY(!history.available());
     QVERIFY(history.entries().isEmpty());

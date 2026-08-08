@@ -253,6 +253,7 @@ Kirigami.ApplicationWindow {
                     Controls.Button {
                         objectName: "clearHistoryButton"
                         visible: appController.history.enabled && historyList.count > 0
+                        enabled: !appController.history.busy
                         text: i18n("Clear all history")
                         icon.name: "edit-clear-history"
                         onClicked: clearHistoryDialog.open()
@@ -275,7 +276,7 @@ Kirigami.ApplicationWindow {
 
                     Kirigami.FormLayout {
                         Layout.fillWidth: true
-                        enabled: appController.history.enabled
+                        enabled: appController.history.enabled && !appController.history.busy
 
                         Controls.SpinBox {
                             objectName: "historyMaximumEntries"
@@ -349,6 +350,7 @@ Kirigami.ApplicationWindow {
                     deleteLabel: i18n("Delete")
                     deleteDescription: i18n("Delete the dictation from encrypted history")
                     showDelete: true
+                    deleteEnabled: !appController.history.busy
                     onCopyRequested: function(entryText) {
                         appController.copyText(entryText)
                     }

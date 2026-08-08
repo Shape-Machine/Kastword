@@ -250,6 +250,9 @@ msgstr "xxThe secure history key is unavailable.xx"
 msgid "History is encrypted locally. The key is stored in KDE Wallet."
 msgstr "xxHistory is encrypted locally. The key is stored in KDE Wallet.xx"
 
+msgid "Saving encrypted history…"
+msgstr "xxSaving encrypted history…xx"
+
 #: src/DictationHistory.cpp:240
 msgid "History is disabled. Existing encrypted history was kept."
 msgstr "xxHistory is disabled. Existing encrypted history was kept.xx"

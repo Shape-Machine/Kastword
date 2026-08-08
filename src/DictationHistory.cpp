@@ -163,8 +163,13 @@ DictationHistory::~DictationHistory() {
   m_loadWatcher.waitForFinished();
   if (m_saving) {
     m_saveWatcher.waitForFinished();
-    persistEntries({m_stagedEntries, m_stagedMaximumEntries, m_stagedMaximumAgeDays}, m_key,
-                   m_storagePath, m_commit);
+    const SaveResult completed = m_saveWatcher.result();
+    if (m_pendingSave) {
+      persistEntries(std::move(*m_pendingSave), m_key, m_storagePath, m_commit);
+    } else if (!completed.success) {
+      persistEntries({m_stagedEntries, m_stagedMaximumEntries, m_stagedMaximumAgeDays}, m_key,
+                     m_storagePath, m_commit);
+    }
   }
   if (!m_key.isEmpty())
     sodium_memzero(m_key.data(), size_t(m_key.size()));
@@ -564,6 +569,7 @@ bool DictationHistory::saveEntries(const QList<Entry> &historyEntries, int maxim
 
 void DictationHistory::startAsyncSave(SaveRequest request) {
   m_saving = true;
+  m_status = i18n("Saving encrypted history…");
   emit changed();
   QByteArray key(m_key.constData(), m_key.size());
   const QString path = m_storagePath;
