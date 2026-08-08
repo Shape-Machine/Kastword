@@ -150,6 +150,16 @@ public:
   void remove(QObject *, RemoveCallback callback) override { callback(true, {}); }
 };
 
+class ControllerDeferredHistoryKeyProvider final : public HistoryKeyProvider {
+public:
+  void loadOrCreate(QObject *, LoadCallback callback) override {
+    pendingLoad = std::move(callback);
+  }
+  void remove(QObject *, RemoveCallback callback) override { callback(true, {}); }
+
+  LoadCallback pendingLoad;
+};
+
 class FakeDesktopIntegration final : public DesktopIntegration {
 public:
   void configureShortcut(QAction *action, const QList<QKeySequence> &shortcuts) override {
@@ -224,6 +234,7 @@ private slots:
   void completesDictationFlow();
   void savesOnlySuccessfulNonEmptyDictationsToEnabledHistory();
   void reportsHistorySaveFailureWithoutBlockingDelivery();
+  void reportsHistoryStillOpeningWithoutBlockingDelivery();
   void recoversFromTranscriptionFailure();
   void ignoresEmptyTranscription();
   void recoversFromTranscriptionException();
@@ -384,7 +395,7 @@ void AppControllerTest::savesOnlySuccessfulNonEmptyDictationsToEnabledHistory() 
       std::make_unique<DictationHistory>(directory.filePath(QStringLiteral("history.enc")),
                                          std::make_unique<ControllerHistoryKeyProvider>());
   auto *historyPtr = history.get();
-  QVERIFY(historyPtr->enable());
+  historyPtr->enable();
   auto audio = std::make_unique<FakeAudioCapture>();
   auto output = std::make_unique<FakeTextOutput>();
   AppController controller(
@@ -411,7 +422,7 @@ void AppControllerTest::reportsHistorySaveFailureWithoutBlockingDelivery() {
         return false;
       });
   auto *historyPtr = history.get();
-  QVERIFY(historyPtr->enable());
+  historyPtr->enable();
   auto audio = std::make_unique<FakeAudioCapture>();
   auto output = std::make_unique<FakeTextOutput>();
   auto *outputPtr = output.get();
@@ -428,6 +439,34 @@ void AppControllerTest::reportsHistorySaveFailureWithoutBlockingDelivery() {
   QCOMPARE(outputPtr->deliveredText, QStringLiteral("delivered but unsaved"));
   QVERIFY(controller.status().contains(QStringLiteral("History was not saved")));
   QVERIFY(controller.status().contains(QStringLiteral("Storage unavailable")));
+}
+
+void AppControllerTest::reportsHistoryStillOpeningWithoutBlockingDelivery() {
+  QTemporaryDir directory;
+  auto keys = std::make_unique<ControllerDeferredHistoryKeyProvider>();
+  auto *keysPtr = keys.get();
+  auto history = std::make_unique<DictationHistory>(
+      directory.filePath(QStringLiteral("history.enc")), std::move(keys));
+  auto *historyPtr = history.get();
+  historyPtr->enable();
+  QVERIFY(historyPtr->busy());
+  QVERIFY(keysPtr->pendingLoad);
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto *outputPtr = output.get();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return qMakePair(QStringLiteral("delivered while opening"), QString());
+      },
+      false, false, nullptr, {}, {}, std::move(history));
+
+  controller.toggle();
+  controller.toggle();
+  QTRY_COMPARE(controller.state(), AppController::State::Success);
+  QCOMPARE(outputPtr->deliveredText, QStringLiteral("delivered while opening"));
+  QVERIFY(controller.status().contains(QStringLiteral("History was not saved")));
+  QVERIFY(controller.status().contains(QStringLiteral("Opening KDE Wallet")));
 }
 
 void AppControllerTest::recoversFromTranscriptionFailure() {

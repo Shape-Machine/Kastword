@@ -210,14 +210,27 @@ Kirigami.ApplicationWindow {
             objectName: "historyPage"
             title: i18n("History")
 
-            ListView {
-                id: historyList
-                objectName: "historyList"
+            ColumnLayout {
                 anchors.fill: parent
-                model: appController.history.enabled ? appController.history.entries : []
-                spacing: Kirigami.Units.smallSpacing
-                clip: true
-                reuseItems: true
+
+                Controls.Button {
+                    objectName: "clearHistoryButton"
+                    Layout.alignment: Qt.AlignRight
+                    visible: appController.history.enabled && historyList.count > 0
+                    text: i18n("Clear all history")
+                    icon.name: "edit-clear-history"
+                    onClicked: clearHistoryDialog.open()
+                }
+
+                ListView {
+                    id: historyList
+                    objectName: "historyList"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    model: appController.history.enabled ? appController.history.entries : []
+                    spacing: Kirigami.Units.smallSpacing
+                    clip: true
+                    reuseItems: true
 
                 header: ColumnLayout {
                     width: historyList.width
@@ -291,15 +304,6 @@ Kirigami.ApplicationWindow {
                         text: i18n("Encrypted storage: %1", appController.history.storagePath)
                     }
 
-                    Controls.Button {
-                        objectName: "clearHistoryButton"
-                        Layout.alignment: Qt.AlignRight
-                        visible: appController.history.enabled && historyList.count > 0
-                        text: i18n("Clear all history")
-                        icon.name: "edit-clear-history"
-                        onClicked: clearHistoryDialog.open()
-                    }
-
                     Controls.Label {
                         Layout.fillWidth: true
                         visible: appController.history.enabled && historyList.count === 0
@@ -351,7 +355,7 @@ Kirigami.ApplicationWindow {
                         }
                     }
                 }
-
+                }
             }
         }
     }

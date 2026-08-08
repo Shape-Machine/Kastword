@@ -179,11 +179,17 @@ QVariantList DictationHistory::recentEntries() const {
   return result;
 }
 
-bool DictationHistory::enable() {
+bool DictationHistory::deletionPending() const { return QFileInfo::exists(deletionMarkerPath()); }
+
+QString DictationHistory::deletionMarkerPath() const {
+  return m_storagePath + QStringLiteral(".delete-pending");
+}
+
+void DictationHistory::enable() {
   if (m_enabled)
-    return true;
+    return;
   if (!m_cryptoAvailable || m_busy)
-    return false;
+    return;
   m_available = true;
   m_busy = true;
   m_status = i18n("Opening KDE Wallet…");
@@ -210,7 +216,6 @@ bool DictationHistory::enable() {
     emit settingsChanged();
     emit changed();
   });
-  return true;
 }
 
 void DictationHistory::disable(bool deleteData) {
@@ -218,31 +223,13 @@ void DictationHistory::disable(bool deleteData) {
     return;
   m_expiryTimer.stop();
   if (deleteData) {
-    const bool fileRemoved = !QFileInfo::exists(m_storagePath) || QFile::remove(m_storagePath);
-    if (!fileRemoved) {
-      fail(i18n("The encrypted history file could not be deleted."));
+    QString error;
+    if (!deletionPending() &&
+        !commitAtomically(deletionMarkerPath(), QByteArrayLiteral("pending\n"), &error)) {
+      fail(error);
       return;
     }
-    m_entries.clear();
-    if (!m_key.isEmpty())
-      sodium_memzero(m_key.data(), size_t(m_key.size()));
-    m_key.clear();
-    m_enabled = false;
-    m_busy = true;
-    m_status = i18n("Removing the secure history key…");
-    emit settingsChanged();
-    emit changed();
-    m_keyProvider->remove(this, [this](bool removed, const QString &error) {
-      m_busy = false;
-      if (!removed) {
-        fail(error.isEmpty() ? i18n("The encrypted history could not be deleted completely.")
-                             : error);
-        return;
-      }
-      m_available = true;
-      m_status = i18n("Encrypted history was deleted.");
-      emit changed();
-    });
+    resumePendingDeletion();
     return;
   }
   m_entries.clear();
@@ -253,6 +240,44 @@ void DictationHistory::disable(bool deleteData) {
   m_status = i18n("History is disabled. Existing encrypted history was kept.");
   emit settingsChanged();
   emit changed();
+}
+
+void DictationHistory::resumePendingDeletion() {
+  if (!deletionPending() || m_busy)
+    return;
+  m_expiryTimer.stop();
+  if (QFileInfo::exists(m_storagePath) && !QFile::remove(m_storagePath)) {
+    fail(i18n("The encrypted history file could not be deleted."));
+    return;
+  }
+  m_entries.clear();
+  if (!m_key.isEmpty())
+    sodium_memzero(m_key.data(), size_t(m_key.size()));
+  m_key.clear();
+  m_enabled = false;
+  m_busy = true;
+  m_status = i18n("Removing the secure history key…");
+  emit settingsChanged();
+  emit changed();
+  removePendingKey();
+}
+
+void DictationHistory::removePendingKey() {
+  m_keyProvider->remove(this, [this](bool removed, const QString &error) {
+    m_busy = false;
+    if (!removed) {
+      fail(error.isEmpty() ? i18n("The encrypted history could not be deleted completely.")
+                           : error);
+      return;
+    }
+    if (QFileInfo::exists(deletionMarkerPath()) && !QFile::remove(deletionMarkerPath())) {
+      fail(i18n("The secure history deletion marker could not be removed."));
+      return;
+    }
+    m_available = true;
+    m_status = i18n("Encrypted history was deleted.");
+    emit changed();
+  });
 }
 
 bool DictationHistory::add(const QString &text) {

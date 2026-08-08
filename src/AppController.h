@@ -124,7 +124,7 @@ public:
 
   Q_INVOKABLE void toggle();
   Q_INVOKABLE void copyText(const QString &text);
-  Q_INVOKABLE bool enableHistory();
+  Q_INVOKABLE void enableHistory();
   Q_INVOKABLE void disableHistory(bool deleteData);
   Q_INVOKABLE void copyTranscript();
   Q_INVOKABLE void forgetTranscript();

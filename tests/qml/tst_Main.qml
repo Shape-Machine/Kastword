@@ -460,9 +460,13 @@ TestCase {
         const clear = findChild(historyPage(), "clearHistoryButton")
         verify(clear)
         verify(clear.visible)
-        verify(clear.y < list.height)
         tryVerify(function() { return list.itemAtIndex(0) !== null })
         verify(list.itemAtIndex(9999) === null)
+        const clearY = clear.mapToItem(historyPage(), 0, 0).y
+        list.positionViewAtIndex(9999, ListView.End)
+        waitForRendering(list)
+        compare(clear.mapToItem(historyPage(), 0, 0).y, clearY)
+        verify(clear.visible)
         verify(list.reuseItems)
     }
 

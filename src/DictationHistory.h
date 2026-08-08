@@ -27,6 +27,7 @@ class DictationHistory final : public QObject {
   Q_OBJECT
   Q_PROPERTY(bool enabled READ enabled NOTIFY changed)
   Q_PROPERTY(bool busy READ busy NOTIFY changed)
+  Q_PROPERTY(bool deletionPending READ deletionPending NOTIFY changed)
   Q_PROPERTY(bool available READ available NOTIFY changed)
   Q_PROPERTY(QString status READ status NOTIFY changed)
   Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
@@ -51,6 +52,7 @@ public:
 
   bool enabled() const { return m_enabled; }
   bool busy() const { return m_busy; }
+  bool deletionPending() const;
   bool available() const { return m_available; }
   QString status() const { return m_status; }
   QString storagePath() const { return m_storagePath; }
@@ -59,7 +61,8 @@ public:
   int maximumEntries() const { return m_maximumEntries; }
   int maximumAgeDays() const { return m_maximumAgeDays; }
 
-  bool enable();
+  void enable();
+  void resumePendingDeletion();
   void disable(bool deleteData);
   bool add(const QString &text);
   Q_INVOKABLE bool removeEntry(const QString &id);
@@ -79,6 +82,8 @@ private:
   bool prune();
   bool pruneEntries(QList<Entry> &entries, int maximumEntries, int maximumAgeDays) const;
   void scheduleExpiry();
+  QString deletionMarkerPath() const;
+  void removePendingKey();
   void fail(const QString &message);
   static bool commitAtomically(const QString &path, const QByteArray &data, QString *error);
   QVariantMap entryMap(const Entry &entry) const;

@@ -98,7 +98,10 @@ void AppController::initialize() {
   m_history->setMaximumEntries(group.readEntry("HistoryMaximumEntries", 100));
   m_history->setMaximumAgeDays(group.readEntry("HistoryMaximumAgeDays", 30));
   connect(m_history.get(), &DictationHistory::settingsChanged, this, &AppController::saveSettings);
-  if (group.readEntry("HistoryEnabled", false))
+  const bool deletionPending = m_history->deletionPending();
+  if (deletionPending)
+    m_history->resumePendingDeletion();
+  else if (group.readEntry("HistoryEnabled", false))
     m_history->enable();
 
   connect(m_modelManager.get(), &ModelManager::activeModelPathChanged, this, [this] {
@@ -437,7 +440,7 @@ void AppController::copyText(const QString &text) {
   setStatus(m_output->deliver(text, false));
 }
 
-bool AppController::enableHistory() { return m_history->enable(); }
+void AppController::enableHistory() { m_history->enable(); }
 
 void AppController::disableHistory(bool deleteData) { m_history->disable(deleteData); }
 
@@ -534,7 +537,7 @@ void AppController::handleTranscriptionFinished(const QString &text, const QStri
   emit transcriptChanged();
   const bool historyStored = m_history->add(trimmedText);
   QString delivery = m_output->deliver(trimmedText, m_autoPaste);
-  if (m_history->enabled() && !historyStored) {
+  if ((m_history->enabled() || m_history->busy()) && !historyStored) {
     delivery = i18n("%1 History was not saved: %2", delivery, m_history->status());
   }
   setStatus(delivery);
