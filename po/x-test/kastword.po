@@ -638,6 +638,10 @@ msgstr "xxKastword is readyxx"
 msgid "Download URL copied to clipboard."
 msgstr "xxDownload URL copied to clipboard.xx"
 
+#: src/qml/Main.qml:51
+msgid "Storage path copied to clipboard."
+msgstr "xxStorage path copied to clipboard.xx"
+
 #: src/qml/Main.qml:84
 msgid "Select a Whisper model"
 msgstr "xxSelect a Whisper modelxx"
@@ -776,8 +780,12 @@ msgid "Maximum history age in days"
 msgstr "xxMaximum history age in daysxx"
 
 #: src/qml/Main.qml:304
-msgid "Encrypted storage: %1"
-msgstr "xxEncrypted storage: %1xx"
+msgid "Encrypted history storage path"
+msgstr "xxEncrypted history storage pathxx"
+
+#: src/qml/Main.qml:320 src/qml/Main.qml:454
+msgid "Click to copy the storage path"
+msgstr "xxClick to copy the storage pathxx"
 
 #: src/qml/Main.qml:311
 msgid "No saved dictations yet"
@@ -804,32 +812,13 @@ msgid "Choose and download a model before using dictation."
 msgstr "xxChoose and download a model before using dictation.xx"
 
 #: src/qml/Main.qml:386
-msgid ""
-"Models are downloaded only when you request them. Transcription remains "
-"offline after the download."
-msgstr ""
-"xxModels are downloaded only when you request them. Transcription remains "
-"offline after the download.xx"
-
 #: src/qml/Main.qml:396 src/qml/Main.qml:458 src/qml/Main.qml:465
 msgid "Recommended"
 msgstr "xxRecommendedxx"
 
 #: src/qml/Main.qml:397
-msgid "English-only models"
-msgstr "xxEnglish-only modelsxx"
-
-#: src/qml/Main.qml:398
-msgid "Multilingual models"
-msgstr "xxMultilingual modelsxx"
-
-#: src/qml/Main.qml:399
-msgid "All models"
-msgstr "xxAll modelsxx"
-
-#: src/qml/Main.qml:401
-msgid "Filter speech models"
-msgstr "xxFilter speech modelsxx"
+msgid "All"
+msgstr "xxAllxx"
 
 #: src/qml/Main.qml:472
 msgid "%1 · %2 · %3"
@@ -904,8 +893,8 @@ msgid "Select an existing compatible Whisper model file"
 msgstr "xxSelect an existing compatible Whisper model filexx"
 
 #: src/qml/Main.qml:641
-msgid "Model storage: %1"
-msgstr "xxModel storage: %1xx"
+msgid "Model storage path"
+msgstr "xxModel storage pathxx"
 
 #: src/qml/Main.qml:652 src/qml/Main.qml:1050 src/qml/Main.qml:1131
 msgid "Audio"
