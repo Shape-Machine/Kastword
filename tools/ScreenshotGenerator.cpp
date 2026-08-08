@@ -27,10 +27,10 @@ struct ScreenshotView {
 };
 
 constexpr std::array views = {
-    ScreenshotView{0, "offline-dictation.png"},
-    ScreenshotView{1, "speech-models.png"},
-    ScreenshotView{2, "audio-input.png"},
-    ScreenshotView{3, "settings.png"},
+    ScreenshotView{0, "01-offline-dictation.png"},
+    ScreenshotView{1, "02-speech-models.png"},
+    ScreenshotView{2, "03-audio-input.png"},
+    ScreenshotView{3, "04-settings.png"},
 };
 
 void waitForRendering() {

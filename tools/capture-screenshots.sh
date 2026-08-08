@@ -58,10 +58,10 @@ trap 'exit 143' TERM
 "$generator" "$stage_directory"
 
 for screenshot in \
-    offline-dictation.png \
-    speech-models.png \
-    audio-input.png \
-    settings.png
+    01-offline-dictation.png \
+    02-speech-models.png \
+    03-audio-input.png \
+    04-settings.png
 do
     test -f "$stage_directory/$screenshot"
 done

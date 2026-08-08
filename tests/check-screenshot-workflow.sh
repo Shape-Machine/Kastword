@@ -19,7 +19,7 @@ fixture_capture="$fixture_root/tools/capture-screenshots.sh"
 fixture_generator="$fixture_root/success-generator"
 printf '%s\n' \
     '#!/bin/sh' \
-    'for file in offline-dictation.png speech-models.png audio-input.png settings.png; do' \
+    'for file in 01-offline-dictation.png 02-speech-models.png 03-audio-input.png 04-settings.png; do' \
     '    printf fixture > "$1/$file"' \
     'done' > "$fixture_generator"
 chmod +x "$fixture_generator"
@@ -27,10 +27,10 @@ chmod +x "$fixture_generator"
 "$fixture_capture" "$fixture_generator"
 
 for screenshot in \
-    offline-dictation.png \
-    speech-models.png \
-    audio-input.png \
-    settings.png
+    01-offline-dictation.png \
+    02-speech-models.png \
+    03-audio-input.png \
+    04-settings.png
 do
     test -f "$fixture_root/screenshots/$screenshot"
 done
@@ -82,4 +82,4 @@ ln -s "$outside_directory" "$fixture_root/screenshots"
 "$fixture_capture" "$fixture_generator"
 test -f "$outside_directory/sentinel"
 test ! -L "$fixture_root/screenshots"
-test -f "$fixture_root/screenshots/offline-dictation.png"
+test -f "$fixture_root/screenshots/01-offline-dictation.png"
