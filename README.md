@@ -20,11 +20,15 @@ text are never sent to a cloud transcription service.
 <table>
   <tr>
     <td><img src="screenshots/01-offline-dictation.png" alt="Offline dictation view"></td>
-    <td><img src="screenshots/02-speech-models.png" alt="Speech models view"></td>
+    <td><img src="screenshots/02-history.png" alt="Encrypted dictation history view"></td>
   </tr>
   <tr>
-    <td><img src="screenshots/03-audio-input.png" alt="Audio input view"></td>
-    <td><img src="screenshots/04-settings.png" alt="Settings view"></td>
+    <td><img src="screenshots/03-speech-models.png" alt="Speech models view"></td>
+    <td><img src="screenshots/04-audio-input.png" alt="Audio input view"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/05-settings.png" alt="Settings view"></td>
+    <td></td>
   </tr>
 </table>
 
@@ -42,8 +46,9 @@ text are never sent to a cloud transcription service.
   paste on Plasma Wayland or X11.
 - **Configurable limits and output:** choose the transcription language, recording limit, paste
   shortcuts, and global keyboard shortcut.
-- **No history or telemetry:** Kastword does not save recordings, retain a transcription history,
-  or include usage tracking.
+- **Private by default:** Kastword never saves recordings. Optional dictation history is off by
+  default and, when enabled, is encrypted locally with its key protected by KDE Wallet. Kastword
+  includes no usage tracking.
 
 ## How dictation works
 
@@ -67,7 +72,9 @@ another input instead of silently switching devices.
 
 - Microphone samples remain in process memory only until transcription completes. Recordings stop
   at the configured duration limit—five minutes by default—or a 256 MiB raw-audio ceiling.
-- Raw audio and transcription history are not written to disk.
+- Raw audio is never written to disk. Transcription history is not written until you explicitly
+  enable it; enabled history is authenticated and encrypted locally. See [Encrypted dictation
+  history](docs/DICTATION_HISTORY.md).
 - Transcribed text is placed on the desktop clipboard and primary selection. Clipboard managers,
   target applications, desktop services, crash dumps, and the operating system may retain it
   independently of Kastword.
@@ -83,6 +90,7 @@ another input instead of silently switching devices.
 
 The clear-transcription action removes Kastword's retained text and clears matching current
 clipboard selections. It cannot erase entries already retained by clipboard-manager history.
+Deleting a saved history entry affects Kastword's encrypted store only.
 
 ## Platform status
 
@@ -122,6 +130,7 @@ contributor instructions are in the [development guide](docs/DEVELOPMENT.md).
 ## Help and project information
 
 - [Automatic paste setup and troubleshooting](docs/AUTOMATIC_PASTE.md)
+- [Encrypted dictation history and its security boundaries](docs/DICTATION_HISTORY.md)
 - [Source installation and development](docs/DEVELOPMENT.md)
 - [Report a bug or request a feature](https://github.com/Shape-Machine/Kastword/issues)
 - [License](LICENSES/GPL-3.0-or-later.txt)

@@ -18,7 +18,7 @@ draft pull request. Never merge without explicit user permission after completin
 4. Fetch and prune `origin`. Confirm the branch contains commits not in `origin/main` and inspect the
    complete proposed diff.
 5. Require an active Plasma graphical session and run `make screenshots`. Confirm that
-   `screenshots/` contains exactly the four expected numbered PNG files. Inspect the regenerated
+   `screenshots/` contains exactly the five expected numbered PNG files. Inspect the regenerated
    images and repository diff for accidental or private content. If tracked screenshots changed,
    stage only `screenshots/` and commit them with `Refresh application screenshots`; never create an
    empty commit. Confirm the working tree is clean afterward. Stop if capture or inspection fails.

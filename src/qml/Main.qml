@@ -25,19 +25,19 @@ Kirigami.ApplicationWindow {
     }
 
     function openModelManager() {
-        root.currentView = 1
-    }
-
-    function openSettings() {
-        root.currentView = 3
-    }
-
-    function openAudioInput() {
         root.currentView = 2
     }
 
+    function openSettings() {
+        root.currentView = 4
+    }
+
+    function openAudioInput() {
+        root.currentView = 3
+    }
+
     function updateAudioInputMonitoring() {
-        appController.setAudioInputMonitoringEnabled(root.visible && root.currentView === 2)
+        appController.setAudioInputMonitoringEnabled(root.visible && root.currentView === 3)
     }
 
     function copyModelUrl(url) {
@@ -47,6 +47,7 @@ Kirigami.ApplicationWindow {
     }
 
     property string pendingRemovalId: ""
+    property string pendingHistoryId: ""
     property int currentView: 0
     property bool shortcutChangeFailed: false
     property var passiveNotificationHandler: function(message) {
@@ -118,6 +119,216 @@ Kirigami.ApplicationWindow {
                 wrapMode: TextEdit.Wrap
                 selectByMouse: true
                 Accessible.name: i18n("Full transcription")
+            }
+        }
+    }
+
+    Kirigami.Dialog {
+        id: disableHistoryDialog
+        objectName: "disableHistoryDialog"
+        title: i18n("Disable dictation history?")
+        standardButtons: Kirigami.Dialog.NoButton
+
+        ColumnLayout {
+            Controls.Label {
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 24
+                wrapMode: Text.Wrap
+                text: i18n("You can keep the encrypted history for later, or delete it together with its KDE Wallet key.")
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                Controls.Button {
+                    text: i18n("Cancel")
+                    onClicked: disableHistoryDialog.close()
+                }
+                Controls.Button {
+                    objectName: "disableKeepHistoryButton"
+                    text: i18n("Disable and keep")
+                    onClicked: {
+                        appController.disableHistory(false)
+                        disableHistoryDialog.close()
+                    }
+                }
+                Controls.Button {
+                    objectName: "disableDeleteHistoryButton"
+                    text: i18n("Disable and delete")
+                    highlighted: true
+                    onClicked: {
+                        appController.disableHistory(true)
+                        disableHistoryDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
+    MessageDialog {
+        id: clearHistoryDialog
+        title: i18n("Clear all dictation history?")
+        text: i18n("All entries in Kastword's encrypted history will be deleted. This cannot remove copies retained by other applications or backups.")
+        buttons: MessageDialog.Ok | MessageDialog.Cancel
+        onAccepted: appController.history.clear()
+    }
+
+    MessageDialog {
+        id: resetHistoryDialog
+        title: i18n("Reset encrypted history?")
+        text: i18n("The unreadable encrypted file and its KDE Wallet key will be deleted. Existing entries cannot be recovered afterward.")
+        buttons: MessageDialog.Ok | MessageDialog.Cancel
+        onAccepted: appController.disableHistory(true)
+    }
+
+    MessageDialog {
+        id: deleteHistoryEntryDialog
+        title: i18n("Delete this history entry?")
+        text: i18n("The selected entry will be removed from Kastword's encrypted history.")
+        buttons: MessageDialog.Ok | MessageDialog.Cancel
+        onAccepted: {
+            appController.history.removeEntry(root.pendingHistoryId)
+            root.pendingHistoryId = ""
+        }
+        onRejected: root.pendingHistoryId = ""
+    }
+
+    Component {
+        id: historyPage
+
+        Kirigami.ScrollablePage {
+            objectName: "historyPage"
+            title: i18n("History")
+
+            ColumnLayout {
+                width: parent.width
+                spacing: Kirigami.Units.largeSpacing
+
+                Controls.Switch {
+                    objectName: "historyEnabledSwitch"
+                    Layout.fillWidth: true
+                    text: i18n("Save encrypted dictation history")
+                    checked: appController.history.enabled
+                    onClicked: {
+                        if (appController.history.enabled)
+                            disableHistoryDialog.open()
+                        else
+                            appController.enableHistory()
+                    }
+                    Accessible.description: i18n("Store transcription text locally using authenticated encryption and a key protected by KDE Wallet")
+                }
+
+                Kirigami.InlineMessage {
+                    objectName: "historyStatus"
+                    Layout.fillWidth: true
+                    visible: appController.history.status.length > 0
+                    type: appController.history.available ? Kirigami.MessageType.Information
+                                                          : Kirigami.MessageType.Error
+                    text: appController.history.status
+                }
+
+                Controls.Button {
+                    objectName: "resetHistoryButton"
+                    visible: !appController.history.available
+                    text: i18n("Reset encrypted history")
+                    icon.name: "edit-clear-history"
+                    onClicked: resetHistoryDialog.open()
+                    Accessible.description: i18n("Delete an unreadable history file and its KDE Wallet key")
+                }
+
+                Kirigami.FormLayout {
+                    Layout.fillWidth: true
+                    enabled: appController.history.enabled
+
+                    Controls.SpinBox {
+                        objectName: "historyMaximumEntries"
+                        Kirigami.FormData.label: i18n("Maximum entries:")
+                        from: 1
+                        to: 10000
+                        value: appController.history.maximumEntries
+                        onValueModified: appController.history.maximumEntries = value
+                        Accessible.name: i18n("Maximum history entries")
+                    }
+
+                    Controls.SpinBox {
+                        objectName: "historyMaximumAgeDays"
+                        Kirigami.FormData.label: i18n("Maximum age:")
+                        from: 1
+                        to: 3650
+                        value: appController.history.maximumAgeDays
+                        textFromValue: function(value) { return i18np("1 day", "%1 days", value) }
+                        valueFromText: function(text) { return parseInt(text) || 1 }
+                        onValueModified: appController.history.maximumAgeDays = value
+                        Accessible.name: i18n("Maximum history age in days")
+                    }
+                }
+
+                Controls.Label {
+                    Layout.fillWidth: true
+                    visible: appController.history.enabled
+                    wrapMode: Text.WrapAnywhere
+                    opacity: 0.7
+                    text: i18n("Encrypted storage: %1", appController.history.storagePath)
+                }
+
+                Controls.Label {
+                    Layout.fillWidth: true
+                    visible: appController.history.enabled && appController.history.entries.length === 0
+                    horizontalAlignment: Text.AlignHCenter
+                    text: i18n("No saved dictations yet")
+                    opacity: 0.7
+                }
+
+                Repeater {
+                    model: appController.history.enabled ? appController.history.entries : []
+
+                    Controls.Frame {
+                        required property var modelData
+                        Layout.fillWidth: true
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            Controls.Label {
+                                Layout.fillWidth: true
+                                text: modelData.createdText
+                                opacity: 0.7
+                            }
+                            Controls.Label {
+                                Layout.fillWidth: true
+                                text: modelData.text
+                                wrapMode: Text.Wrap
+                                maximumLineCount: 4
+                                elide: Text.ElideRight
+                                Accessible.name: i18n("Dictation from %1", modelData.createdText)
+                            }
+                            RowLayout {
+                                Layout.alignment: Qt.AlignRight
+                                Controls.ToolButton {
+                                    text: i18n("Copy")
+                                    icon.name: "edit-copy"
+                                    display: Controls.AbstractButton.TextBesideIcon
+                                    onClicked: appController.copyText(modelData.text)
+                                }
+                                Controls.ToolButton {
+                                    text: i18n("Delete")
+                                    icon.name: "edit-delete"
+                                    display: Controls.AbstractButton.TextBesideIcon
+                                    onClicked: {
+                                        root.pendingHistoryId = modelData.id
+                                        deleteHistoryEntryDialog.open()
+                                    }
+                                    Accessible.description: i18n("Delete the dictation from encrypted history")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Controls.Button {
+                    objectName: "clearHistoryButton"
+                    Layout.alignment: Qt.AlignRight
+                    visible: appController.history.enabled && appController.history.entries.length > 0
+                    text: i18n("Clear all history")
+                    icon.name: "edit-clear-history"
+                    onClicked: clearHistoryDialog.open()
+                }
             }
         }
     }
@@ -764,6 +975,41 @@ Kirigami.ApplicationWindow {
                     }
                 }
             }
+
+            ColumnLayout {
+                id: recentHistoryPanel
+                objectName: "recentHistoryPanel"
+                Layout.fillWidth: true
+                visible: appController.history.enabled
+                    && appController.history.recentEntries.length > 0
+                spacing: Kirigami.Units.smallSpacing
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Controls.Label {
+                        Layout.fillWidth: true
+                        font.bold: true
+                        text: i18n("Recent history")
+                    }
+                    Controls.ToolButton {
+                        text: i18n("View all")
+                        onClicked: root.currentView = 1
+                        Accessible.name: i18n("View all dictation history")
+                    }
+                }
+
+                Repeater {
+                    model: appController.history.recentEntries
+                    Controls.ItemDelegate {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        text: modelData.text
+                        icon.name: "edit-copy"
+                        onClicked: appController.copyText(modelData.text)
+                        Accessible.description: i18n("Copy dictation from %1", modelData.createdText)
+                    }
+                }
+            }
             }
         }
     }
@@ -772,8 +1018,9 @@ Kirigami.ApplicationWindow {
         id: mainPage
         padding: 0
         title: root.currentView === 0 ? i18n("Offline dictation")
-             : root.currentView === 1 ? i18n("Speech models")
-             : root.currentView === 2 ? i18n("Audio input")
+             : root.currentView === 1 ? i18n("History")
+             : root.currentView === 2 ? i18n("Speech models")
+             : root.currentView === 3 ? i18n("Audio input")
              : i18n("Settings")
 
         RowLayout {
@@ -810,8 +1057,25 @@ Kirigami.ApplicationWindow {
                         checked: root.currentView === 0
                         Controls.ButtonGroup.group: navigationGroup
                         KeyNavigation.up: settingsTab
-                        KeyNavigation.down: modelsTab
+                        KeyNavigation.down: historyTab
                         onClicked: root.currentView = 0
+                        Controls.ToolTip.visible: hovered && navigationPane.compact
+                        Controls.ToolTip.text: text
+                    }
+
+                    Controls.TabButton {
+                        id: historyTab
+                        objectName: "historyTab"
+                        Layout.fillWidth: true
+                        text: i18n("History")
+                        icon.name: "view-history"
+                        display: navigationPane.compact ? Controls.AbstractButton.IconOnly
+                                                        : Controls.AbstractButton.TextBesideIcon
+                        checked: root.currentView === 1
+                        Controls.ButtonGroup.group: navigationGroup
+                        KeyNavigation.up: dictationTab
+                        KeyNavigation.down: modelsTab
+                        onClicked: root.currentView = 1
                         Controls.ToolTip.visible: hovered && navigationPane.compact
                         Controls.ToolTip.text: text
                     }
@@ -824,11 +1088,11 @@ Kirigami.ApplicationWindow {
                         icon.name: "system-software-install"
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
-                        checked: root.currentView === 1
+                        checked: root.currentView === 2
                         Controls.ButtonGroup.group: navigationGroup
-                        KeyNavigation.up: dictationTab
+                        KeyNavigation.up: historyTab
                         KeyNavigation.down: audioInputTab
-                        onClicked: root.currentView = 1
+                        onClicked: root.currentView = 2
                         Controls.ToolTip.visible: hovered && navigationPane.compact
                         Controls.ToolTip.text: text
                     }
@@ -841,11 +1105,11 @@ Kirigami.ApplicationWindow {
                         icon.name: "audio-input-microphone"
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
-                        checked: root.currentView === 2
+                        checked: root.currentView === 3
                         Controls.ButtonGroup.group: navigationGroup
                         KeyNavigation.up: modelsTab
                         KeyNavigation.down: settingsTab
-                        onClicked: root.currentView = 2
+                        onClicked: root.currentView = 3
                         Controls.ToolTip.visible: hovered && navigationPane.compact
                         Controls.ToolTip.text: text
                     }
@@ -858,11 +1122,11 @@ Kirigami.ApplicationWindow {
                         icon.name: "preferences-system"
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
-                        checked: root.currentView === 3
+                        checked: root.currentView === 4
                         Controls.ButtonGroup.group: navigationGroup
                         KeyNavigation.up: audioInputTab
                         KeyNavigation.down: dictationTab
-                        onClicked: root.currentView = 3
+                        onClicked: root.currentView = 4
                         Controls.ToolTip.visible: hovered && navigationPane.compact
                         Controls.ToolTip.text: text
                     }
@@ -885,6 +1149,10 @@ Kirigami.ApplicationWindow {
 
                 Loader {
                     sourceComponent: dictationPage
+                }
+
+                Loader {
+                    sourceComponent: historyPage
                 }
 
                 Loader {

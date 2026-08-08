@@ -32,7 +32,7 @@ jobs:
           base-devel cmake ninja git clang gcovr reuse appstream desktop-file-utils
           extra-cmake-modules qt6-base qt6-declarative qt6-multimedia
           kirigami kconfig kcoreaddons kdbusaddons kdeclarative kglobalaccel ki18n
-          knotifications kstatusnotifieritem
+          knotifications kstatusnotifieritem kwallet libsodium
 
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,7 +92,7 @@ jobs:
           extra-cmake-modules qt6-base qt6-declarative qt6-multimedia
           qt6-multimedia-gstreamer
           kirigami kconfig kcoreaddons kdbusaddons kdeclarative kglobalaccel ki18n
-          knotifications kstatusnotifieritem
+          knotifications kstatusnotifieritem kwallet libsodium
 
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

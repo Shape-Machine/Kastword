@@ -84,10 +84,12 @@ install-smoke: ensure-configured
 	test -f "$$smoke_prefix/share/doc/kastword/README.md"; \
 	test -f "$$smoke_prefix/share/doc/kastword/docs/DEVELOPMENT.md"; \
 	test -f "$$smoke_prefix/share/doc/kastword/docs/AUTOMATIC_PASTE.md"; \
+	test -f "$$smoke_prefix/share/doc/kastword/docs/DICTATION_HISTORY.md"; \
 	test -f "$$smoke_prefix/share/doc/kastword/screenshots/01-offline-dictation.png"; \
-	test -f "$$smoke_prefix/share/doc/kastword/screenshots/02-speech-models.png"; \
-	test -f "$$smoke_prefix/share/doc/kastword/screenshots/03-audio-input.png"; \
-	test -f "$$smoke_prefix/share/doc/kastword/screenshots/04-settings.png"; \
+	test -f "$$smoke_prefix/share/doc/kastword/screenshots/02-history.png"; \
+	test -f "$$smoke_prefix/share/doc/kastword/screenshots/03-speech-models.png"; \
+	test -f "$$smoke_prefix/share/doc/kastword/screenshots/04-audio-input.png"; \
+	test -f "$$smoke_prefix/share/doc/kastword/screenshots/05-settings.png"; \
 	test -f "$$smoke_prefix/share/doc/kastword/LICENSES/GPL-3.0-or-later.txt"; \
 	./tools/check-documentation-links.sh "$$smoke_prefix/share/doc/kastword"; \
 	legacy_license="$$smoke_prefix/share/doc/kastword/GPL-3.0-or-later.txt"; \
@@ -110,10 +112,12 @@ uninstall:
 		"$(PREFIX)/share/doc/kastword/README.md" \
 		"$(PREFIX)/share/doc/kastword/docs/DEVELOPMENT.md" \
 		"$(PREFIX)/share/doc/kastword/docs/AUTOMATIC_PASTE.md" \
+		"$(PREFIX)/share/doc/kastword/docs/DICTATION_HISTORY.md" \
 		"$(PREFIX)/share/doc/kastword/screenshots/01-offline-dictation.png" \
-		"$(PREFIX)/share/doc/kastword/screenshots/02-speech-models.png" \
-		"$(PREFIX)/share/doc/kastword/screenshots/03-audio-input.png" \
-		"$(PREFIX)/share/doc/kastword/screenshots/04-settings.png" \
+		"$(PREFIX)/share/doc/kastword/screenshots/02-history.png" \
+		"$(PREFIX)/share/doc/kastword/screenshots/03-speech-models.png" \
+		"$(PREFIX)/share/doc/kastword/screenshots/04-audio-input.png" \
+		"$(PREFIX)/share/doc/kastword/screenshots/05-settings.png" \
 		"$(PREFIX)/share/doc/kastword/GPL-3.0-or-later.txt" \
 		"$(PREFIX)/share/doc/kastword/LICENSES/GPL-3.0-or-later.txt"
 	@if command -v update-desktop-database >/dev/null 2>&1; then \

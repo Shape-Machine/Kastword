@@ -19,7 +19,7 @@ fixture_capture="$fixture_root/tools/capture-screenshots.sh"
 fixture_generator="$fixture_root/success-generator"
 printf '%s\n' \
     '#!/bin/sh' \
-    'for file in 01-offline-dictation.png 02-speech-models.png 03-audio-input.png 04-settings.png; do' \
+    'for file in 01-offline-dictation.png 02-history.png 03-speech-models.png 04-audio-input.png 05-settings.png; do' \
     '    printf fixture > "$1/$file"' \
     'done' > "$fixture_generator"
 chmod +x "$fixture_generator"
@@ -52,13 +52,14 @@ test ! -e "$fixture_root/.screenshots-transaction."*
 
 for screenshot in \
     01-offline-dictation.png \
-    02-speech-models.png \
-    03-audio-input.png \
-    04-settings.png
+    02-history.png \
+    03-speech-models.png \
+    04-audio-input.png \
+    05-settings.png
 do
     test -f "$fixture_root/screenshots/$screenshot"
 done
-test "$(find "$fixture_root/screenshots" -mindepth 1 -maxdepth 1 | wc -l)" -eq 4
+test "$(find "$fixture_root/screenshots" -mindepth 1 -maxdepth 1 | wc -l)" -eq 5
 
 serial_generator="$fixture_root/serial-generator"
 printf '%s\n' \
@@ -67,7 +68,7 @@ printf '%s\n' \
     'trap '\''rmdir "$SERIAL_ROOT/active"'\'' EXIT HUP INT TERM' \
     'cmake -E touch "$SERIAL_ROOT/entered"' \
     'sleep 0.2' \
-    'for file in 01-offline-dictation.png 02-speech-models.png 03-audio-input.png 04-settings.png; do' \
+    'for file in 01-offline-dictation.png 02-history.png 03-speech-models.png 04-audio-input.png 05-settings.png; do' \
     '    printf serialized > "$1/$file"' \
     'done' > "$serial_generator"
 chmod +x "$serial_generator"
@@ -83,7 +84,7 @@ SERIAL_ROOT="$fixture_root" "$fixture_capture" "$serial_generator" &
 second_capture=$!
 wait "$first_capture"
 wait "$second_capture"
-test "$(find "$fixture_root/screenshots" -mindepth 1 -maxdepth 1 | wc -l)" -eq 4
+test "$(find "$fixture_root/screenshots" -mindepth 1 -maxdepth 1 | wc -l)" -eq 5
 
 cmake -E touch "$fixture_root/screenshots/stale.png"
 "$fixture_capture" "$fixture_generator"

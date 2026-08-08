@@ -47,12 +47,14 @@ AppController::AppController(std::unique_ptr<AudioCapture> audio,
                              std::unique_ptr<TextOutput> output, TranscribeFunction transcribe,
                              bool desktopIntegration, bool requireModel, QObject *parent,
                              std::unique_ptr<ModelManager> modelManager,
-                             std::unique_ptr<DesktopIntegration> desktopServices)
+                             std::unique_ptr<DesktopIntegration> desktopServices,
+                             std::unique_ptr<DictationHistory> history)
     : QObject(parent), m_audio(std::move(audio)), m_output(std::move(output)),
       m_modelManager(modelManager ? std::move(modelManager) : std::make_unique<ModelManager>()),
       m_desktopServices(desktopServices
                             ? std::move(desktopServices)
                             : (desktopIntegration ? createDesktopIntegration() : nullptr)),
+      m_history(history ? std::move(history) : std::make_unique<DictationHistory>()),
       m_transcriptionWorker(new TranscriptionWorker(std::move(transcribe))),
       m_desktopIntegration(desktopIntegration), m_requireModel(requireModel),
       m_config(QStringLiteral("kastwordrc")), m_shortcut(i18n("Toggle dictation"), this) {
@@ -93,6 +95,11 @@ void AppController::initialize() {
   m_recordingLimitMinutes = qBound(1, group.readEntry("RecordingLimitMinutes", 5), 60);
   m_audio->setMaximumDurationSeconds(m_recordingLimitMinutes * 60);
   m_audio->setSelectedDeviceId(group.readEntry("AudioInputId", QString()));
+  m_history->setMaximumEntries(group.readEntry("HistoryMaximumEntries", 100));
+  m_history->setMaximumAgeDays(group.readEntry("HistoryMaximumAgeDays", 30));
+  if (group.readEntry("HistoryEnabled", false))
+    m_history->enable();
+  connect(m_history.get(), &DictationHistory::changed, this, &AppController::saveSettings);
 
   connect(m_modelManager.get(), &ModelManager::activeModelPathChanged, this, [this] {
     const QString path = m_modelManager->activeModelPath();
@@ -430,6 +437,10 @@ void AppController::copyText(const QString &text) {
   setStatus(m_output->deliver(text, false));
 }
 
+bool AppController::enableHistory() { return m_history->enable(); }
+
+void AppController::disableHistory(bool deleteData) { m_history->disable(deleteData); }
+
 void AppController::toggle() {
   if (m_audio->isRecording()) {
     QByteArray audio = m_audio->stop();
@@ -521,6 +532,7 @@ void AppController::handleTranscriptionFinished(const QString &text, const QStri
   }
   m_transcript = trimmedText;
   emit transcriptChanged();
+  m_history->add(trimmedText);
   const QString delivery = m_output->deliver(trimmedText, m_autoPaste);
   setStatus(delivery);
   setState(State::Success);
@@ -578,5 +590,8 @@ void AppController::saveSettings() {
   group.writeEntry("PasteShortcuts", m_pasteShortcuts.toInt());
   group.writeEntry("RecordingLimitMinutes", m_recordingLimitMinutes);
   group.writeEntry("AudioInputId", m_audio->selectedDeviceId());
+  group.writeEntry("HistoryEnabled", m_history->enabled());
+  group.writeEntry("HistoryMaximumEntries", m_history->maximumEntries());
+  group.writeEntry("HistoryMaximumAgeDays", m_history->maximumAgeDays());
   group.sync();
 }
