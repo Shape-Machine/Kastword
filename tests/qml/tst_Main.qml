@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls as Controls
 import QtTest
+import org.kde.kirigami as Kirigami
 
 TestCase {
     id: testCase
@@ -393,6 +394,8 @@ TestCase {
         compare(modelsTab.text, "Models")
         compare(audioInputTab.text, "Audio")
         compare(settingsTab.text, "Settings")
+        compare(applicationWindow.pageStack.globalToolBar.style,
+                Kirigami.ApplicationHeaderStyle.None)
         const navigation = findChild(applicationWindow.contentItem, "navigationPane")
         verify(navigation.width < 200)
 
@@ -710,18 +713,30 @@ TestCase {
         compare(button.enabled, true)
     }
 
-    function test_navigationAdaptsToMinimumWidth() {
-        const dictationTab = findChild(applicationWindow.contentItem, "dictationTab")
+    function test_compactNavigationUsesAccessibleIconOnlyTabs() {
         const button = findChild(applicationWindow.contentItem, "dictationButton")
         const navigation = findChild(applicationWindow.contentItem, "navigationPane")
-        verify(dictationTab)
         verify(button)
         verify(navigation)
 
-        applicationWindow.width = applicationWindow.minimumWidth
-        tryCompare(applicationWindow, "width", applicationWindow.minimumWidth)
+        applicationWindow.width = 600
+        tryCompare(applicationWindow, "width", 600)
         tryCompare(navigation, "compact", true)
-        compare(dictationTab.display, Controls.AbstractButton.IconOnly)
+        const tabs = [
+            ["dictationTab", "Dictation"],
+            ["historyTab", "History"],
+            ["modelsTab", "Models"],
+            ["audioInputTab", "Audio"],
+            ["settingsTab", "Settings"]
+        ]
+        for (const tabData of tabs) {
+            const tab = findChild(applicationWindow.contentItem, tabData[0])
+            verify(tab)
+            compare(tab.display, Controls.AbstractButton.IconOnly)
+            compare(tab.text, "")
+            compare(tab.Accessible.name, tabData[1])
+            compare(tab.Controls.ToolTip.text, tabData[1])
+        }
         verify(button.width <= applicationWindow.pageStack.currentItem.width)
     }
 

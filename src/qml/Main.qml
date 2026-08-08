@@ -57,6 +57,8 @@ Kirigami.ApplicationWindow {
     onVisibleChanged: updateAudioInputMonitoring()
     onCurrentViewChanged: updateAudioInputMonitoring()
 
+    pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
+
     Connections {
         target: appController
         function onModelSetupRequested() {
@@ -1117,9 +1119,11 @@ Kirigami.ApplicationWindow {
                     Controls.TabButton {
                         id: dictationTab
                         objectName: "dictationTab"
+                        readonly property string label: i18n("Dictation")
                         Layout.fillWidth: true
-                        text: i18n("Dictation")
+                        text: navigationPane.compact ? "" : label
                         icon.name: "audio-input-microphone"
+                        Accessible.name: label
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 0
@@ -1128,15 +1132,17 @@ Kirigami.ApplicationWindow {
                         KeyNavigation.down: historyTab
                         onClicked: root.currentView = 0
                         Controls.ToolTip.visible: hovered && navigationPane.compact
-                        Controls.ToolTip.text: text
+                        Controls.ToolTip.text: label
                     }
 
                     Controls.TabButton {
                         id: historyTab
                         objectName: "historyTab"
+                        readonly property string label: i18n("History")
                         Layout.fillWidth: true
-                        text: i18n("History")
+                        text: navigationPane.compact ? "" : label
                         icon.name: "view-history"
+                        Accessible.name: label
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 1
@@ -1145,15 +1151,17 @@ Kirigami.ApplicationWindow {
                         KeyNavigation.down: modelsTab
                         onClicked: root.currentView = 1
                         Controls.ToolTip.visible: hovered && navigationPane.compact
-                        Controls.ToolTip.text: text
+                        Controls.ToolTip.text: label
                     }
 
                     Controls.TabButton {
                         id: modelsTab
                         objectName: "modelsTab"
+                        readonly property string label: i18n("Models")
                         Layout.fillWidth: true
-                        text: i18n("Models")
+                        text: navigationPane.compact ? "" : label
                         icon.name: "system-software-install"
+                        Accessible.name: label
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 2
@@ -1162,15 +1170,17 @@ Kirigami.ApplicationWindow {
                         KeyNavigation.down: audioInputTab
                         onClicked: root.currentView = 2
                         Controls.ToolTip.visible: hovered && navigationPane.compact
-                        Controls.ToolTip.text: text
+                        Controls.ToolTip.text: label
                     }
 
                     Controls.TabButton {
                         id: audioInputTab
                         objectName: "audioInputTab"
+                        readonly property string label: i18n("Audio")
                         Layout.fillWidth: true
-                        text: i18n("Audio")
+                        text: navigationPane.compact ? "" : label
                         icon.name: "audio-input-microphone"
+                        Accessible.name: label
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 3
@@ -1179,15 +1189,17 @@ Kirigami.ApplicationWindow {
                         KeyNavigation.down: settingsTab
                         onClicked: root.currentView = 3
                         Controls.ToolTip.visible: hovered && navigationPane.compact
-                        Controls.ToolTip.text: text
+                        Controls.ToolTip.text: label
                     }
 
                     Controls.TabButton {
                         id: settingsTab
                         objectName: "settingsTab"
+                        readonly property string label: i18n("Settings")
                         Layout.fillWidth: true
-                        text: i18n("Settings")
+                        text: navigationPane.compact ? "" : label
                         icon.name: "preferences-system"
+                        Accessible.name: label
                         display: navigationPane.compact ? Controls.AbstractButton.IconOnly
                                                         : Controls.AbstractButton.TextBesideIcon
                         checked: root.currentView === 4
@@ -1196,7 +1208,7 @@ Kirigami.ApplicationWindow {
                         KeyNavigation.down: dictationTab
                         onClicked: root.currentView = 4
                         Controls.ToolTip.visible: hovered && navigationPane.compact
-                        Controls.ToolTip.text: text
+                        Controls.ToolTip.text: label
                     }
 
                     Item {
