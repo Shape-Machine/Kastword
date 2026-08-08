@@ -108,6 +108,18 @@ endfunction()
 kastword_enable_coverage(kastword)
 kastword_enable_sanitizers(kastword)
 
+add_executable(kastword_screenshot_generator EXCLUDE_FROM_ALL
+    tools/ScreenshotGenerator.cpp
+    tests/FakeAppController.h)
+target_include_directories(kastword_screenshot_generator PRIVATE tests)
+target_link_libraries(kastword_screenshot_generator PRIVATE
+    Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Widgets
+    KF6::I18n KF6::I18nQml KF6::Kirigami)
+qt_add_resources(kastword_screenshot_generator "screenshot-qml-resources"
+    PREFIX "/"
+    FILES src/qml/Main.qml)
+kastword_enable_sanitizers(kastword_screenshot_generator)
+
 if(KASTWORD_FETCH_DEFAULT_MODEL)
     add_dependencies(kastword kastword-default-model)
 endif()
@@ -207,7 +219,7 @@ if(BUILD_TESTING)
     add_test(NAME controller COMMAND kastword_controller_test)
     set_tests_properties(controller PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
-    add_executable(kastword_qml_test tests/QmlTestSetup.cpp)
+    add_executable(kastword_qml_test tests/QmlTestSetup.cpp tests/FakeAppController.h)
     target_compile_definitions(kastword_qml_test PRIVATE
         QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/qml")
     target_link_libraries(kastword_qml_test PRIVATE
@@ -219,6 +231,10 @@ if(BUILD_TESTING)
     add_test(NAME qml COMMAND kastword_qml_test)
     set_tests_properties(qml PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_FONT_DPI=192")
+
+    add_test(NAME screenshot-workflow
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/check-screenshot-workflow.sh
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/capture-screenshots.sh)
 
     add_test(NAME translation-catalog
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/check-translations.sh)

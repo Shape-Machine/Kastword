@@ -230,6 +230,7 @@ normal dictation.
 ```sh
 make test
 make coverage BUILD_DIR=build-coverage CMAKE_ARGS=-DKASTWORD_FETCH_DEFAULT_MODEL=OFF
+make screenshots
 make lint
 make install-smoke
 make format
@@ -243,6 +244,12 @@ enforces the repository's line and branch thresholds, and writes a browsable rep
 55% branch coverage and can be raised explicitly with `COVERAGE_MIN_LINE` and
 `COVERAGE_MIN_BRANCH`. `make lint` checks C++ formatting without changing files, while `make format`
 applies it.
+`make screenshots` renders the four top-level application views in a 760×520 logical window with
+deterministic fake data and atomically replaces the PNG files in `screenshots/`. It requires an
+active graphical session so the output inherits the current Plasma theme, icons, fonts, and display
+scale. It does not access the microphone or network and preserves the previous complete set if
+generation fails. Generated screenshots are covered by the repository-level REUSE annotation in
+`REUSE.toml`.
 `make install-smoke` installs into a temporary prefix, resolves and executes the application through
 the installed desktop entry, validates the metadata, and verifies that uninstall removes every
 installed file. `make validate` runs the build, tests, formatting check, REUSE license validation,

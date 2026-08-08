@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Sri Rang
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-.PHONY: all configure ensure-configured build run install install-smoke uninstall test coverage clean format lint license validate
+.PHONY: all configure ensure-configured build run screenshots install install-smoke uninstall test coverage clean format lint license validate
 
 BUILD_DIR ?= build
 BUILD_TYPE ?= Release
@@ -40,6 +40,10 @@ build: ensure-configured
 
 run: build
 	./$(BUILD_DIR)/kastword --show-window
+
+screenshots: ensure-configured
+	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword_screenshot_generator
+	./tools/capture-screenshots.sh "./$(BUILD_DIR)/kastword_screenshot_generator"
 
 install: ensure-configured
 	$(RUN_LOCKED) cmake --build $(BUILD_DIR) --target kastword pofiles tsfiles
@@ -115,10 +119,10 @@ clean:
 	cmake -E remove_directory $(BUILD_DIR)
 
 format:
-	clang-format -i src/*.cpp src/*.h tests/*.cpp
+	clang-format -i src/*.cpp src/*.h tests/*.cpp tests/*.h tools/*.cpp
 
 lint:
-	clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp
+	clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp tests/*.h tools/*.cpp
 
 license:
 	./tools/reuse-lint.sh
