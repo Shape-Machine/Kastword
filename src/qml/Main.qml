@@ -227,7 +227,7 @@ Kirigami.ApplicationWindow {
                     objectName: "historyList"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    model: appController.history.enabled ? appController.history.entries : []
+                    model: appController.history.enabled ? appController.history.entryModel : null
                     spacing: Kirigami.Units.smallSpacing
                     clip: true
                     reuseItems: true
@@ -262,7 +262,7 @@ Kirigami.ApplicationWindow {
 
                     Controls.Button {
                         objectName: "resetHistoryButton"
-                        visible: !appController.history.available
+                        visible: appController.history.resetRequired
                         text: i18n("Reset encrypted history")
                         icon.name: "edit-clear-history"
                         onClicked: resetHistoryDialog.open()
@@ -285,12 +285,16 @@ Kirigami.ApplicationWindow {
 
                         Controls.SpinBox {
                             objectName: "historyMaximumAgeDays"
-                            Kirigami.FormData.label: i18n("Maximum age:")
+                            Kirigami.FormData.label: i18n("Maximum age (days):")
                             from: 1
                             to: 3650
                             value: appController.history.maximumAgeDays
-                            textFromValue: function(value) { return i18np("1 day", "%1 days", value) }
-                            valueFromText: function(text) { return parseInt(text) || 1 }
+                            textFromValue: function(value, locale) {
+                                return Number(value).toLocaleString(locale, "f", 0)
+                            }
+                            valueFromText: function(text, locale) {
+                                return Number.fromLocaleString(locale, text)
+                            }
                             onValueModified: appController.history.maximumAgeDays = value
                             Accessible.name: i18n("Maximum history age in days")
                         }
@@ -314,7 +318,10 @@ Kirigami.ApplicationWindow {
                 }
 
                 delegate: Controls.Frame {
-                    required property var modelData
+                    id: historyEntry
+                    required property string entryId
+                    required property string createdText
+                    required property string text
                     width: historyList.width
                     implicitHeight: historyEntryLayout.implicitHeight + topPadding + bottomPadding
 
@@ -323,16 +330,18 @@ Kirigami.ApplicationWindow {
                         anchors.fill: parent
                         Controls.Label {
                             Layout.fillWidth: true
-                            text: modelData.createdText
+                            text: historyEntry.createdText
                             opacity: 0.7
                         }
                         Controls.Label {
+                            objectName: "historyEntryText"
                             Layout.fillWidth: true
-                            text: modelData.text
+                            text: historyEntry.text
                             wrapMode: Text.Wrap
                             maximumLineCount: 4
                             elide: Text.ElideRight
-                            Accessible.name: i18n("Dictation from %1", modelData.createdText)
+                            Accessible.name: historyEntry.text
+                            Accessible.description: i18n("Dictation from %1", historyEntry.createdText)
                         }
                         RowLayout {
                             Layout.alignment: Qt.AlignRight
@@ -340,14 +349,14 @@ Kirigami.ApplicationWindow {
                                 text: i18n("Copy")
                                 icon.name: "edit-copy"
                                 display: Controls.AbstractButton.TextBesideIcon
-                                onClicked: appController.copyText(modelData.text)
+                                onClicked: appController.copyText(historyEntry.text)
                             }
                             Controls.ToolButton {
                                 text: i18n("Delete")
                                 icon.name: "edit-delete"
                                 display: Controls.AbstractButton.TextBesideIcon
                                 onClicked: {
-                                    root.pendingHistoryId = modelData.id
+                                    root.pendingHistoryId = historyEntry.entryId
                                     deleteHistoryEntryDialog.open()
                                 }
                                 Accessible.description: i18n("Delete the dictation from encrypted history")

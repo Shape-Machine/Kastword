@@ -140,7 +140,8 @@ DictationHistory::DictationHistory(QObject *parent)
 DictationHistory::DictationHistory(QString storagePath,
                                    std::unique_ptr<HistoryKeyProvider> keyProvider, Clock clock,
                                    CommitFunction commit, QObject *parent)
-    : QObject(parent), m_storagePath(std::move(storagePath)), m_keyProvider(std::move(keyProvider)),
+    : QAbstractListModel(parent), m_storagePath(std::move(storagePath)),
+      m_keyProvider(std::move(keyProvider)),
       m_clock(clock ? std::move(clock) : [] { return QDateTime::currentDateTimeUtc(); }),
       m_commit(commit ? std::move(commit) : &DictationHistory::commitAtomically) {
   Q_ASSERT(m_keyProvider);
@@ -172,6 +173,41 @@ QVariantList DictationHistory::entries() const {
   return result;
 }
 
+int DictationHistory::rowCount(const QModelIndex &parent) const {
+  return parent.isValid() ? 0 : int(m_entries.size());
+}
+
+QVariant DictationHistory::data(const QModelIndex &index, int role) const {
+  if (!index.isValid() || index.row() < 0 || index.row() >= m_entries.size())
+    return {};
+  const Entry &entry = m_entries.at(index.row());
+  switch (role) {
+  case EntryIdRole:
+    return entry.id;
+  case CreatedAtRole:
+    return entry.createdAt;
+  case CreatedTextRole:
+    return QLocale().toString(entry.createdAt.toLocalTime(), QLocale::ShortFormat);
+  case TextRole:
+    return entry.text;
+  default:
+    return {};
+  }
+}
+
+QHash<int, QByteArray> DictationHistory::roleNames() const {
+  return {{EntryIdRole, "entryId"},
+          {CreatedAtRole, "createdAt"},
+          {CreatedTextRole, "createdText"},
+          {TextRole, "text"}};
+}
+
+void DictationHistory::replaceEntries(QList<Entry> entries) {
+  beginResetModel();
+  m_entries = std::move(entries);
+  endResetModel();
+}
+
 QVariantList DictationHistory::recentEntries() const {
   QVariantList result;
   for (qsizetype i = 0; i < qMin<qsizetype>(3, m_entries.size()); ++i)
@@ -191,6 +227,7 @@ void DictationHistory::enable() {
   if (!m_cryptoAvailable || m_busy)
     return;
   m_available = true;
+  m_resetRequired = false;
   m_busy = true;
   m_status = i18n("Opening KDE Wallet…");
   emit changed();
@@ -232,11 +269,13 @@ void DictationHistory::disable(bool deleteData) {
     resumePendingDeletion();
     return;
   }
-  m_entries.clear();
+  replaceEntries({});
   if (!m_key.isEmpty())
     sodium_memzero(m_key.data(), size_t(m_key.size()));
   m_key.clear();
   m_enabled = false;
+  m_available = true;
+  m_resetRequired = false;
   m_status = i18n("History is disabled. Existing encrypted history was kept.");
   emit settingsChanged();
   emit changed();
@@ -250,7 +289,7 @@ void DictationHistory::resumePendingDeletion() {
     fail(i18n("The encrypted history file could not be deleted."));
     return;
   }
-  m_entries.clear();
+  replaceEntries({});
   if (!m_key.isEmpty())
     sodium_memzero(m_key.data(), size_t(m_key.size()));
   m_key.clear();
@@ -275,6 +314,7 @@ void DictationHistory::removePendingKey() {
       return;
     }
     m_available = true;
+    m_resetRequired = false;
     m_status = i18n("Encrypted history was deleted.");
     emit changed();
   });
@@ -284,13 +324,12 @@ bool DictationHistory::add(const QString &text) {
   const QString trimmed = text.trimmed();
   if (!m_enabled || trimmed.isEmpty())
     return false;
-  const QList<Entry> previous = m_entries;
-  m_entries.prepend({QUuid::createUuid().toString(QUuid::WithoutBraces), m_clock(), trimmed});
-  prune();
-  if (!save()) {
-    m_entries = previous;
+  QList<Entry> entries = m_entries;
+  entries.prepend({QUuid::createUuid().toString(QUuid::WithoutBraces), m_clock(), trimmed});
+  pruneEntries(entries, m_maximumEntries, m_maximumAgeDays);
+  if (!saveEntries(entries))
     return false;
-  }
+  replaceEntries(std::move(entries));
   scheduleExpiry();
   emit changed();
   return true;
@@ -299,15 +338,13 @@ bool DictationHistory::add(const QString &text) {
 bool DictationHistory::removeEntry(const QString &id) {
   if (!m_enabled)
     return false;
-  const QList<Entry> previous = m_entries;
-  const qsizetype removed =
-      m_entries.removeIf([&id](const Entry &entry) { return entry.id == id; });
+  QList<Entry> entries = m_entries;
+  const qsizetype removed = entries.removeIf([&id](const Entry &entry) { return entry.id == id; });
   if (removed == 0)
     return false;
-  if (!save()) {
-    m_entries = previous;
+  if (!saveEntries(entries))
     return false;
-  }
+  replaceEntries(std::move(entries));
   scheduleExpiry();
   emit changed();
   return true;
@@ -316,12 +353,9 @@ bool DictationHistory::removeEntry(const QString &id) {
 bool DictationHistory::clear() {
   if (!m_enabled)
     return false;
-  const QList<Entry> previous = m_entries;
-  m_entries.clear();
-  if (!save()) {
-    m_entries = previous;
+  if (!saveEntries({}))
     return false;
-  }
+  replaceEntries({});
   scheduleExpiry();
   emit changed();
   return true;
@@ -333,9 +367,11 @@ void DictationHistory::setMaximumEntries(int value) {
     return;
   if (m_enabled) {
     QList<Entry> entries = m_entries;
-    if (pruneEntries(entries, value, m_maximumAgeDays) && !saveEntries(entries))
-      return;
-    m_entries = std::move(entries);
+    if (pruneEntries(entries, value, m_maximumAgeDays)) {
+      if (!saveEntries(entries))
+        return;
+      replaceEntries(std::move(entries));
+    }
   }
   m_maximumEntries = value;
   scheduleExpiry();
@@ -349,9 +385,11 @@ void DictationHistory::setMaximumAgeDays(int value) {
     return;
   if (m_enabled) {
     QList<Entry> entries = m_entries;
-    if (pruneEntries(entries, m_maximumEntries, value) && !saveEntries(entries))
-      return;
-    m_entries = std::move(entries);
+    if (pruneEntries(entries, m_maximumEntries, value)) {
+      if (!saveEntries(entries))
+        return;
+      replaceEntries(std::move(entries));
+    }
   }
   m_maximumAgeDays = value;
   scheduleExpiry();
@@ -383,13 +421,9 @@ void DictationHistory::expireEntries() {
     m_expiryTimer.start(60000);
     return;
   }
-  m_entries = std::move(entries);
+  replaceEntries(std::move(entries));
   emit changed();
   scheduleExpiry();
-}
-
-bool DictationHistory::prune() {
-  return pruneEntries(m_entries, m_maximumEntries, m_maximumAgeDays);
 }
 
 bool DictationHistory::pruneEntries(QList<Entry> &entries, int maximumEntries,
@@ -423,7 +457,7 @@ bool DictationHistory::load() {
   const qsizetype overhead = magic.size() + crypto_aead_xchacha20poly1305_ietf_NPUBBYTES +
                              crypto_aead_xchacha20poly1305_ietf_ABYTES;
   if (stored.size() < overhead || !stored.startsWith(magic)) {
-    fail(i18n("The encrypted history file is damaged or unsupported."));
+    fail(i18n("The encrypted history file is damaged or unsupported."), true);
     return false;
   }
   const QByteArray nonce = stored.mid(magic.size(), crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
@@ -438,7 +472,7 @@ bool DictationHistory::load() {
           static_cast<unsigned long long>(magic.size()),
           reinterpret_cast<const unsigned char *>(nonce.constData()),
           reinterpret_cast<const unsigned char *>(m_key.constData())) != 0) {
-    fail(i18n("The encrypted history could not be authenticated or decrypted."));
+    fail(i18n("The encrypted history could not be authenticated or decrypted."), true);
     return false;
   }
   plain.resize(qsizetype(plainLength));
@@ -448,12 +482,12 @@ bool DictationHistory::load() {
   const QJsonObject root = document.object();
   if (parseError.error != QJsonParseError::NoError ||
       root.value(QStringLiteral("version")).toInt() != 1) {
-    fail(i18n("The decrypted history format is damaged or unsupported."));
+    fail(i18n("The decrypted history format is damaged or unsupported."), true);
     return false;
   }
   const QJsonArray storedEntries = root.value(QStringLiteral("entries")).toArray();
   if (storedEntries.size() > 10000) {
-    fail(i18n("The decrypted history contains too many entries."));
+    fail(i18n("The decrypted history contains too many entries."), true);
     return false;
   }
   QList<Entry> loadedEntries;
@@ -464,7 +498,7 @@ bool DictationHistory::load() {
     const QString id = object.value(QStringLiteral("id")).toString();
     const QString text = object.value(QStringLiteral("text")).toString();
     if (!createdAt.isValid() || id.isEmpty() || text.isEmpty()) {
-      fail(i18n("The decrypted history contains an invalid entry."));
+      fail(i18n("The decrypted history contains an invalid entry."), true);
       return false;
     }
     loadedEntries.append({id, createdAt, text});
@@ -475,11 +509,9 @@ bool DictationHistory::load() {
   if (pruneEntries(loadedEntries, m_maximumEntries, m_maximumAgeDays) &&
       !saveEntries(loadedEntries))
     return false;
-  m_entries = std::move(loadedEntries);
+  replaceEntries(std::move(loadedEntries));
   return true;
 }
-
-bool DictationHistory::save() { return saveEntries(m_entries); }
 
 bool DictationHistory::saveEntries(const QList<Entry> &historyEntries) {
   if (!m_enabled || m_key.size() != crypto_aead_xchacha20poly1305_ietf_KEYBYTES)
@@ -518,6 +550,7 @@ bool DictationHistory::saveEntries(const QList<Entry> &historyEntries) {
     return false;
   }
   m_available = true;
+  m_resetRequired = false;
   m_status = i18n("History is encrypted locally. The key is stored in KDE Wallet.");
   return true;
 }
@@ -543,8 +576,9 @@ bool DictationHistory::commitAtomically(const QString &path, const QByteArray &d
   return true;
 }
 
-void DictationHistory::fail(const QString &message) {
+void DictationHistory::fail(const QString &message, bool resetRequired) {
   m_available = false;
+  m_resetRequired = resetRequired;
   m_status = message;
   emit changed();
 }

@@ -35,6 +35,8 @@ TestCase {
         appController.setAudioInputMonitoringError("")
         appController.resetMonitoringRetryCount()
         appController.audioInputId = ""
+        appController.history.setAvailable(true)
+        appController.history.setResetRequired(false)
         appController.history.setEntryCount(2)
         const loader = createTemporaryObject(applicationComponent, testCase)
         verify(loader)
@@ -449,6 +451,34 @@ TestCase {
         compare(count.Accessible.name, "Maximum history entries")
         compare(age.Accessible.name, "Maximum history age in days")
         compare(clear.visible, true)
+        const list = findChild(page, "historyList")
+        list.positionViewAtIndex(0, ListView.Beginning)
+        tryVerify(function() {
+            return findChild(page, "historyEntryText") !== null
+        })
+        const entryText = findChild(page, "historyEntryText")
+        verify(entryText)
+        compare(entryText.Accessible.name, "Private dictation 0")
+        verify(entryText.Accessible.description.indexOf("8 Aug 2026") >= 0)
+
+        const arabicLocale = Qt.locale("ar_EG")
+        const localizedAge = age.textFromValue(123, arabicLocale)
+        compare(age.valueFromText(localizedAge, arabicLocale), 123)
+    }
+
+    function test_historyResetIsLimitedToUnreadableData() {
+        applicationWindow.currentView = 1
+        const reset = findChild(historyPage(), "resetHistoryButton")
+        verify(reset)
+        compare(reset.visible, false)
+
+        appController.history.setAvailable(false)
+        waitForRendering(historyPage())
+        compare(reset.visible, false)
+
+        appController.history.setResetRequired(true)
+        waitForRendering(historyPage())
+        compare(reset.visible, true)
     }
 
     function test_historyVirtualizesLargeEntryCollections() {
