@@ -64,11 +64,13 @@ public:
     m_statusNotification.clear();
   }
 
-  void revealFile(const QString &path) override {
+  void revealFile(const QString &path, OpenCallback callback) override {
     const QFileInfo file(path);
     const QUrl parentUrl = QUrl::fromLocalFile(file.absolutePath());
     if (!file.exists()) {
-      QDesktopServices::openUrl(parentUrl);
+      const bool opened = QDesktopServices::openUrl(parentUrl);
+      if (callback)
+        callback(opened);
       return;
     }
     const QUrl url = QUrl::fromLocalFile(path);
@@ -81,19 +83,26 @@ public:
           new QDBusPendingCallWatcher(fileManager.asyncCall(QStringLiteral("ShowItems"),
                                                             QStringList{url.toString()}, QString()),
                                       QGuiApplication::instance());
-      QObject::connect(watcher, &QDBusPendingCallWatcher::finished, watcher, [watcher, parentUrl] {
-        const QDBusPendingReply<> reply = *watcher;
-        if (reply.isError())
-          QDesktopServices::openUrl(parentUrl);
-        watcher->deleteLater();
-      });
+      QObject::connect(watcher, &QDBusPendingCallWatcher::finished, watcher,
+                       [watcher, parentUrl, callback = std::move(callback)] {
+                         const QDBusPendingReply<> reply = *watcher;
+                         const bool opened =
+                             !reply.isError() || QDesktopServices::openUrl(parentUrl);
+                         if (callback)
+                           callback(opened);
+                         watcher->deleteLater();
+                       });
       return;
     }
-    QDesktopServices::openUrl(parentUrl);
+    const bool opened = QDesktopServices::openUrl(parentUrl);
+    if (callback)
+      callback(opened);
   }
 
-  void openDirectory(const QString &path) override {
-    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+  void openDirectory(const QString &path, OpenCallback callback) override {
+    const bool opened = QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    if (callback)
+      callback(opened);
   }
 
 private:

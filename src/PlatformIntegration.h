@@ -14,6 +14,7 @@ class KNotification;
 class DesktopIntegration {
 public:
   enum class NotificationKind { Information, Error };
+  using OpenCallback = std::function<void(bool)>;
 
   virtual ~DesktopIntegration() = default;
   virtual void configureShortcut(QAction *action, const QList<QKeySequence> &shortcuts) = 0;
@@ -26,8 +27,8 @@ public:
   virtual void showNotification(NotificationKind kind, const QString &title, const QString &text,
                                 const QString &iconName = {}, bool persistent = false) = 0;
   virtual void closeStatusNotification() = 0;
-  virtual void revealFile(const QString &path) = 0;
-  virtual void openDirectory(const QString &path) = 0;
+  virtual void revealFile(const QString &path, OpenCallback callback = {}) = 0;
+  virtual void openDirectory(const QString &path, OpenCallback callback = {}) = 0;
 };
 
 std::unique_ptr<DesktopIntegration> createDesktopIntegration();

@@ -274,6 +274,18 @@ msgstr "xxThe secure history deletion marker could not be removed.xx"
 msgid "Encrypted history was deleted."
 msgstr "xxEncrypted history was deleted.xx"
 
+#: src/AppController.cpp:453
+msgid "The history storage location could not be opened."
+msgstr "xxThe history storage location could not be opened.xx"
+
+#: src/AppController.cpp:463
+msgid "The model storage folder could not be opened."
+msgstr "xxThe model storage folder could not be opened.xx"
+
+#: src/AppController.cpp:458 src/AppController.cpp:472
+msgid "Could not open storage location"
+msgstr "xxCould not open storage locationxx"
+
 #: src/DictationHistory.cpp:411
 msgid "The encrypted history file could not be opened."
 msgstr "xxThe encrypted history file could not be opened.xx"

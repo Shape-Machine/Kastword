@@ -445,13 +445,31 @@ void AppController::enableHistory() { m_history->enable(); }
 void AppController::disableHistory(bool deleteData) { m_history->disable(deleteData); }
 
 void AppController::revealHistoryStorage() {
-  if (m_desktopServices)
-    m_desktopServices->revealFile(m_history->storagePath());
+  if (!m_desktopServices)
+    return;
+  const QPointer<AppController> guard(this);
+  m_desktopServices->revealFile(m_history->storagePath(), [guard](bool opened) {
+    if (!guard || opened)
+      return;
+    const QString error = i18n("The history storage location could not be opened.");
+    guard->setStatus(error);
+    guard->m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
+                                               i18n("Could not open storage location"), error);
+  });
 }
 
 void AppController::openModelStorage() {
-  if (m_desktopServices)
-    m_desktopServices->openDirectory(m_modelManager->storagePath());
+  if (!m_desktopServices)
+    return;
+  const QPointer<AppController> guard(this);
+  m_desktopServices->openDirectory(m_modelManager->storagePath(), [guard](bool opened) {
+    if (!guard || opened)
+      return;
+    const QString error = i18n("The model storage folder could not be opened.");
+    guard->setStatus(error);
+    guard->m_desktopServices->showNotification(DesktopIntegration::NotificationKind::Error,
+                                               i18n("Could not open storage location"), error);
+  });
 }
 
 void AppController::toggle() {

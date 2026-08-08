@@ -211,7 +211,7 @@ if(BUILD_TESTING)
         src/DictationHistory.h)
     target_include_directories(kastword_history_test PRIVATE src)
     target_link_libraries(kastword_history_test PRIVATE
-        Qt6::Core Qt6::Test KF6::I18n KF6::Wallet PkgConfig::Sodium)
+        Qt6::Concurrent Qt6::Core Qt6::Test KF6::I18n KF6::Wallet PkgConfig::Sodium)
     kastword_enable_coverage(kastword_history_test)
     kastword_enable_sanitizers(kastword_history_test)
     add_test(NAME history COMMAND kastword_history_test)
