@@ -10,6 +10,12 @@ SPDX-FileCopyrightText = "2026 Sri Rang"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = "screenshots/*.png"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Sri Rang"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
 path = ".codex/skills/dev-impl/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Sri Rang"
