@@ -110,8 +110,9 @@ kastword_enable_sanitizers(kastword)
 
 add_executable(kastword_screenshot_generator EXCLUDE_FROM_ALL
     tools/ScreenshotGenerator.cpp
+    tools/ScreenshotPlatform.h
     tests/FakeAppController.h)
-target_include_directories(kastword_screenshot_generator PRIVATE tests)
+target_include_directories(kastword_screenshot_generator PRIVATE tests tools)
 target_link_libraries(kastword_screenshot_generator PRIVATE
     Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Widgets
     KF6::I18n KF6::I18nQml KF6::Kirigami)
@@ -239,6 +240,13 @@ if(BUILD_TESTING)
     add_test(NAME screenshot-rejects-headless
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/check-screenshot-headless.sh
             $<TARGET_FILE:kastword_screenshot_generator>)
+
+    add_executable(kastword_screenshot_platform_test tests/ScreenshotPlatformTest.cpp)
+    target_include_directories(kastword_screenshot_platform_test PRIVATE tools)
+    target_link_libraries(kastword_screenshot_platform_test PRIVATE Qt6::Core Qt6::Test)
+    kastword_enable_coverage(kastword_screenshot_platform_test)
+    kastword_enable_sanitizers(kastword_screenshot_platform_test)
+    add_test(NAME screenshot-platform COMMAND kastword_screenshot_platform_test)
 
     add_test(NAME translation-catalog
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/check-translations.sh)

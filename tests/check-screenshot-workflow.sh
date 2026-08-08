@@ -36,11 +36,39 @@ do
 done
 test "$(find "$fixture_root/screenshots" -mindepth 1 -maxdepth 1 | wc -l)" -eq 4
 
+serial_generator="$fixture_root/serial-generator"
+printf '%s\n' \
+    '#!/bin/sh' \
+    'if ! mkdir "$SERIAL_ROOT/active"; then exit 1; fi' \
+    'trap '\''rmdir "$SERIAL_ROOT/active"'\'' EXIT HUP INT TERM' \
+    'cmake -E touch "$SERIAL_ROOT/entered"' \
+    'sleep 0.2' \
+    'for file in 01-offline-dictation.png 02-speech-models.png 03-audio-input.png 04-settings.png; do' \
+    '    printf serialized > "$1/$file"' \
+    'done' > "$serial_generator"
+chmod +x "$serial_generator"
+SERIAL_ROOT="$fixture_root" "$fixture_capture" "$serial_generator" &
+first_capture=$!
+attempt=0
+while [ ! -e "$fixture_root/entered" ] && [ "$attempt" -lt 100 ]; do
+    sleep 0.01
+    attempt=$((attempt + 1))
+done
+test -e "$fixture_root/entered"
+SERIAL_ROOT="$fixture_root" "$fixture_capture" "$serial_generator" &
+second_capture=$!
+wait "$first_capture"
+wait "$second_capture"
+test "$(find "$fixture_root/screenshots" -mindepth 1 -maxdepth 1 | wc -l)" -eq 4
+
 cmake -E touch "$fixture_root/screenshots/stale.png"
 "$fixture_capture" "$fixture_generator"
 test ! -e "$fixture_root/screenshots/stale.png"
 
 before=$(sha256sum "$fixture_root/screenshots"/*.png)
+stale_backup="$fixture_root/.screenshots-backup.$$"
+cmake -E make_directory "$stale_backup"
+cmake -E touch "$stale_backup/sentinel"
 failure_generator="$fixture_root/failure-generator"
 printf '%s\n' '#!/bin/sh' 'cmake -E touch "$1/partial.png"' 'exit 1' > "$failure_generator"
 chmod +x "$failure_generator"
@@ -51,6 +79,7 @@ fi
 after=$(sha256sum "$fixture_root/screenshots"/*.png)
 test "$before" = "$after"
 test ! -e "$fixture_root/screenshots/partial.png"
+test -f "$stale_backup/sentinel"
 
 real_mv=$(command -v mv)
 cmake -E make_directory "$fixture_root/fake-bin"
@@ -71,8 +100,7 @@ if PATH="$fixture_root/fake-bin:$PATH" REAL_MV="$real_mv" \
 fi
 after=$(sha256sum "$fixture_root/screenshots"/*.png)
 test "$before" = "$after"
-test ! -e "$fixture_root/.screenshots-backup."*
-test ! -e "$fixture_root/.screenshots-stage."*
+test ! -e "$fixture_root/.screenshots-transaction."*
 
 cmake -E remove_directory "$fixture_root/screenshots"
 outside_directory="$fixture_root/outside"

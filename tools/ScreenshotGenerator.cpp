@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "FakeAppController.h"
+#include "ScreenshotPlatform.h"
 
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
@@ -70,7 +71,7 @@ int main(int argc, char **argv) {
   KLocalizedString::setApplicationDomain("kastword");
 
   const QString platformName = QApplication::platformName();
-  if (platformName == QStringLiteral("offscreen") || platformName == QStringLiteral("minimal")) {
+  if (!isNativeDesktopPlatform(platformName)) {
     std::fprintf(stderr,
                  "Screenshot capture requires an active graphical Plasma session; the Qt platform "
                  "is '%s'. Unset QT_QPA_PLATFORM and try again.\n",
