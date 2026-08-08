@@ -4,17 +4,18 @@
 #include "DictationHistory.h"
 
 #include <KLocalizedString>
-#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMutex>
 #include <QSaveFile>
 #include <QSemaphore>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QThread>
 #include <atomic>
 #include <sodium.h>
 
@@ -97,6 +98,31 @@ void writeEncryptedHistory(const QString &path, const QByteArray &key, const QJs
   QVERIFY(file.open(QIODevice::WriteOnly));
   QCOMPARE(file.write(magic + nonce + cipher), magic.size() + nonce.size() + cipher.size());
 }
+
+QStringList decryptHistoryTexts(const QByteArray &stored, const QByteArray &key) {
+  const QByteArray magic = QByteArrayLiteral("KWHIST01");
+  const QByteArray nonce = stored.mid(magic.size(), crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
+  const QByteArray cipher = stored.mid(magic.size() + nonce.size());
+  QByteArray plain(cipher.size() - crypto_aead_xchacha20poly1305_ietf_ABYTES, Qt::Uninitialized);
+  unsigned long long plainLength = 0;
+  if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+          reinterpret_cast<unsigned char *>(plain.data()), &plainLength, nullptr,
+          reinterpret_cast<const unsigned char *>(cipher.constData()),
+          static_cast<unsigned long long>(cipher.size()),
+          reinterpret_cast<const unsigned char *>(magic.constData()),
+          static_cast<unsigned long long>(magic.size()),
+          reinterpret_cast<const unsigned char *>(nonce.constData()),
+          reinterpret_cast<const unsigned char *>(key.constData())) != 0)
+    return {};
+  plain.resize(qsizetype(plainLength));
+  const QJsonArray entries =
+      QJsonDocument::fromJson(plain).object().value(QStringLiteral("entries")).toArray();
+  sodium_memzero(plain.data(), size_t(plain.size()));
+  QStringList texts;
+  for (const QJsonValue &entry : entries)
+    texts.append(entry.toObject().value(QStringLiteral("text")).toString());
+  return texts;
+}
 } // namespace
 
 class DictationHistoryTest final : public QObject {
@@ -139,10 +165,14 @@ private slots:
     QSemaphore saveStarted;
     QSemaphore allowSave;
     std::atomic_int saves = 0;
+    std::atomic_bool ranOffThread = false;
+    const Qt::HANDLE testThread = QThread::currentThreadId();
     DictationHistory history(
         directory.filePath(QStringLiteral("history.enc")), provider(), {},
-        [&saveStarted, &allowSave, &saves](const QString &, const QByteArray &, QString *error) {
+        [&saveStarted, &allowSave, &saves, &ranOffThread,
+         testThread](const QString &, const QByteArray &, QString *error) {
           ++saves;
+          ranOffThread = QThread::currentThreadId() != testThread;
           saveStarted.release();
           if (!allowSave.tryAcquire(1, 2000)) {
             *error = QStringLiteral("Timed out waiting for test release");
@@ -152,12 +182,11 @@ private slots:
         },
         nullptr, true);
     history.enable();
+    QTRY_VERIFY_WITH_TIMEOUT(history.enabled(), 1000);
 
-    QElapsedTimer elapsed;
-    elapsed.start();
     QVERIFY(history.add(QStringLiteral("first")));
-    QVERIFY(elapsed.elapsed() < 500);
     QVERIFY(saveStarted.tryAcquire(1, 1000));
+    QVERIFY(ranOffThread.load());
     QVERIFY(history.busy());
     QVERIFY(history.add(QStringLiteral("second")));
 
@@ -182,6 +211,7 @@ private slots:
         },
         nullptr, true);
     history.enable();
+    QTRY_VERIFY_WITH_TIMEOUT(history.enabled(), 1000);
 
     QVERIFY(history.add(QStringLiteral("not persisted")));
     QTRY_VERIFY_WITH_TIMEOUT(!history.busy(), 1000);
@@ -190,22 +220,115 @@ private slots:
     QCOMPARE(history.status(), QStringLiteral("Injected asynchronous failure"));
   }
 
+  void publishesDestructiveChangesOnlyAfterCommit() {
+    QTemporaryDir directory;
+    QSemaphore saveStarted;
+    QSemaphore allowSave;
+    DictationHistory history(
+        directory.filePath(QStringLiteral("history.enc")), provider(), {},
+        [&saveStarted, &allowSave](const QString &, const QByteArray &, QString *error) {
+          saveStarted.release();
+          if (!allowSave.tryAcquire(1, 2000)) {
+            *error = QStringLiteral("Timed out waiting for test release");
+            return false;
+          }
+          return true;
+        },
+        nullptr, true);
+    history.enable();
+    QTRY_VERIFY_WITH_TIMEOUT(history.enabled(), 1000);
+    QVERIFY(history.add(QStringLiteral("persisted")));
+    QVERIFY(saveStarted.tryAcquire(1, 1000));
+    allowSave.release();
+    QTRY_VERIFY_WITH_TIMEOUT(!history.busy(), 1000);
+    QCOMPARE(history.entries().size(), 1);
+
+    QVERIFY(history.clear());
+    QVERIFY(saveStarted.tryAcquire(1, 1000));
+    QCOMPARE(history.entries().size(), 1);
+    allowSave.release();
+    QTRY_VERIFY_WITH_TIMEOUT(!history.busy(), 1000);
+    QVERIFY(history.entries().isEmpty());
+  }
+
+  void rollsBackRetentionSettingsWithFailedSnapshot() {
+    QTemporaryDir directory;
+    std::atomic_bool rejectWrites = false;
+    DictationHistory history(
+        directory.filePath(QStringLiteral("history.enc")), provider(), {},
+        [&rejectWrites](const QString &, const QByteArray &, QString *error) {
+          if (rejectWrites) {
+            *error = QStringLiteral("Injected retention failure");
+            return false;
+          }
+          return true;
+        },
+        nullptr, true);
+    history.enable();
+    QTRY_VERIFY_WITH_TIMEOUT(history.enabled(), 1000);
+    QVERIFY(history.add(QStringLiteral("first")));
+    QVERIFY(history.add(QStringLiteral("second")));
+    QTRY_VERIFY_WITH_TIMEOUT(!history.busy(), 1000);
+    QCOMPARE(history.entries().size(), 2);
+
+    rejectWrites = true;
+    history.setMaximumEntries(1);
+    QCOMPARE(history.maximumEntries(), 100);
+    QCOMPARE(history.entries().size(), 2);
+    QTRY_VERIFY_WITH_TIMEOUT(!history.busy(), 1000);
+    QCOMPARE(history.maximumEntries(), 100);
+    QCOMPARE(history.entries().size(), 2);
+  }
+
+  void loadsAndPrunesEncryptedHistoryOffTheUiThread() {
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("history.enc"));
+    const QByteArray key(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'l');
+    writeEncryptedHistory(
+        path, key,
+        {QJsonObject{{QStringLiteral("id"), QStringLiteral("expired")},
+                     {QStringLiteral("createdAt"), QStringLiteral("2026-01-01T12:00:00.000Z")},
+                     {QStringLiteral("text"), QStringLiteral("expired text")}}});
+    const Qt::HANDLE testThread = QThread::currentThreadId();
+    std::atomic_bool committedOffThread = false;
+    DictationHistory history(
+        path, provider(key),
+        [] { return QDateTime(QDate(2026, 8, 8), QTime(12, 0), QTimeZone::UTC); },
+        [&committedOffThread, testThread](const QString &, const QByteArray &, QString *) {
+          committedOffThread = QThread::currentThreadId() != testThread;
+          return true;
+        },
+        nullptr, true);
+
+    history.enable();
+    QVERIFY(history.busy());
+    QTRY_VERIFY_WITH_TIMEOUT(history.enabled(), 1000);
+    QVERIFY(committedOffThread.load());
+    QVERIFY(history.entries().isEmpty());
+  }
+
   void flushesLatestSnapshotDuringShutdown() {
     QTemporaryDir directory;
-    std::atomic_int saves = 0;
+    const QByteArray key(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'z');
+    QByteArray finalPayload;
+    QMutex payloadMutex;
     {
       DictationHistory history(
-          directory.filePath(QStringLiteral("history.enc")), provider(), {},
-          [&saves](const QString &, const QByteArray &, QString *) {
-            ++saves;
+          directory.filePath(QStringLiteral("history.enc")), provider(key), {},
+          [&finalPayload, &payloadMutex](const QString &, const QByteArray &data, QString *) {
+            QMutexLocker locker(&payloadMutex);
+            finalPayload = data;
             return true;
           },
           nullptr, true);
       history.enable();
+      QTRY_VERIFY_WITH_TIMEOUT(history.enabled(), 1000);
       QVERIFY(history.add(QStringLiteral("first")));
       QVERIFY(history.add(QStringLiteral("second")));
     }
-    QVERIFY(saves.load() >= 2);
+    QMutexLocker locker(&payloadMutex);
+    QCOMPARE(decryptHistoryTexts(finalPayload, key),
+             QStringList({QStringLiteral("second"), QStringLiteral("first")}));
   }
 
   void encryptsAndReloadsWithoutPlaintext() {
