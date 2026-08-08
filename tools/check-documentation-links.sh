@@ -10,15 +10,18 @@ if [ "$#" -ne 1 ] || [ ! -d "$1" ]; then
 fi
 
 documentation_root=$(CDPATH= cd -- "$1" && pwd -P)
+documents=$(mktemp)
 targets=$(mktemp)
-trap 'cmake -E rm -f "$targets"' EXIT HUP INT TERM
+trap 'cmake -E rm -f "$documents" "$targets"' EXIT HUP INT TERM
 
-{
-    test -f "$documentation_root/README.md" && printf '%s\n' "$documentation_root/README.md"
-    if [ -d "$documentation_root/docs" ]; then
-        find "$documentation_root/docs" -type f -name '*.md' -print
-    fi
-} | while IFS= read -r document; do
+if [ -f "$documentation_root/README.md" ]; then
+    printf '%s\n' "$documentation_root/README.md" > "$documents"
+fi
+if [ -d "$documentation_root/docs" ]; then
+    find "$documentation_root/docs" -type f -name '*.md' -print >> "$documents"
+fi
+
+while IFS= read -r document; do
     awk -v document="$document" '
         { text = text " " $0 }
         END {
@@ -34,7 +37,7 @@ trap 'cmake -E rm -f "$targets"' EXIT HUP INT TERM
             }
         }
     ' "$document"
-done > "$targets"
+done < "$documents" > "$targets"
 
 while IFS="	" read -r document destination; do
     case "$destination" in
