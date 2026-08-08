@@ -141,6 +141,17 @@ public:
     m_available = available;
     emit changed();
   }
+  Q_INVOKABLE void setEntryCount(int count) {
+    m_entries.clear();
+    m_entries.reserve(count);
+    for (int i = 0; i < count; ++i) {
+      m_entries.append(
+          QVariantMap{{QStringLiteral("id"), QString::number(i)},
+                      {QStringLiteral("createdText"), QStringLiteral("8 Aug 2026, 12:00")},
+                      {QStringLiteral("text"), QStringLiteral("Private dictation %1").arg(i)}});
+    }
+    emit changed();
+  }
   Q_INVOKABLE bool removeEntry(const QString &id) {
     m_entries.removeIf([&id](const QVariant &entry) {
       return entry.toMap().value(QStringLiteral("id")).toString() == id;

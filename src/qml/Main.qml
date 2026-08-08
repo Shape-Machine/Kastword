@@ -197,134 +197,142 @@ Kirigami.ApplicationWindow {
             objectName: "historyPage"
             title: i18n("History")
 
-            ColumnLayout {
-                width: parent.width
-                spacing: Kirigami.Units.largeSpacing
+            ListView {
+                id: historyList
+                objectName: "historyList"
+                model: appController.history.enabled ? appController.history.entries : []
+                spacing: Kirigami.Units.smallSpacing
+                clip: true
+                reuseItems: true
 
-                Controls.Switch {
-                    objectName: "historyEnabledSwitch"
-                    Layout.fillWidth: true
-                    text: i18n("Save encrypted dictation history")
-                    checked: appController.history.enabled
-                    onClicked: {
-                        if (appController.history.enabled)
-                            disableHistoryDialog.open()
-                        else
-                            appController.enableHistory()
-                    }
-                    Accessible.description: i18n("Store transcription text locally using authenticated encryption and a key protected by KDE Wallet")
-                }
+                header: ColumnLayout {
+                    width: historyList.width
+                    spacing: Kirigami.Units.largeSpacing
 
-                Kirigami.InlineMessage {
-                    objectName: "historyStatus"
-                    Layout.fillWidth: true
-                    visible: appController.history.status.length > 0
-                    type: appController.history.available ? Kirigami.MessageType.Information
-                                                          : Kirigami.MessageType.Error
-                    text: appController.history.status
-                }
-
-                Controls.Button {
-                    objectName: "resetHistoryButton"
-                    visible: !appController.history.available
-                    text: i18n("Reset encrypted history")
-                    icon.name: "edit-clear-history"
-                    onClicked: resetHistoryDialog.open()
-                    Accessible.description: i18n("Delete an unreadable history file and its KDE Wallet key")
-                }
-
-                Kirigami.FormLayout {
-                    Layout.fillWidth: true
-                    enabled: appController.history.enabled
-
-                    Controls.SpinBox {
-                        objectName: "historyMaximumEntries"
-                        Kirigami.FormData.label: i18n("Maximum entries:")
-                        from: 1
-                        to: 10000
-                        value: appController.history.maximumEntries
-                        onValueModified: appController.history.maximumEntries = value
-                        Accessible.name: i18n("Maximum history entries")
-                    }
-
-                    Controls.SpinBox {
-                        objectName: "historyMaximumAgeDays"
-                        Kirigami.FormData.label: i18n("Maximum age:")
-                        from: 1
-                        to: 3650
-                        value: appController.history.maximumAgeDays
-                        textFromValue: function(value) { return i18np("1 day", "%1 days", value) }
-                        valueFromText: function(text) { return parseInt(text) || 1 }
-                        onValueModified: appController.history.maximumAgeDays = value
-                        Accessible.name: i18n("Maximum history age in days")
-                    }
-                }
-
-                Controls.Label {
-                    Layout.fillWidth: true
-                    visible: appController.history.enabled
-                    wrapMode: Text.WrapAnywhere
-                    opacity: 0.7
-                    text: i18n("Encrypted storage: %1", appController.history.storagePath)
-                }
-
-                Controls.Label {
-                    Layout.fillWidth: true
-                    visible: appController.history.enabled && appController.history.entries.length === 0
-                    horizontalAlignment: Text.AlignHCenter
-                    text: i18n("No saved dictations yet")
-                    opacity: 0.7
-                }
-
-                Repeater {
-                    model: appController.history.enabled ? appController.history.entries : []
-
-                    Controls.Frame {
-                        required property var modelData
+                    Controls.Switch {
+                        objectName: "historyEnabledSwitch"
                         Layout.fillWidth: true
+                        text: i18n("Save encrypted dictation history")
+                        checked: appController.history.enabled
+                        onClicked: {
+                            if (appController.history.enabled)
+                                disableHistoryDialog.open()
+                            else
+                                appController.enableHistory()
+                        }
+                        Accessible.description: i18n("Store transcription text locally using authenticated encryption and a key protected by KDE Wallet")
+                    }
 
-                        ColumnLayout {
-                            anchors.fill: parent
-                            Controls.Label {
-                                Layout.fillWidth: true
-                                text: modelData.createdText
-                                opacity: 0.7
+                    Kirigami.InlineMessage {
+                        objectName: "historyStatus"
+                        Layout.fillWidth: true
+                        visible: appController.history.status.length > 0
+                        type: appController.history.available ? Kirigami.MessageType.Information
+                                                              : Kirigami.MessageType.Error
+                        text: appController.history.status
+                    }
+
+                    Controls.Button {
+                        objectName: "resetHistoryButton"
+                        visible: !appController.history.available
+                        text: i18n("Reset encrypted history")
+                        icon.name: "edit-clear-history"
+                        onClicked: resetHistoryDialog.open()
+                        Accessible.description: i18n("Delete an unreadable history file and its KDE Wallet key")
+                    }
+
+                    Kirigami.FormLayout {
+                        Layout.fillWidth: true
+                        enabled: appController.history.enabled
+
+                        Controls.SpinBox {
+                            objectName: "historyMaximumEntries"
+                            Kirigami.FormData.label: i18n("Maximum entries:")
+                            from: 1
+                            to: 10000
+                            value: appController.history.maximumEntries
+                            onValueModified: appController.history.maximumEntries = value
+                            Accessible.name: i18n("Maximum history entries")
+                        }
+
+                        Controls.SpinBox {
+                            objectName: "historyMaximumAgeDays"
+                            Kirigami.FormData.label: i18n("Maximum age:")
+                            from: 1
+                            to: 3650
+                            value: appController.history.maximumAgeDays
+                            textFromValue: function(value) { return i18np("1 day", "%1 days", value) }
+                            valueFromText: function(text) { return parseInt(text) || 1 }
+                            onValueModified: appController.history.maximumAgeDays = value
+                            Accessible.name: i18n("Maximum history age in days")
+                        }
+                    }
+
+                    Controls.Label {
+                        Layout.fillWidth: true
+                        visible: appController.history.enabled
+                        wrapMode: Text.WrapAnywhere
+                        opacity: 0.7
+                        text: i18n("Encrypted storage: %1", appController.history.storagePath)
+                    }
+
+                    Controls.Label {
+                        Layout.fillWidth: true
+                        visible: appController.history.enabled && historyList.count === 0
+                        horizontalAlignment: Text.AlignHCenter
+                        text: i18n("No saved dictations yet")
+                        opacity: 0.7
+                    }
+                }
+
+                delegate: Controls.Frame {
+                    required property var modelData
+                    width: historyList.width
+                    implicitHeight: historyEntryLayout.implicitHeight + topPadding + bottomPadding
+
+                    ColumnLayout {
+                        id: historyEntryLayout
+                        anchors.fill: parent
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            text: modelData.createdText
+                            opacity: 0.7
+                        }
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            text: modelData.text
+                            wrapMode: Text.Wrap
+                            maximumLineCount: 4
+                            elide: Text.ElideRight
+                            Accessible.name: i18n("Dictation from %1", modelData.createdText)
+                        }
+                        RowLayout {
+                            Layout.alignment: Qt.AlignRight
+                            Controls.ToolButton {
+                                text: i18n("Copy")
+                                icon.name: "edit-copy"
+                                display: Controls.AbstractButton.TextBesideIcon
+                                onClicked: appController.copyText(modelData.text)
                             }
-                            Controls.Label {
-                                Layout.fillWidth: true
-                                text: modelData.text
-                                wrapMode: Text.Wrap
-                                maximumLineCount: 4
-                                elide: Text.ElideRight
-                                Accessible.name: i18n("Dictation from %1", modelData.createdText)
-                            }
-                            RowLayout {
-                                Layout.alignment: Qt.AlignRight
-                                Controls.ToolButton {
-                                    text: i18n("Copy")
-                                    icon.name: "edit-copy"
-                                    display: Controls.AbstractButton.TextBesideIcon
-                                    onClicked: appController.copyText(modelData.text)
+                            Controls.ToolButton {
+                                text: i18n("Delete")
+                                icon.name: "edit-delete"
+                                display: Controls.AbstractButton.TextBesideIcon
+                                onClicked: {
+                                    root.pendingHistoryId = modelData.id
+                                    deleteHistoryEntryDialog.open()
                                 }
-                                Controls.ToolButton {
-                                    text: i18n("Delete")
-                                    icon.name: "edit-delete"
-                                    display: Controls.AbstractButton.TextBesideIcon
-                                    onClicked: {
-                                        root.pendingHistoryId = modelData.id
-                                        deleteHistoryEntryDialog.open()
-                                    }
-                                    Accessible.description: i18n("Delete the dictation from encrypted history")
-                                }
+                                Accessible.description: i18n("Delete the dictation from encrypted history")
                             }
                         }
                     }
                 }
 
-                Controls.Button {
+                footer: Controls.Button {
                     objectName: "clearHistoryButton"
-                    Layout.alignment: Qt.AlignRight
-                    visible: appController.history.enabled && appController.history.entries.length > 0
+                    width: historyList.width
+                    visible: appController.history.enabled && historyList.count > 0
+                    height: visible ? implicitHeight : 0
                     text: i18n("Clear all history")
                     icon.name: "edit-clear-history"
                     onClicked: clearHistoryDialog.open()

@@ -240,11 +240,13 @@ void DictationHistory::setMaximumEntries(int value) {
   value = qBound(1, value, 10000);
   if (m_maximumEntries == value)
     return;
-  m_maximumEntries = value;
   if (m_enabled) {
-    prune();
-    save();
+    QList<Entry> entries = m_entries;
+    if (pruneEntries(entries, value, m_maximumAgeDays) && !saveEntries(entries))
+      return;
+    m_entries = std::move(entries);
   }
+  m_maximumEntries = value;
   emit changed();
 }
 
@@ -252,21 +254,28 @@ void DictationHistory::setMaximumAgeDays(int value) {
   value = qBound(1, value, 3650);
   if (m_maximumAgeDays == value)
     return;
-  m_maximumAgeDays = value;
   if (m_enabled) {
-    prune();
-    save();
+    QList<Entry> entries = m_entries;
+    if (pruneEntries(entries, m_maximumEntries, value) && !saveEntries(entries))
+      return;
+    m_entries = std::move(entries);
   }
+  m_maximumAgeDays = value;
   emit changed();
 }
 
 bool DictationHistory::prune() {
-  const QDateTime oldest = m_clock().addDays(-m_maximumAgeDays);
-  const qsizetype before = m_entries.size();
-  m_entries.removeIf([&oldest](const Entry &entry) { return entry.createdAt < oldest; });
-  while (m_entries.size() > m_maximumEntries)
-    m_entries.removeLast();
-  return before != m_entries.size();
+  return pruneEntries(m_entries, m_maximumEntries, m_maximumAgeDays);
+}
+
+bool DictationHistory::pruneEntries(QList<Entry> &entries, int maximumEntries,
+                                    int maximumAgeDays) const {
+  const QDateTime oldest = m_clock().addDays(-maximumAgeDays);
+  const qsizetype before = entries.size();
+  entries.removeIf([&oldest](const Entry &entry) { return entry.createdAt < oldest; });
+  while (entries.size() > maximumEntries)
+    entries.removeLast();
+  return before != entries.size();
 }
 
 bool DictationHistory::load() {
@@ -319,6 +328,7 @@ bool DictationHistory::load() {
     fail(i18n("The decrypted history contains too many entries."));
     return false;
   }
+  QList<Entry> loadedEntries;
   for (const QJsonValue &value : storedEntries) {
     const QJsonObject object = value.toObject();
     const QDateTime createdAt = QDateTime::fromString(
@@ -329,21 +339,25 @@ bool DictationHistory::load() {
       fail(i18n("The decrypted history contains an invalid entry."));
       return false;
     }
-    m_entries.append({id, createdAt, text});
+    loadedEntries.append({id, createdAt, text});
   }
-  std::stable_sort(m_entries.begin(), m_entries.end(), [](const Entry &left, const Entry &right) {
-    return left.createdAt > right.createdAt;
-  });
-  if (prune() && !save())
+  std::stable_sort(
+      loadedEntries.begin(), loadedEntries.end(),
+      [](const Entry &left, const Entry &right) { return left.createdAt > right.createdAt; });
+  if (pruneEntries(loadedEntries, m_maximumEntries, m_maximumAgeDays) &&
+      !saveEntries(loadedEntries))
     return false;
+  m_entries = std::move(loadedEntries);
   return true;
 }
 
-bool DictationHistory::save() {
+bool DictationHistory::save() { return saveEntries(m_entries); }
+
+bool DictationHistory::saveEntries(const QList<Entry> &historyEntries) {
   if (!m_enabled || m_key.size() != crypto_aead_xchacha20poly1305_ietf_KEYBYTES)
     return false;
   QJsonArray entries;
-  for (const Entry &entry : m_entries) {
+  for (const Entry &entry : historyEntries) {
     entries.append(QJsonObject{
         {QStringLiteral("id"), entry.id},
         {QStringLiteral("createdAt"), entry.createdAt.toUTC().toString(Qt::ISODateWithMs)},
