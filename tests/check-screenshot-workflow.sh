@@ -24,6 +24,30 @@ printf '%s\n' \
     'done' > "$fixture_generator"
 chmod +x "$fixture_generator"
 
+real_cmake=$(command -v cmake)
+cmake_state="$fixture_root/cmake-interrupted"
+cmake_wrapper_directory="$fixture_root/cmake-wrapper"
+cmake -E make_directory "$cmake_wrapper_directory"
+printf '%s\n' \
+    '#!/bin/sh' \
+    'case "${3-}" in' \
+    '    */.screenshots-transaction.*/stage)' \
+    '        if [ "${1-}" = -E ] && [ "${2-}" = make_directory ] && [ ! -e "$CMAKE_STATE" ]; then' \
+    '            "$REAL_CMAKE" -E touch "$CMAKE_STATE"' \
+    '            kill -TERM "$PPID"' \
+    '            exit 143' \
+    '        fi' \
+    '        ;;' \
+    'esac' \
+    'exec "$REAL_CMAKE" "$@"' > "$cmake_wrapper_directory/cmake"
+chmod +x "$cmake_wrapper_directory/cmake"
+if PATH="$cmake_wrapper_directory:$PATH" REAL_CMAKE="$real_cmake" CMAKE_STATE="$cmake_state" \
+    "$fixture_capture" "$fixture_generator"; then
+    echo "An interrupted transaction setup unexpectedly succeeded." >&2
+    exit 1
+fi
+test ! -e "$fixture_root/.screenshots-transaction."*
+
 "$fixture_capture" "$fixture_generator"
 
 for screenshot in \
