@@ -35,6 +35,7 @@ TestCase {
         appController.setAudioInputMonitoringError("")
         appController.resetMonitoringRetryCount()
         appController.audioInputId = ""
+        appController.history.setEntryCount(2)
         const loader = createTemporaryObject(applicationComponent, testCase)
         verify(loader)
         tryCompare(loader, "status", Loader.Ready)
@@ -448,6 +449,17 @@ TestCase {
         compare(count.Accessible.name, "Maximum history entries")
         compare(age.Accessible.name, "Maximum history age in days")
         compare(clear.visible, true)
+    }
+
+    function test_historyVirtualizesLargeEntryCollections() {
+        appController.history.setEntryCount(10000)
+        applicationWindow.currentView = 1
+        const list = findChild(historyPage(), "historyList")
+        verify(list)
+        tryCompare(list, "count", 10000)
+        verify(list.itemAtIndex(0) !== null)
+        verify(list.itemAtIndex(9999) === null)
+        verify(list.reuseItems)
     }
 
     function test_audioInputPageSelectsAndReportsDevices() {

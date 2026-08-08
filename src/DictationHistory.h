@@ -68,7 +68,9 @@ signals:
 private:
   bool load();
   bool save();
+  bool saveEntries(const QList<Entry> &entries);
   bool prune();
+  bool pruneEntries(QList<Entry> &entries, int maximumEntries, int maximumAgeDays) const;
   void fail(const QString &message);
   static bool commitAtomically(const QString &path, const QByteArray &data, QString *error);
   QVariantMap entryMap(const Entry &entry) const;

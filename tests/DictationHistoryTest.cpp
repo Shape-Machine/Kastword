@@ -6,6 +6,9 @@
 #include <KLocalizedString>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSaveFile>
 #include <QTemporaryDir>
 #include <QTest>
@@ -43,6 +46,29 @@ std::unique_ptr<FakeKeyProvider> provider(QByteArray key = {}) {
   if (!key.isEmpty())
     result->key = std::move(key);
   return result;
+}
+
+void writeEncryptedHistory(const QString &path, const QByteArray &key, const QJsonArray &entries) {
+  const QByteArray magic = QByteArrayLiteral("KWHIST01");
+  const QByteArray plain = QJsonDocument(QJsonObject{{QStringLiteral("version"), 1},
+                                                     {QStringLiteral("entries"), entries}})
+                               .toJson(QJsonDocument::Compact);
+  QByteArray nonce(crypto_aead_xchacha20poly1305_ietf_NPUBBYTES, 'n');
+  QByteArray cipher(plain.size() + crypto_aead_xchacha20poly1305_ietf_ABYTES, Qt::Uninitialized);
+  unsigned long long cipherLength = 0;
+  QCOMPARE(crypto_aead_xchacha20poly1305_ietf_encrypt(
+               reinterpret_cast<unsigned char *>(cipher.data()), &cipherLength,
+               reinterpret_cast<const unsigned char *>(plain.constData()),
+               static_cast<unsigned long long>(plain.size()),
+               reinterpret_cast<const unsigned char *>(magic.constData()),
+               static_cast<unsigned long long>(magic.size()), nullptr,
+               reinterpret_cast<const unsigned char *>(nonce.constData()),
+               reinterpret_cast<const unsigned char *>(key.constData())),
+           0);
+  cipher.resize(qsizetype(cipherLength));
+  QFile file(path);
+  QVERIFY(file.open(QIODevice::WriteOnly));
+  QCOMPARE(file.write(magic + nonce + cipher), magic.size() + nonce.size() + cipher.size());
 }
 } // namespace
 
@@ -122,6 +148,27 @@ private slots:
     QVERIFY(tampered.entries().isEmpty());
   }
 
+  void failedLoadNeverPublishesPartiallyDecryptedEntries() {
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("history.enc"));
+    const QByteArray key(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'p');
+    const QJsonArray entries{
+        QJsonObject{{QStringLiteral("id"), QStringLiteral("valid")},
+                    {QStringLiteral("createdAt"), QStringLiteral("2026-08-08T12:00:00.000Z")},
+                    {QStringLiteral("text"), QStringLiteral("must remain private")}},
+        QJsonObject{{QStringLiteral("id"), QStringLiteral("invalid")},
+                    {QStringLiteral("createdAt"), QStringLiteral("not-a-date")},
+                    {QStringLiteral("text"), QStringLiteral("invalid")}}};
+    writeEncryptedHistory(path, key, entries);
+
+    DictationHistory history(path, provider(key));
+    QVERIFY(!history.enable());
+    QVERIFY(!history.enabled());
+    QVERIFY(!history.available());
+    QVERIFY(history.entries().isEmpty());
+    QVERIFY(history.recentEntries().isEmpty());
+  }
+
   void failsClosedWhenKeyOrCommitUnavailable() {
     QTemporaryDir directory;
     auto failingKeys = provider();
@@ -172,6 +219,42 @@ private slots:
     QCOMPARE(history.entries().size(), 1);
     QCOMPARE(history.entries().constFirst().toMap().value(QStringLiteral("text")),
              QStringLiteral("persisted"));
+    QFile afterFile(path);
+    QVERIFY(afterFile.open(QIODevice::ReadOnly));
+    QCOMPARE(afterFile.readAll(), before);
+  }
+
+  void failedRetentionUpdatesPreserveLimitsFileAndVisibleEntries() {
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("history.enc"));
+    QDateTime now(QDate(2026, 8, 8), QTime(12, 0), QTimeZone::UTC);
+    bool rejectWrites = false;
+    DictationHistory history(
+        path, provider(), [&now] { return now; },
+        [&rejectWrites](const QString &target, const QByteArray &data, QString *error) {
+          if (rejectWrites) {
+            *error = QStringLiteral("Injected failure");
+            return false;
+          }
+          QSaveFile file(target);
+          return file.open(QIODevice::WriteOnly) && file.write(data) == data.size() &&
+                 file.commit();
+        });
+    QVERIFY(history.enable());
+    QVERIFY(history.add(QStringLiteral("first")));
+    now = now.addDays(2);
+    QVERIFY(history.add(QStringLiteral("second")));
+    QFile beforeFile(path);
+    QVERIFY(beforeFile.open(QIODevice::ReadOnly));
+    const QByteArray before = beforeFile.readAll();
+
+    rejectWrites = true;
+    history.setMaximumEntries(1);
+    QCOMPARE(history.maximumEntries(), 100);
+    QCOMPARE(history.entries().size(), 2);
+    history.setMaximumAgeDays(1);
+    QCOMPARE(history.maximumAgeDays(), 30);
+    QCOMPARE(history.entries().size(), 2);
     QFile afterFile(path);
     QVERIFY(afterFile.open(QIODevice::ReadOnly));
     QCOMPARE(afterFile.readAll(), before);
