@@ -36,6 +36,7 @@ TestCase {
         appController.resetMonitoringRetryCount()
         appController.audioInputId = ""
         appController.history.setAvailable(true)
+        appController.history.setBusy(false)
         appController.history.setResetRequired(false)
         appController.history.setEntryCount(2)
         const loader = createTemporaryObject(applicationComponent, testCase)
@@ -513,6 +514,37 @@ TestCase {
         dialog.reject()
         tryCompare(dialog, "visible", false)
         compare(enabled.checked, true)
+    }
+
+    function test_historyMutationControlsFollowBusyState() {
+        applicationWindow.currentView = 1
+        const page = historyPage()
+        const historySwitch = findChild(page, "historyEnabledSwitch")
+        const count = findChild(page, "historyMaximumEntries")
+        const age = findChild(page, "historyMaximumAgeDays")
+        const clear = findChild(page, "clearHistoryButton")
+        const status = findChild(page, "historyStatus")
+        const list = findChild(page, "historyList")
+        list.positionViewAtIndex(0, ListView.Beginning)
+        tryVerify(function() {
+            return findChild(page, "historyEntryDeleteButton") !== null
+        })
+        const deleteButton = findChild(page, "historyEntryDeleteButton")
+
+        appController.history.setBusy(true)
+        tryCompare(status, "text", "Saving encrypted history…")
+        compare(historySwitch.enabled, false)
+        compare(count.enabled, false)
+        compare(age.enabled, false)
+        compare(clear.enabled, false)
+        compare(deleteButton.enabled, false)
+
+        appController.history.setBusy(false)
+        tryCompare(historySwitch, "enabled", true)
+        compare(count.enabled, true)
+        compare(age.enabled, true)
+        compare(clear.enabled, true)
+        compare(deleteButton.enabled, true)
     }
 
     function test_historyResetIsLimitedToUnreadableData() {
