@@ -444,6 +444,16 @@ void AppController::enableHistory() { m_history->enable(); }
 
 void AppController::disableHistory(bool deleteData) { m_history->disable(deleteData); }
 
+void AppController::revealHistoryStorage() {
+  if (m_desktopServices)
+    m_desktopServices->revealFile(m_history->storagePath());
+}
+
+void AppController::openModelStorage() {
+  if (m_desktopServices)
+    m_desktopServices->openDirectory(m_modelManager->storagePath());
+}
+
 void AppController::toggle() {
   if (m_audio->isRecording()) {
     QByteArray audio = m_audio->stop();

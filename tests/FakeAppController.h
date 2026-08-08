@@ -224,6 +224,8 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(QString shortcutText READ shortcutText NOTIFY shortcutChanged)
   Q_PROPERTY(int toggleCount READ toggleCount NOTIFY toggleCountChanged)
   Q_PROPERTY(QString copiedText READ copiedText NOTIFY copiedTextChanged)
+  Q_PROPERTY(QString revealedFile READ revealedFile NOTIFY fileManagerChanged)
+  Q_PROPERTY(QString openedDirectory READ openedDirectory NOTIFY fileManagerChanged)
 
 public:
   bool idle() const { return !m_recording && !m_transcribing; }
@@ -289,6 +291,8 @@ public:
   QString shortcutText() const { return m_shortcut.toString(QKeySequence::NativeText); }
   int toggleCount() const { return m_toggleCount; }
   QString copiedText() const { return m_copiedText; }
+  QString revealedFile() const { return m_revealedFile; }
+  QString openedDirectory() const { return m_openedDirectory; }
 
   void setModelPath(const QString &path) {
     if (m_modelPath == path)
@@ -369,6 +373,14 @@ public:
       m_history.clear();
     m_history.setEnabled(false);
   }
+  Q_INVOKABLE void revealHistoryStorage() {
+    m_revealedFile = m_history.storagePath();
+    emit fileManagerChanged();
+  }
+  Q_INVOKABLE void openModelStorage() {
+    m_openedDirectory = m_modelManager.storagePath();
+    emit fileManagerChanged();
+  }
   Q_INVOKABLE bool removeModel(const QString &) { return true; }
   Q_INVOKABLE void setTestState(bool recording, bool transcribing) {
     m_recording = recording;
@@ -423,6 +435,7 @@ signals:
   void audioInputSetupRequested();
   void modelReadyChanged();
   void copiedTextChanged();
+  void fileManagerChanged();
   void audioInputsChanged();
   void dictationAvailabilityChanged();
   void audioInputMonitoringEnabledChanged();
@@ -451,6 +464,8 @@ private:
   QString m_modelPath;
   int m_toggleCount = 0;
   QString m_copiedText;
+  QString m_revealedFile;
+  QString m_openedDirectory;
   QKeySequence m_shortcut{QStringLiteral("Meta+Z")};
   FakeModelManager m_modelManager;
   FakeDictationHistory m_history;

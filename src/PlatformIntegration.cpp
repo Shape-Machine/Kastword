@@ -7,7 +7,12 @@
 #include <KGlobalAccel>
 #include <KLocalizedString>
 #include <KNotification>
+#include <QDBusConnection>
+#include <QDBusInterface>
+#include <QDesktopServices>
+#include <QFileInfo>
 #include <QPointer>
+#include <QUrl>
 
 namespace {
 class KdeDesktopIntegration final : public DesktopIntegration {
@@ -54,6 +59,24 @@ public:
     if (m_statusNotification)
       m_statusNotification->close();
     m_statusNotification.clear();
+  }
+
+  void revealFile(const QString &path) override {
+    const QUrl url = QUrl::fromLocalFile(path);
+    QDBusInterface fileManager(QStringLiteral("org.freedesktop.FileManager1"),
+                               QStringLiteral("/org/freedesktop/FileManager1"),
+                               QStringLiteral("org.freedesktop.FileManager1"),
+                               QDBusConnection::sessionBus());
+    if (fileManager.isValid()) {
+      fileManager.call(QDBus::NoBlock, QStringLiteral("ShowItems"), QStringList{url.toString()},
+                       QString());
+      return;
+    }
+    QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
+  }
+
+  void openDirectory(const QString &path) override {
+    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
   }
 
 private:

@@ -176,9 +176,8 @@ TestCase {
         verify(warning)
         compare(filter.text, "Recommended")
         compare(storagePath.Accessible.name, "Model storage path")
-        storagePath.copyPath()
-        compare(appController.copiedText, "/tmp/models")
-        compare(passiveNotificationMessage, "Storage path copied to clipboard.")
+        storagePath.openPath()
+        compare(appController.openedDirectory, "/tmp/models")
         compare(warning.visible, true)
     }
 
@@ -473,9 +472,8 @@ TestCase {
         compare(count.Accessible.name, "Maximum history entries")
         compare(age.Accessible.name, "Maximum history age in days")
         compare(clear.visible, true)
-        storagePath.copyPath()
-        compare(appController.copiedText, "/tmp/history.enc")
-        compare(passiveNotificationMessage, "Storage path copied to clipboard.")
+        storagePath.openPath()
+        compare(appController.revealedFile, "/tmp/history.enc")
         verify(Math.abs(enabled.mapToItem(page, 0, 0).y
                         - clear.mapToItem(page, 0, 0).y) <= 4)
         const list = findChild(page, "historyList")

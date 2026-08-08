@@ -638,10 +638,6 @@ msgstr "xxKastword is readyxx"
 msgid "Download URL copied to clipboard."
 msgstr "xxDownload URL copied to clipboard.xx"
 
-#: src/qml/Main.qml:51
-msgid "Storage path copied to clipboard."
-msgstr "xxStorage path copied to clipboard.xx"
-
 #: src/qml/Main.qml:84
 msgid "Select a Whisper model"
 msgstr "xxSelect a Whisper modelxx"
@@ -787,9 +783,13 @@ msgstr "xxHistory storage:xx"
 msgid "Encrypted history storage path"
 msgstr "xxEncrypted history storage pathxx"
 
-#: src/qml/Main.qml:320 src/qml/Main.qml:454
-msgid "Click to copy the storage path"
-msgstr "xxClick to copy the storage pathxx"
+#: src/qml/Main.qml:320
+msgid "Click to show the history file in the file manager"
+msgstr "xxClick to show the history file in the file managerxx"
+
+#: src/qml/Main.qml:454
+msgid "Click to open the model storage folder"
+msgstr "xxClick to open the model storage folderxx"
 
 #: src/qml/Main.qml:311
 msgid "No saved dictations yet"
