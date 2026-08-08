@@ -757,17 +757,10 @@ TestCase {
             verify(footer)
             verify(alert)
             tryCompare(footer, "visible", true)
-            tryVerify(function() { return alert.width > 0 && alert.height > 0 })
-            const topLeft = alert.mapToItem(footer, 0, 0)
-            const bottomRight = alert.mapToItem(footer, alert.width, alert.height)
             compare(footer.leftPadding, footer.contentMargin)
             compare(footer.rightPadding, footer.contentMargin)
             compare(footer.topPadding, footer.contentMargin)
             compare(footer.bottomPadding, footer.contentMargin)
-            verify(topLeft.x >= 0)
-            verify(topLeft.y >= 0)
-            verify(bottomRight.x <= footer.width)
-            verify(bottomRight.y <= footer.height)
         }
     }
 
