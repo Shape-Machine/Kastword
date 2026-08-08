@@ -779,6 +779,10 @@ msgstr "xxMaximum age (days):xx"
 msgid "Maximum history age in days"
 msgstr "xxMaximum history age in daysxx"
 
+#: src/qml/Main.qml:313
+msgid "History storage:"
+msgstr "xxHistory storage:xx"
+
 #: src/qml/Main.qml:304
 msgid "Encrypted history storage path"
 msgstr "xxEncrypted history storage pathxx"
@@ -891,6 +895,10 @@ msgstr "xxUse an existing model…xx"
 #: src/qml/Main.qml:634
 msgid "Select an existing compatible Whisper model file"
 msgstr "xxSelect an existing compatible Whisper model filexx"
+
+#: src/qml/Main.qml:641
+msgid "Model storage:"
+msgstr "xxModel storage:xx"
 
 #: src/qml/Main.qml:641
 msgid "Model storage path"

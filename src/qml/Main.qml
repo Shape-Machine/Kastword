@@ -307,26 +307,26 @@ Kirigami.ApplicationWindow {
                             onValueModified: appController.history.maximumAgeDays = value
                             Accessible.name: i18n("Maximum history age in days")
                         }
-                    }
 
-                    Controls.TextField {
-                        objectName: "historyStoragePath"
-                        Layout.fillWidth: true
-                        visible: appController.history.enabled
-                        readOnly: true
-                        selectByMouse: true
-                        text: appController.history.storagePath
-                        Accessible.name: i18n("Encrypted history storage path")
-                        Accessible.description: i18n("Click to copy the storage path")
-                        function copyPath() {
-                            selectAll()
-                            root.copyStoragePath(text)
-                        }
+                        Controls.TextField {
+                            objectName: "historyStoragePath"
+                            Kirigami.FormData.label: i18n("History storage:")
+                            Layout.fillWidth: true
+                            readOnly: true
+                            selectByMouse: true
+                            text: appController.history.storagePath
+                            Accessible.name: i18n("Encrypted history storage path")
+                            Accessible.description: i18n("Click to copy the storage path")
+                            function copyPath() {
+                                selectAll()
+                                root.copyStoragePath(text)
+                            }
 
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: parent.copyPath()
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: parent.copyPath()
+                            }
                         }
                     }
 
@@ -401,7 +401,7 @@ Kirigami.ApplicationWindow {
             property string selectedFilter: "recommended"
 
             header: Controls.Pane {
-                padding: Kirigami.Units.smallSpacing
+                padding: Kirigami.Units.largeSpacing
 
                 contentItem: ColumnLayout {
                     spacing: Kirigami.Units.smallSpacing
@@ -444,23 +444,28 @@ Kirigami.ApplicationWindow {
                         }
                     }
 
-                    Controls.TextField {
-                        objectName: "modelStoragePath"
+                    Kirigami.FormLayout {
                         Layout.fillWidth: true
-                        readOnly: true
-                        selectByMouse: true
-                        text: appController.modelManager.storagePath
-                        Accessible.name: i18n("Model storage path")
-                        Accessible.description: i18n("Click to copy the storage path")
-                        function copyPath() {
-                            selectAll()
-                            root.copyStoragePath(text)
-                        }
 
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: parent.copyPath()
+                        Controls.TextField {
+                            objectName: "modelStoragePath"
+                            Kirigami.FormData.label: i18n("Model storage:")
+                            Layout.fillWidth: true
+                            readOnly: true
+                            selectByMouse: true
+                            text: appController.modelManager.storagePath
+                            Accessible.name: i18n("Model storage path")
+                            Accessible.description: i18n("Click to copy the storage path")
+                            function copyPath() {
+                                selectAll()
+                                root.copyStoragePath(text)
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: parent.copyPath()
+                            }
                         }
                     }
                 }
