@@ -6,6 +6,9 @@
 - Keep the UI minimal. Prefer native KDE and Qt patterns, preserve behavior already supplied by the
   platform, and follow the KDE Human Interface Guidelines instead of introducing custom UI
   conventions.
+- Reuse established Qt and Kirigami components and styling across equivalent UI. Use
+  `Kirigami.PromptDialog` for confirmation dialogs with an explicit action verb and Cancel; reserve
+  specialized dialogs for tasks such as file selection or content viewing.
 
 ## Git workflow
 
