@@ -58,6 +58,11 @@ text are never sent to a cloud transcription service.
 The window can be opened or hidden from the tray icon. The tray menu can also start or stop
 dictation and quit the application.
 
+Dictation remains disabled until both a valid model and an available audio input are selected. The
+Speech Models view shows model disk usage and can resume or retry interrupted downloads. If a
+specifically selected microphone disconnects, Kastword waits for it to return or for you to choose
+another input instead of silently switching devices.
+
 ## Privacy and trust
 
 - Microphone samples remain in process memory only until transcription completes. Recordings stop

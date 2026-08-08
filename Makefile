@@ -89,6 +89,9 @@ install-smoke: ensure-configured
 	test -f "$$smoke_prefix/share/doc/kastword/screenshots/03-audio-input.png"; \
 	test -f "$$smoke_prefix/share/doc/kastword/screenshots/04-settings.png"; \
 	test -f "$$smoke_prefix/share/doc/kastword/LICENSES/GPL-3.0-or-later.txt"; \
+	./tools/check-documentation-links.sh "$$smoke_prefix/share/doc/kastword"; \
+	legacy_license="$$smoke_prefix/share/doc/kastword/GPL-3.0-or-later.txt"; \
+	cmake -E touch "$$legacy_license"; \
 	find "$$smoke_prefix" -type f -print > "$$installed_files"; \
 	user_model="$$smoke_prefix/share/kastword/models/ggml-base.en.bin"; \
 	cmake -E make_directory "$$(dirname "$$user_model")"; \
@@ -111,6 +114,7 @@ uninstall:
 		"$(PREFIX)/share/doc/kastword/screenshots/02-speech-models.png" \
 		"$(PREFIX)/share/doc/kastword/screenshots/03-audio-input.png" \
 		"$(PREFIX)/share/doc/kastword/screenshots/04-settings.png" \
+		"$(PREFIX)/share/doc/kastword/GPL-3.0-or-later.txt" \
 		"$(PREFIX)/share/doc/kastword/LICENSES/GPL-3.0-or-later.txt"
 	@if command -v update-desktop-database >/dev/null 2>&1; then \
 		update-desktop-database "$(PREFIX)/share/applications"; \
