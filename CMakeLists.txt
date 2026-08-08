@@ -228,6 +228,7 @@ if(BUILD_TESTING)
         PREFIX "/"
         FILES src/qml/Main.qml)
     kastword_enable_sanitizers(kastword_qml_test)
+    add_dependencies(kastword_qml_test kastword_screenshot_generator)
     add_test(NAME qml COMMAND kastword_qml_test)
     set_tests_properties(qml PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_FONT_DPI=192")
