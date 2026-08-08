@@ -412,6 +412,42 @@ private slots:
     QVERIFY(tampered.resetRequired());
   }
 
+  void rejectsOversizedFilesWithResetRecovery() {
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("history.enc"));
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    QVERIFY(file.resize(64LL * 1024 * 1024 + 1));
+    file.close();
+
+    DictationHistory history(path, provider());
+    history.enable();
+
+    QVERIFY(!history.enabled());
+    QVERIFY(!history.available());
+    QVERIFY(history.resetRequired());
+    QVERIFY(history.status().contains(QStringLiteral("too large")));
+  }
+
+  void refusesToPersistHistoryThatCannotBeLoaded() {
+    QTemporaryDir directory;
+    bool commitCalled = false;
+    DictationHistory history(directory.filePath(QStringLiteral("history.enc")), provider(), {},
+                             [&commitCalled](const QString &, const QByteArray &, QString *) {
+                               commitCalled = true;
+                               return true;
+                             });
+    history.enable();
+
+    const qsizetype charactersBeyondFileLimit = (64LL * 1024 * 1024) / 3 + 1;
+    QVERIFY(!history.add(QString(charactersBeyondFileLimit, QChar(0x0800))));
+
+    QVERIFY(!commitCalled);
+    QVERIFY(!history.available());
+    QVERIFY(history.entries().isEmpty());
+    QVERIFY(history.status().contains(QStringLiteral("too large")));
+  }
+
   void rejectsTamperingAndWrongKeysAsynchronously() {
     QTemporaryDir directory;
     const QString path = directory.filePath(QStringLiteral("history.enc"));

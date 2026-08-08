@@ -520,10 +520,10 @@ void ModelManagerTest::retainsModelOnHashReadFailure() {
 
   manager.selectModel(item.id);
 
-  QTRY_VERIFY(!manager.busy());
+  QTRY_VERIFY(manager.error().contains(QStringLiteral("could not be read")));
+  QVERIFY(!manager.busy());
   QVERIFY(QFileInfo::exists(model.fileName()));
   QVERIFY(!manager.modelReady());
-  QVERIFY(manager.error().contains(QStringLiteral("could not be read")));
 }
 
 void ModelManagerTest::invalidatesChangedManagedModel() {

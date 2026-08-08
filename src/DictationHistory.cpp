@@ -629,10 +629,10 @@ DictationHistory::LoadResult DictationHistory::loadEntries(const QString &path, 
   if (!file.open(QIODevice::ReadOnly))
     return failure(i18n("The encrypted history file could not be opened."));
   if (file.size() > maximumHistoryFileSize)
-    return failure(i18n("The encrypted history file is too large to open safely."));
+    return failure(i18n("The encrypted history file is too large to open safely."), true);
   const QByteArray stored = file.read(maximumHistoryFileSize + 1);
   if (stored.size() > maximumHistoryFileSize || !file.atEnd())
-    return failure(i18n("The encrypted history file is too large to open safely."));
+    return failure(i18n("The encrypted history file is too large to open safely."), true);
   const qsizetype overhead = magic.size() + crypto_aead_xchacha20poly1305_ietf_NPUBBYTES +
                              crypto_aead_xchacha20poly1305_ietf_ABYTES;
   if (stored.size() < overhead || !stored.startsWith(magic))
@@ -726,6 +726,10 @@ DictationHistory::SaveResult DictationHistory::persistEntries(SaveRequest reques
     return outcome;
   }
   cipher.resize(qsizetype(cipherLength));
+  if (magic.size() + nonce.size() + cipher.size() > maximumHistoryFileSize) {
+    outcome.error = i18n("The encrypted history is too large to save safely.");
+    return outcome;
+  }
   QString error;
   if (!commit(path, magic + nonce + cipher, &error)) {
     outcome.error = error.isEmpty() ? i18n("The encrypted history could not be saved.") : error;

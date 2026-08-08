@@ -297,6 +297,10 @@ msgstr "xxThe encrypted history file could not be opened.xx"
 msgid "The encrypted history file is too large to open safely."
 msgstr "xxThe encrypted history file is too large to open safely.xx"
 
+#: src/DictationHistory.cpp:730
+msgid "The encrypted history is too large to save safely."
+msgstr "xxThe encrypted history is too large to save safely.xx"
+
 #: src/DictationHistory.cpp:426
 msgid "The encrypted history file is damaged or unsupported."
 msgstr "xxThe encrypted history file is damaged or unsupported.xx"
