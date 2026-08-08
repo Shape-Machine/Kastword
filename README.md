@@ -245,7 +245,7 @@ enforces the repository's line and branch thresholds, and writes a browsable rep
 `COVERAGE_MIN_BRANCH`. `make lint` checks C++ formatting without changing files, while `make format`
 applies it.
 `make screenshots` renders the four top-level application views in a 760×520 logical window with
-deterministic fake data and atomically replaces the PNG files in `screenshots/`. It requires an
+deterministic fake data and safely replaces the PNG files in `screenshots/`. It requires an
 active graphical session so the output inherits the current Plasma theme, icons, fonts, and display
 scale. It does not access the microphone or network and preserves the previous complete set if
 generation fails. Generated screenshots are covered by the repository-level REUSE annotation in

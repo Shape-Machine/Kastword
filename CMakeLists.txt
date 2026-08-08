@@ -236,6 +236,9 @@ if(BUILD_TESTING)
     add_test(NAME screenshot-workflow
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/check-screenshot-workflow.sh
             ${CMAKE_CURRENT_SOURCE_DIR}/tools/capture-screenshots.sh)
+    add_test(NAME screenshot-rejects-headless
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/check-screenshot-headless.sh
+            $<TARGET_FILE:kastword_screenshot_generator>)
 
     add_test(NAME translation-catalog
         COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tests/check-translations.sh)
