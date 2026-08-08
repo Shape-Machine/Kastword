@@ -187,6 +187,8 @@ public:
     notifications.append({kind, title, text, iconName, persistent});
   }
   void closeStatusNotification() override { ++closeCount; }
+  void revealFile(const QString &path) override { revealedFile = path; }
+  void openDirectory(const QString &path) override { openedDirectory = path; }
 
   struct Notification {
     NotificationKind kind;
@@ -205,6 +207,8 @@ public:
   QString cleanedComponent;
   QList<Notification> notifications;
   int closeCount = 0;
+  QString revealedFile;
+  QString openedDirectory;
 };
 
 class FakeAudioBackend final : public AudioCaptureBackend {
@@ -1219,6 +1223,11 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
   QCOMPARE(desktopPtr->configuredShortcuts,
            QList<QKeySequence>{QKeySequence(QStringLiteral("Meta+Z"))});
   QCOMPARE(desktopPtr->cleanedComponent, QStringLiteral("Kastword"));
+
+  controller.revealHistoryStorage();
+  QCOMPARE(desktopPtr->revealedFile, controller.history()->property("storagePath").toString());
+  controller.openModelStorage();
+  QCOMPARE(desktopPtr->openedDirectory, controller.modelManager()->storagePath());
 
   QSignalSpy shortcutChanged(&controller, &AppController::shortcutChanged);
   desktopPtr->reportShortcutChange(QKeySequence(QStringLiteral("Meta+Shift+W")));

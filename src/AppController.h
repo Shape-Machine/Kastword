@@ -126,6 +126,8 @@ public:
   Q_INVOKABLE void copyText(const QString &text);
   Q_INVOKABLE void enableHistory();
   Q_INVOKABLE void disableHistory(bool deleteData);
+  Q_INVOKABLE void revealHistoryStorage();
+  Q_INVOKABLE void openModelStorage();
   Q_INVOKABLE void copyTranscript();
   Q_INVOKABLE void forgetTranscript();
   Q_INVOKABLE void setModelUrl(const QUrl &url);

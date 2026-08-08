@@ -46,11 +46,6 @@ Kirigami.ApplicationWindow {
         root.passiveNotificationHandler(message)
     }
 
-    function copyStoragePath(path) {
-        appController.copyText(path)
-        root.passiveNotificationHandler(i18n("Storage path copied to clipboard."))
-    }
-
     property string pendingRemovalId: ""
     property string pendingHistoryId: ""
     property int currentView: 0
@@ -316,16 +311,16 @@ Kirigami.ApplicationWindow {
                             selectByMouse: true
                             text: appController.history.storagePath
                             Accessible.name: i18n("Encrypted history storage path")
-                            Accessible.description: i18n("Click to copy the storage path")
-                            function copyPath() {
+                            Accessible.description: i18n("Click to show the history file in the file manager")
+                            function openPath() {
                                 selectAll()
-                                root.copyStoragePath(text)
+                                appController.revealHistoryStorage()
                             }
 
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: parent.copyPath()
+                                onClicked: parent.openPath()
                             }
                         }
                     }
@@ -455,16 +450,16 @@ Kirigami.ApplicationWindow {
                             selectByMouse: true
                             text: appController.modelManager.storagePath
                             Accessible.name: i18n("Model storage path")
-                            Accessible.description: i18n("Click to copy the storage path")
-                            function copyPath() {
+                            Accessible.description: i18n("Click to open the model storage folder")
+                            function openPath() {
                                 selectAll()
-                                root.copyStoragePath(text)
+                                appController.openModelStorage()
                             }
 
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: parent.copyPath()
+                                onClicked: parent.openPath()
                             }
                         }
                     }
