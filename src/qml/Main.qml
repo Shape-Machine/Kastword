@@ -212,18 +212,28 @@ Kirigami.ApplicationWindow {
             objectName: "historyPage"
             title: i18n("History")
 
-            footer: Kirigami.InlineMessage {
-                objectName: "historyStatus"
+            footer: FooterContainer {
+                id: historyFooter
+                objectName: "historyFooter"
                 visible: appController.history.status.length > 0
-                type: appController.history.available ? Kirigami.MessageType.Information
-                                                      : Kirigami.MessageType.Error
-                text: appController.history.status
-                actions: Kirigami.Action {
-                    objectName: "resetHistoryAction"
-                    visible: appController.history.resetRequired
-                    text: i18n("Reset encrypted history")
-                    icon.name: "edit-clear-history"
-                    onTriggered: resetHistoryDialog.open()
+
+                contentItem: ColumnLayout {
+                    width: historyFooter.availableWidth
+                    Kirigami.InlineMessage {
+                        objectName: "historyStatus"
+                        Layout.fillWidth: true
+                        visible: true
+                        type: appController.history.available ? Kirigami.MessageType.Information
+                                                              : Kirigami.MessageType.Error
+                        text: appController.history.status
+                        actions: Kirigami.Action {
+                            objectName: "resetHistoryAction"
+                            visible: appController.history.resetRequired
+                            text: i18n("Reset encrypted history")
+                            icon.name: "edit-clear-history"
+                            onTriggered: resetHistoryDialog.open()
+                        }
+                    }
                 }
             }
 
@@ -448,21 +458,30 @@ Kirigami.ApplicationWindow {
                 }
             }
 
-            footer: Kirigami.InlineMessage {
-                objectName: "modelSetupWarning"
-                visible: true
-                type: appController.modelManager.error.length > 0
-                    ? Kirigami.MessageType.Error
-                    : !appController.modelReady && !appController.modelManager.verificationPending
-                    ? Kirigami.MessageType.Warning
-                    : Kirigami.MessageType.Information
-                text: appController.modelManager.error.length > 0
-                    ? appController.modelManager.error
-                    : !appController.modelReady && !appController.modelManager.verificationPending
-                    ? i18n("Choose and download a model before using dictation.")
-                    : appController.modelManager.status.length > 0
-                    ? appController.modelManager.status
-                    : i18n("Only open Whisper models from sources you trust. Models are parsed inside Kastword.")
+            footer: FooterContainer {
+                id: modelsFooter
+                objectName: "modelsFooter"
+
+                contentItem: ColumnLayout {
+                    width: modelsFooter.availableWidth
+                    Kirigami.InlineMessage {
+                        objectName: "modelSetupWarning"
+                        Layout.fillWidth: true
+                        visible: true
+                        type: appController.modelManager.error.length > 0
+                            ? Kirigami.MessageType.Error
+                            : !appController.modelReady && !appController.modelManager.verificationPending
+                            ? Kirigami.MessageType.Warning
+                            : Kirigami.MessageType.Information
+                        text: appController.modelManager.error.length > 0
+                            ? appController.modelManager.error
+                            : !appController.modelReady && !appController.modelManager.verificationPending
+                            ? i18n("Choose and download a model before using dictation.")
+                            : appController.modelManager.status.length > 0
+                            ? appController.modelManager.status
+                            : i18n("Only open Whisper models from sources you trust. Models are parsed inside Kastword.")
+                    }
+                }
             }
 
             ColumnLayout {
@@ -691,33 +710,39 @@ Kirigami.ApplicationWindow {
             objectName: "audioInputPage"
             title: i18n("Audio")
 
-            footer: ColumnLayout {
-                spacing: Kirigami.Units.smallSpacing
+            footer: FooterContainer {
+                id: audioFooter
+                objectName: "audioFooter"
 
-                Kirigami.InlineMessage {
-                    objectName: "audioInputStatus"
-                    Layout.fillWidth: true
-                    visible: true
-                    type: appController.audioInputReady ? Kirigami.MessageType.Positive
-                                                         : Kirigami.MessageType.Warning
-                    text: appController.audioInputStatus
-                    Accessible.name: i18n("Audio input status")
-                    Accessible.description: text
-                }
+                contentItem: ColumnLayout {
+                    width: audioFooter.availableWidth
+                    spacing: Kirigami.Units.smallSpacing
 
-                Kirigami.InlineMessage {
-                    objectName: "audioInputMonitoringError"
-                    Layout.fillWidth: true
-                    visible: appController.audioInputMonitoringError.length > 0
-                    type: Kirigami.MessageType.Error
-                    text: i18n("Input level monitoring failed: %1",
-                               appController.audioInputMonitoringError)
-                    Accessible.name: i18n("Input level monitoring failed")
-                    Accessible.description: text
-                    actions: Kirigami.Action {
-                        text: i18n("Retry")
-                        icon.name: "view-refresh"
-                        onTriggered: appController.retryAudioInputMonitoring()
+                    Kirigami.InlineMessage {
+                        objectName: "audioInputStatus"
+                        Layout.fillWidth: true
+                        visible: true
+                        type: appController.audioInputReady ? Kirigami.MessageType.Positive
+                                                             : Kirigami.MessageType.Warning
+                        text: appController.audioInputStatus
+                        Accessible.name: i18n("Audio input status")
+                        Accessible.description: text
+                    }
+
+                    Kirigami.InlineMessage {
+                        objectName: "audioInputMonitoringError"
+                        Layout.fillWidth: true
+                        visible: appController.audioInputMonitoringError.length > 0
+                        type: Kirigami.MessageType.Error
+                        text: i18n("Input level monitoring failed: %1",
+                                   appController.audioInputMonitoringError)
+                        Accessible.name: i18n("Input level monitoring failed")
+                        Accessible.description: text
+                        actions: Kirigami.Action {
+                            text: i18n("Retry")
+                            icon.name: "view-refresh"
+                            onTriggered: appController.retryAudioInputMonitoring()
+                        }
                     }
                 }
             }
@@ -801,22 +826,30 @@ Kirigami.ApplicationWindow {
             objectName: "settingsPage"
             title: i18n("Settings")
 
-            footer: ColumnLayout {
-                spacing: Kirigami.Units.smallSpacing
+            footer: FooterContainer {
+                id: settingsFooter
+                objectName: "settingsFooter"
+                visible: autoPasteCheckBox.checked || root.shortcutChangeFailed
 
-                Kirigami.InlineMessage {
-                    Layout.fillWidth: true
-                    visible: autoPasteCheckBox.checked
-                    type: Kirigami.MessageType.Warning
-                    text: i18n("Automatic paste sends each selected shortcut to the focused application after a short delay. On Wayland, Kastword cannot verify that focus stayed unchanged.")
-                }
+                contentItem: ColumnLayout {
+                    width: settingsFooter.availableWidth
+                    spacing: Kirigami.Units.smallSpacing
 
-                Kirigami.InlineMessage {
-                    objectName: "shortcutError"
-                    Layout.fillWidth: true
-                    visible: root.shortcutChangeFailed
-                    type: Kirigami.MessageType.Error
-                    text: i18n("The global shortcut could not be changed. Choose another shortcut.")
+                    Kirigami.InlineMessage {
+                        objectName: "autoPasteWarning"
+                        Layout.fillWidth: true
+                        visible: autoPasteCheckBox.checked
+                        type: Kirigami.MessageType.Warning
+                        text: i18n("Automatic paste sends each selected shortcut to the focused application after a short delay. On Wayland, Kastword cannot verify that focus stayed unchanged.")
+                    }
+
+                    Kirigami.InlineMessage {
+                        objectName: "shortcutError"
+                        Layout.fillWidth: true
+                        visible: root.shortcutChangeFailed
+                        type: Kirigami.MessageType.Error
+                        text: i18n("The global shortcut could not be changed. Choose another shortcut.")
+                    }
                 }
             }
 
@@ -909,14 +942,23 @@ Kirigami.ApplicationWindow {
         Kirigami.Page {
             title: i18n("Dictation")
 
-            footer: Kirigami.InlineMessage {
-                objectName: "statusMessage"
-                visible: true
-                text: appController.status
-                type: appController.recording ? Kirigami.MessageType.Positive
-                                               : Kirigami.MessageType.Information
-                Accessible.name: i18n("Dictation status")
-                Accessible.description: appController.status
+            footer: FooterContainer {
+                id: dictationFooter
+                objectName: "dictationFooter"
+
+                contentItem: ColumnLayout {
+                    width: dictationFooter.availableWidth
+                    Kirigami.InlineMessage {
+                        objectName: "statusMessage"
+                        Layout.fillWidth: true
+                        visible: true
+                        text: appController.status
+                        type: appController.recording ? Kirigami.MessageType.Positive
+                                                       : Kirigami.MessageType.Information
+                        Accessible.name: i18n("Dictation status")
+                        Accessible.description: appController.status
+                    }
+                }
             }
 
             ColumnLayout {
