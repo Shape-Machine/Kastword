@@ -84,12 +84,13 @@ qt_add_executable(kastword
 
 set_source_files_properties(src/qml/Main.qml PROPERTIES QT_RESOURCE_ALIAS Main.qml)
 set_source_files_properties(src/qml/HistoryEntryCard.qml PROPERTIES QT_RESOURCE_ALIAS HistoryEntryCard.qml)
+set_source_files_properties(src/qml/FooterContainer.qml PROPERTIES QT_RESOURCE_ALIAS FooterContainer.qml)
 qt_add_qml_module(kastword
     URI io.github.shape_machine.Kastword
     VERSION 1.0
     RESOURCE_PREFIX /qt/qml
     NO_IMPORT_SCAN
-    QML_FILES src/qml/Main.qml src/qml/HistoryEntryCard.qml
+    QML_FILES src/qml/Main.qml src/qml/HistoryEntryCard.qml src/qml/FooterContainer.qml
 )
 
 target_link_libraries(kastword PRIVATE
@@ -124,7 +125,7 @@ target_link_libraries(kastword_screenshot_generator PRIVATE
     KF6::I18n KF6::I18nQml KF6::Kirigami)
 qt_add_resources(kastword_screenshot_generator "screenshot-qml-resources"
     PREFIX "/"
-    FILES src/qml/Main.qml src/qml/HistoryEntryCard.qml)
+    FILES src/qml/Main.qml src/qml/HistoryEntryCard.qml src/qml/FooterContainer.qml)
 kastword_enable_sanitizers(kastword_screenshot_generator)
 
 if(KASTWORD_FETCH_DEFAULT_MODEL)
@@ -257,7 +258,7 @@ if(BUILD_TESTING)
         Qt6::Qml Qt6::Quick Qt6::QuickTest KF6::I18n KF6::I18nQml KF6::Kirigami)
     qt_add_resources(kastword_qml_test "qml-test-resources"
         PREFIX "/"
-        FILES src/qml/Main.qml src/qml/HistoryEntryCard.qml)
+        FILES src/qml/Main.qml src/qml/HistoryEntryCard.qml src/qml/FooterContainer.qml)
     kastword_enable_sanitizers(kastword_qml_test)
     add_dependencies(kastword_qml_test kastword_screenshot_generator)
     add_test(NAME qml COMMAND kastword_qml_test)

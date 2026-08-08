@@ -740,6 +740,33 @@ TestCase {
         verify(button.width <= applicationWindow.pageStack.currentItem.width)
     }
 
+    function test_tabFooterAlertsUseConsistentOuterMargins() {
+        const footers = [
+            [0, "dictationFooter", "statusMessage"],
+            [1, "historyFooter", "historyStatus"],
+            [2, "modelsFooter", "modelSetupWarning"],
+            [3, "audioFooter", "audioInputStatus"],
+            [4, "settingsFooter", "autoPasteWarning"]
+        ]
+        for (const footerData of footers) {
+            applicationWindow.currentView = footerData[0]
+            if (footerData[0] === 4)
+                appController.autoPaste = true
+            const footer = findChild(applicationWindow.contentItem, footerData[1])
+            const alert = findChild(applicationWindow.contentItem, footerData[2])
+            verify(footer)
+            verify(alert)
+            tryCompare(footer, "visible", true)
+            tryVerify(function() { return alert.width > 0 && alert.height > 0 })
+            const topLeft = alert.mapToItem(footer, 0, 0)
+            const bottomRight = alert.mapToItem(footer, alert.width, alert.height)
+            fuzzyCompare(topLeft.x, footer.contentMargin, 0.5)
+            fuzzyCompare(topLeft.y, footer.contentMargin, 0.5)
+            fuzzyCompare(footer.width - bottomRight.x, footer.contentMargin, 0.5)
+            fuzzyCompare(footer.height - bottomRight.y, footer.contentMargin, 0.5)
+        }
+    }
+
     function test_settingsCanModifyGlobalShortcut() {
         applicationWindow.openSettings()
         const editor = findChild(settingsPage(), "shortcutEditor")
