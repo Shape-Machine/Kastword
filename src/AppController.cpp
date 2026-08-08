@@ -97,9 +97,9 @@ void AppController::initialize() {
   m_audio->setSelectedDeviceId(group.readEntry("AudioInputId", QString()));
   m_history->setMaximumEntries(group.readEntry("HistoryMaximumEntries", 100));
   m_history->setMaximumAgeDays(group.readEntry("HistoryMaximumAgeDays", 30));
+  connect(m_history.get(), &DictationHistory::settingsChanged, this, &AppController::saveSettings);
   if (group.readEntry("HistoryEnabled", false))
     m_history->enable();
-  connect(m_history.get(), &DictationHistory::changed, this, &AppController::saveSettings);
 
   connect(m_modelManager.get(), &ModelManager::activeModelPathChanged, this, [this] {
     const QString path = m_modelManager->activeModelPath();
@@ -532,8 +532,11 @@ void AppController::handleTranscriptionFinished(const QString &text, const QStri
   }
   m_transcript = trimmedText;
   emit transcriptChanged();
-  m_history->add(trimmedText);
-  const QString delivery = m_output->deliver(trimmedText, m_autoPaste);
+  const bool historyStored = m_history->add(trimmedText);
+  QString delivery = m_output->deliver(trimmedText, m_autoPaste);
+  if (m_history->enabled() && !historyStored) {
+    delivery = i18n("%1 History was not saved: %2", delivery, m_history->status());
+  }
   setStatus(delivery);
   setState(State::Success);
   showStatusNotification(i18n("Dictation complete"), delivery,

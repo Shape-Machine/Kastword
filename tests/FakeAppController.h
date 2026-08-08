@@ -94,6 +94,7 @@ private:
 class FakeDictationHistory final : public QObject {
   Q_OBJECT
   Q_PROPERTY(bool enabled READ enabled NOTIFY changed)
+  Q_PROPERTY(bool busy READ busy NOTIFY changed)
   Q_PROPERTY(bool available READ available NOTIFY changed)
   Q_PROPERTY(QString status READ status NOTIFY changed)
   Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
@@ -114,6 +115,7 @@ public:
     };
   }
   bool enabled() const { return m_enabled; }
+  bool busy() const { return false; }
   bool available() const { return m_available; }
   QString status() const {
     return m_available

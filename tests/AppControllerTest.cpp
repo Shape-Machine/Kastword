@@ -144,10 +144,10 @@ public:
 
 class ControllerHistoryKeyProvider final : public HistoryKeyProvider {
 public:
-  std::optional<QByteArray> loadOrCreate(QString *) override {
-    return QByteArray(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'h');
+  void loadOrCreate(QObject *, LoadCallback callback) override {
+    callback(QByteArray(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'h'), {});
   }
-  bool remove(QString *) override { return true; }
+  void remove(QObject *, RemoveCallback callback) override { callback(true, {}); }
 };
 
 class FakeDesktopIntegration final : public DesktopIntegration {
@@ -223,6 +223,7 @@ private slots:
   void recoversFromCaptureFailure();
   void completesDictationFlow();
   void savesOnlySuccessfulNonEmptyDictationsToEnabledHistory();
+  void reportsHistorySaveFailureWithoutBlockingDelivery();
   void recoversFromTranscriptionFailure();
   void ignoresEmptyTranscription();
   void recoversFromTranscriptionException();
@@ -398,6 +399,35 @@ void AppControllerTest::savesOnlySuccessfulNonEmptyDictationsToEnabledHistory() 
   QTRY_COMPARE(historyPtr->entries().size(), 1);
   QCOMPARE(historyPtr->entries().constFirst().toMap().value(QStringLiteral("text")),
            QStringLiteral("saved locally"));
+}
+
+void AppControllerTest::reportsHistorySaveFailureWithoutBlockingDelivery() {
+  QTemporaryDir directory;
+  auto history = std::make_unique<DictationHistory>(
+      directory.filePath(QStringLiteral("history.enc")),
+      std::make_unique<ControllerHistoryKeyProvider>(), DictationHistory::Clock{},
+      [](const QString &, const QByteArray &, QString *error) {
+        *error = QStringLiteral("Storage unavailable");
+        return false;
+      });
+  auto *historyPtr = history.get();
+  QVERIFY(historyPtr->enable());
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  auto *outputPtr = output.get();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return qMakePair(QStringLiteral("delivered but unsaved"), QString());
+      },
+      false, false, nullptr, {}, {}, std::move(history));
+
+  controller.toggle();
+  controller.toggle();
+  QTRY_COMPARE(controller.state(), AppController::State::Success);
+  QCOMPARE(outputPtr->deliveredText, QStringLiteral("delivered but unsaved"));
+  QVERIFY(controller.status().contains(QStringLiteral("History was not saved")));
+  QVERIFY(controller.status().contains(QStringLiteral("Storage unavailable")));
 }
 
 void AppControllerTest::recoversFromTranscriptionFailure() {

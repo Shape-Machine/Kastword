@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -15,7 +16,9 @@
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QUuid>
+#include <QWindow>
 #include <algorithm>
+#include <limits>
 #include <sodium.h>
 
 namespace {
@@ -27,13 +30,62 @@ const QByteArray magic = QByteArrayLiteral("KWHIST01");
 
 class KWalletHistoryKeyProvider final : public HistoryKeyProvider {
 public:
-  std::optional<QByteArray> loadOrCreate(QString *error) override {
-    std::unique_ptr<KWallet::Wallet> wallet(KWallet::Wallet::openWallet(
-        KWallet::Wallet::LocalWallet(), 0, KWallet::Wallet::Synchronous));
+  void loadOrCreate(QObject *context, LoadCallback callback) override {
+    KWallet::Wallet *wallet = openWallet();
     if (!wallet) {
-      *error = i18n("Secure history requires an available, unlocked KDE Wallet.");
-      return std::nullopt;
+      callback(std::nullopt, i18n("Secure history requires an available, unlocked KDE Wallet."));
+      return;
     }
+    wallet->setParent(context);
+    QObject::connect(wallet, &KWallet::Wallet::walletOpened, context,
+                     [wallet, callback = std::move(callback)](bool success) mutable {
+                       if (!success) {
+                         callback(
+                             std::nullopt,
+                             i18n("Secure history requires an available, unlocked KDE Wallet."));
+                         wallet->deleteLater();
+                         return;
+                       }
+                       QString error;
+                       std::optional<QByteArray> key = loadKey(wallet, &error);
+                       callback(std::move(key), error);
+                       wallet->deleteLater();
+                     });
+  }
+
+  void remove(QObject *context, RemoveCallback callback) override {
+    KWallet::Wallet *wallet = openWallet();
+    if (!wallet) {
+      callback(false, i18n("The secure history key could not be removed from KDE Wallet."));
+      return;
+    }
+    wallet->setParent(context);
+    QObject::connect(wallet, &KWallet::Wallet::walletOpened, context,
+                     [wallet, callback = std::move(callback)](bool success) mutable {
+                       QString error;
+                       const bool removed = success && removeKey(wallet, &error);
+                       if (!success)
+                         error =
+                             i18n("The secure history key could not be removed from KDE Wallet.");
+                       callback(removed, error);
+                       wallet->deleteLater();
+                     });
+  }
+
+private:
+  static WId parentWindowId() {
+    QWindow *window = QGuiApplication::focusWindow();
+    if (!window)
+      window = QGuiApplication::allWindows().value(0, nullptr);
+    return window ? window->winId() : 0;
+  }
+
+  static KWallet::Wallet *openWallet() {
+    return KWallet::Wallet::openWallet(KWallet::Wallet::LocalWallet(), parentWindowId(),
+                                       KWallet::Wallet::Asynchronous);
+  }
+
+  static std::optional<QByteArray> loadKey(KWallet::Wallet *wallet, QString *error) {
     if (!wallet->hasFolder(QString::fromLatin1(walletFolder)) &&
         !wallet->createFolder(QString::fromLatin1(walletFolder))) {
       *error = i18n("Kastword could not create its secure wallet folder.");
@@ -62,21 +114,12 @@ public:
     return key;
   }
 
-  bool remove(QString *error) override {
-    std::unique_ptr<KWallet::Wallet> wallet(KWallet::Wallet::openWallet(
-        KWallet::Wallet::LocalWallet(), 0, KWallet::Wallet::Synchronous));
-    if (!wallet) {
-      *error = i18n("The secure history key could not be removed from KDE Wallet.");
-      return false;
-    }
+  static bool removeKey(KWallet::Wallet *wallet, QString *error) {
     if (!wallet->hasFolder(QString::fromLatin1(walletFolder)))
       return true;
-    if (!wallet->setFolder(QString::fromLatin1(walletFolder))) {
-      *error = i18n("The secure history key could not be removed from KDE Wallet.");
-      return false;
-    }
-    if (wallet->hasEntry(QString::fromLatin1(walletEntry)) &&
-        wallet->removeEntry(QString::fromLatin1(walletEntry)) != 0) {
+    if (!wallet->setFolder(QString::fromLatin1(walletFolder)) ||
+        (wallet->hasEntry(QString::fromLatin1(walletEntry)) &&
+         wallet->removeEntry(QString::fromLatin1(walletEntry)) != 0)) {
       *error = i18n("The secure history key could not be removed from KDE Wallet.");
       return false;
     }
@@ -101,6 +144,8 @@ DictationHistory::DictationHistory(QString storagePath,
       m_clock(clock ? std::move(clock) : [] { return QDateTime::currentDateTimeUtc(); }),
       m_commit(commit ? std::move(commit) : &DictationHistory::commitAtomically) {
   Q_ASSERT(m_keyProvider);
+  m_expiryTimer.setSingleShot(true);
+  connect(&m_expiryTimer, &QTimer::timeout, this, &DictationHistory::expireEntries);
   if (sodium_init() < 0) {
     m_cryptoAvailable = false;
     fail(i18n("Secure history encryption is unavailable."));
@@ -137,34 +182,42 @@ QVariantList DictationHistory::recentEntries() const {
 bool DictationHistory::enable() {
   if (m_enabled)
     return true;
-  if (!m_cryptoAvailable)
+  if (!m_cryptoAvailable || m_busy)
     return false;
   m_available = true;
-  QString error;
-  std::optional<QByteArray> key = m_keyProvider->loadOrCreate(&error);
-  if (!key || key->size() != crypto_aead_xchacha20poly1305_ietf_KEYBYTES) {
-    fail(error.isEmpty() ? i18n("The secure history key is unavailable.") : error);
-    return false;
-  }
-  m_key = *key;
-  sodium_memzero(key->data(), size_t(key->size()));
-  key->clear();
-  m_enabled = true;
-  if (!load()) {
-    m_enabled = false;
-    sodium_memzero(m_key.data(), size_t(m_key.size()));
-    m_key.clear();
-    emit changed();
-    return false;
-  }
-  m_status = i18n("History is encrypted locally. The key is stored in KDE Wallet.");
+  m_busy = true;
+  m_status = i18n("Opening KDE Wallet…");
   emit changed();
+  m_keyProvider->loadOrCreate(this, [this](std::optional<QByteArray> key, const QString &error) {
+    m_busy = false;
+    if (!key || key->size() != crypto_aead_xchacha20poly1305_ietf_KEYBYTES) {
+      fail(error.isEmpty() ? i18n("The secure history key is unavailable.") : error);
+      return;
+    }
+    m_key = *key;
+    sodium_memzero(key->data(), size_t(key->size()));
+    key->clear();
+    m_enabled = true;
+    if (!load()) {
+      m_enabled = false;
+      sodium_memzero(m_key.data(), size_t(m_key.size()));
+      m_key.clear();
+      emit changed();
+      return;
+    }
+    m_status = i18n("History is encrypted locally. The key is stored in KDE Wallet.");
+    scheduleExpiry();
+    emit settingsChanged();
+    emit changed();
+  });
   return true;
 }
 
 void DictationHistory::disable(bool deleteData) {
+  if (m_busy)
+    return;
+  m_expiryTimer.stop();
   if (deleteData) {
-    QString error;
     const bool fileRemoved = !QFileInfo::exists(m_storagePath) || QFile::remove(m_storagePath);
     if (!fileRemoved) {
       fail(i18n("The encrypted history file could not be deleted."));
@@ -175,20 +228,30 @@ void DictationHistory::disable(bool deleteData) {
       sodium_memzero(m_key.data(), size_t(m_key.size()));
     m_key.clear();
     m_enabled = false;
-    if (!m_keyProvider->remove(&error)) {
-      fail(error.isEmpty() ? i18n("The encrypted history could not be deleted completely.")
-                           : error);
-      return;
-    }
-    m_available = true;
+    m_busy = true;
+    m_status = i18n("Removing the secure history key…");
+    emit settingsChanged();
+    emit changed();
+    m_keyProvider->remove(this, [this](bool removed, const QString &error) {
+      m_busy = false;
+      if (!removed) {
+        fail(error.isEmpty() ? i18n("The encrypted history could not be deleted completely.")
+                             : error);
+        return;
+      }
+      m_available = true;
+      m_status = i18n("Encrypted history was deleted.");
+      emit changed();
+    });
+    return;
   }
   m_entries.clear();
   if (!m_key.isEmpty())
     sodium_memzero(m_key.data(), size_t(m_key.size()));
   m_key.clear();
   m_enabled = false;
-  m_status = deleteData ? i18n("Encrypted history was deleted.")
-                        : i18n("History is disabled. Existing encrypted history was kept.");
+  m_status = i18n("History is disabled. Existing encrypted history was kept.");
+  emit settingsChanged();
   emit changed();
 }
 
@@ -203,6 +266,7 @@ bool DictationHistory::add(const QString &text) {
     m_entries = previous;
     return false;
   }
+  scheduleExpiry();
   emit changed();
   return true;
 }
@@ -219,6 +283,7 @@ bool DictationHistory::removeEntry(const QString &id) {
     m_entries = previous;
     return false;
   }
+  scheduleExpiry();
   emit changed();
   return true;
 }
@@ -232,6 +297,7 @@ bool DictationHistory::clear() {
     m_entries = previous;
     return false;
   }
+  scheduleExpiry();
   emit changed();
   return true;
 }
@@ -247,6 +313,8 @@ void DictationHistory::setMaximumEntries(int value) {
     m_entries = std::move(entries);
   }
   m_maximumEntries = value;
+  scheduleExpiry();
+  emit settingsChanged();
   emit changed();
 }
 
@@ -261,7 +329,38 @@ void DictationHistory::setMaximumAgeDays(int value) {
     m_entries = std::move(entries);
   }
   m_maximumAgeDays = value;
+  scheduleExpiry();
+  emit settingsChanged();
   emit changed();
+}
+
+void DictationHistory::scheduleExpiry() {
+  m_expiryTimer.stop();
+  if (!m_enabled || m_entries.isEmpty())
+    return;
+  QDateTime nextExpiry;
+  for (const Entry &entry : m_entries) {
+    const QDateTime expiry = entry.createdAt.addDays(m_maximumAgeDays);
+    if (!nextExpiry.isValid() || expiry < nextExpiry)
+      nextExpiry = expiry;
+  }
+  const qint64 delay = qMax<qint64>(1, m_clock().msecsTo(nextExpiry) + 1);
+  m_expiryTimer.start(int(qMin<qint64>(delay, std::numeric_limits<int>::max())));
+}
+
+void DictationHistory::expireEntries() {
+  QList<Entry> entries = m_entries;
+  if (!pruneEntries(entries, m_maximumEntries, m_maximumAgeDays)) {
+    scheduleExpiry();
+    return;
+  }
+  if (!saveEntries(entries)) {
+    m_expiryTimer.start(60000);
+    return;
+  }
+  m_entries = std::move(entries);
+  emit changed();
+  scheduleExpiry();
 }
 
 bool DictationHistory::prune() {
@@ -283,15 +382,19 @@ bool DictationHistory::load() {
   QFile file(m_storagePath);
   if (!file.exists())
     return true;
-  if (QFileInfo(file).size() > maximumHistoryFileSize) {
-    fail(i18n("The encrypted history file is too large to open safely."));
-    return false;
-  }
   if (!file.open(QIODevice::ReadOnly)) {
     fail(i18n("The encrypted history file could not be opened."));
     return false;
   }
-  const QByteArray stored = file.readAll();
+  if (file.size() > maximumHistoryFileSize) {
+    fail(i18n("The encrypted history file is too large to open safely."));
+    return false;
+  }
+  const QByteArray stored = file.read(maximumHistoryFileSize + 1);
+  if (stored.size() > maximumHistoryFileSize || !file.atEnd()) {
+    fail(i18n("The encrypted history file is too large to open safely."));
+    return false;
+  }
   const qsizetype overhead = magic.size() + crypto_aead_xchacha20poly1305_ietf_NPUBBYTES +
                              crypto_aead_xchacha20poly1305_ietf_ABYTES;
   if (stored.size() < overhead || !stored.startsWith(magic)) {
@@ -389,6 +492,8 @@ bool DictationHistory::saveEntries(const QList<Entry> &historyEntries) {
     fail(error.isEmpty() ? i18n("The encrypted history could not be saved.") : error);
     return false;
   }
+  m_available = true;
+  m_status = i18n("History is encrypted locally. The key is stored in KDE Wallet.");
   return true;
 }
 

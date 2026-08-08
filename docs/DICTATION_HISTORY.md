@@ -27,7 +27,8 @@ model data, microphone information, target applications, and usage analytics are
 ## Retention and deletion
 
 The History view lets you set both a maximum age and maximum entry count. The defaults are 30 days
-and 100 entries. Both limits are applied after each insertion and whenever history is loaded.
+and 100 entries. Both limits are applied after each insertion and whenever history is loaded;
+age-based expiry also continues automatically while Kastword remains running.
 
 You can delete one entry or clear all entries. When disabling history, choose whether to keep the
 encrypted data for later or delete both the file and its KDE Wallet key. Deletion prevents Kastword
