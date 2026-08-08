@@ -16,6 +16,7 @@ Controls.Frame {
     property string deleteLabel: ""
     property string deleteDescription: ""
     property bool showDelete: false
+    property bool deleteEnabled: true
     signal copyRequested(string text)
     signal deleteRequested(string entryId)
 
@@ -54,6 +55,7 @@ Controls.Frame {
 
             Controls.ToolButton {
                 visible: root.showDelete
+                enabled: root.deleteEnabled
                 text: root.deleteLabel
                 icon.name: "edit-delete"
                 display: Controls.AbstractButton.TextBesideIcon
