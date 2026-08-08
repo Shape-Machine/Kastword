@@ -187,8 +187,16 @@ public:
     notifications.append({kind, title, text, iconName, persistent});
   }
   void closeStatusNotification() override { ++closeCount; }
-  void revealFile(const QString &path) override { revealedFile = path; }
-  void openDirectory(const QString &path) override { openedDirectory = path; }
+  void revealFile(const QString &path, OpenCallback callback) override {
+    revealedFile = path;
+    if (callback)
+      callback(fileOpenAccepted);
+  }
+  void openDirectory(const QString &path, OpenCallback callback) override {
+    openedDirectory = path;
+    if (callback)
+      callback(fileOpenAccepted);
+  }
 
   struct Notification {
     NotificationKind kind;
@@ -203,6 +211,7 @@ public:
   QList<QKeySequence> migratedShortcuts;
   bool migratedWithAutoload = true;
   bool shortcutChangeAccepted = true;
+  bool fileOpenAccepted = true;
   std::function<void(const QKeySequence &)> shortcutChangedHandler;
   QString cleanedComponent;
   QList<Notification> notifications;
@@ -1284,6 +1293,15 @@ void AppControllerTest::configuresDesktopIntegrationAndReportsFailures() {
   QCOMPARE(desktopPtr->notifications.constLast().title, QStringLiteral("Audio input disabled"));
   QCOMPARE(desktopPtr->notifications.constLast().text,
            QStringLiteral("No audio input is selected. Choose an input to enable dictation."));
+
+  desktopPtr->fileOpenAccepted = false;
+  controller.revealHistoryStorage();
+  QCOMPARE(controller.status(),
+           QStringLiteral("The history storage location could not be opened."));
+  QCOMPARE(desktopPtr->notifications.constLast().kind, DesktopIntegration::NotificationKind::Error);
+  controller.openModelStorage();
+  QCOMPARE(controller.status(), QStringLiteral("The model storage folder could not be opened."));
+  QCOMPARE(desktopPtr->notifications.constLast().text, controller.status());
 }
 
 void AppControllerTest::reportsAutomaticPasteFailuresToDesktop_data() {

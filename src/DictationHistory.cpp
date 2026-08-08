@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFuture>
 #include <QGuiApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -17,6 +18,7 @@
 #include <QStandardPaths>
 #include <QUuid>
 #include <QWindow>
+#include <QtConcurrentRun>
 #include <algorithm>
 #include <limits>
 #include <sodium.h>
@@ -135,18 +137,21 @@ std::unique_ptr<HistoryKeyProvider> createHistoryKeyProvider() {
 DictationHistory::DictationHistory(QObject *parent)
     : DictationHistory(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) +
                            QStringLiteral("/") + QString::fromLatin1(historyFileName),
-                       createHistoryKeyProvider(), {}, {}, parent) {}
+                       createHistoryKeyProvider(), {}, {}, parent, true) {}
 
 DictationHistory::DictationHistory(QString storagePath,
                                    std::unique_ptr<HistoryKeyProvider> keyProvider, Clock clock,
-                                   CommitFunction commit, QObject *parent)
+                                   CommitFunction commit, QObject *parent,
+                                   bool asynchronousPersistence)
     : QAbstractListModel(parent), m_storagePath(std::move(storagePath)),
       m_keyProvider(std::move(keyProvider)),
       m_clock(clock ? std::move(clock) : [] { return QDateTime::currentDateTimeUtc(); }),
-      m_commit(commit ? std::move(commit) : &DictationHistory::commitAtomically) {
+      m_commit(commit ? std::move(commit) : &DictationHistory::commitAtomically),
+      m_asynchronousPersistence(asynchronousPersistence) {
   Q_ASSERT(m_keyProvider);
   m_expiryTimer.setSingleShot(true);
   connect(&m_expiryTimer, &QTimer::timeout, this, &DictationHistory::expireEntries);
+  connect(&m_saveWatcher, &QFutureWatcherBase::finished, this, &DictationHistory::finishAsyncSave);
   if (sodium_init() < 0) {
     m_cryptoAvailable = false;
     fail(i18n("Secure history encryption is unavailable."));
@@ -154,6 +159,10 @@ DictationHistory::DictationHistory(QString storagePath,
 }
 
 DictationHistory::~DictationHistory() {
+  if (m_saving) {
+    m_saveWatcher.waitForFinished();
+    persistEntries(m_entries, m_key, m_storagePath, m_commit);
+  }
   if (!m_key.isEmpty())
     sodium_memzero(m_key.data(), size_t(m_key.size()));
 }
@@ -240,6 +249,13 @@ void DictationHistory::enable() {
     m_key = *key;
     sodium_memzero(key->data(), size_t(key->size()));
     key->clear();
+    QString directoryError;
+    if (!secureStorageDirectory(m_storagePath, &directoryError)) {
+      sodium_memzero(m_key.data(), size_t(m_key.size()));
+      m_key.clear();
+      fail(directoryError);
+      return;
+    }
     m_enabled = true;
     if (!load()) {
       m_enabled = false;
@@ -256,7 +272,7 @@ void DictationHistory::enable() {
 }
 
 void DictationHistory::disable(bool deleteData) {
-  if (m_busy)
+  if (busy())
     return;
   m_expiryTimer.stop();
   if (deleteData) {
@@ -270,6 +286,7 @@ void DictationHistory::disable(bool deleteData) {
     return;
   }
   replaceEntries({});
+  m_persistedEntries.clear();
   if (!m_key.isEmpty())
     sodium_memzero(m_key.data(), size_t(m_key.size()));
   m_key.clear();
@@ -282,7 +299,7 @@ void DictationHistory::disable(bool deleteData) {
 }
 
 void DictationHistory::resumePendingDeletion() {
-  if (!deletionPending() || m_busy)
+  if (!deletionPending() || busy())
     return;
   m_expiryTimer.stop();
   if (QFileInfo::exists(m_storagePath) && !QFile::remove(m_storagePath)) {
@@ -290,6 +307,7 @@ void DictationHistory::resumePendingDeletion() {
     return;
   }
   replaceEntries({});
+  m_persistedEntries.clear();
   if (!m_key.isEmpty())
     sodium_memzero(m_key.data(), size_t(m_key.size()));
   m_key.clear();
@@ -439,8 +457,10 @@ bool DictationHistory::pruneEntries(QList<Entry> &entries, int maximumEntries,
 bool DictationHistory::load() {
   m_entries.clear();
   QFile file(m_storagePath);
-  if (!file.exists())
+  if (!file.exists()) {
+    m_persistedEntries.clear();
     return true;
+  }
   if (!file.open(QIODevice::ReadOnly)) {
     fail(i18n("The encrypted history file could not be opened."));
     return false;
@@ -510,14 +530,74 @@ bool DictationHistory::load() {
       !saveEntries(loadedEntries))
     return false;
   replaceEntries(std::move(loadedEntries));
+  m_persistedEntries = m_entries;
   return true;
 }
 
 bool DictationHistory::saveEntries(const QList<Entry> &historyEntries) {
   if (!m_enabled || m_key.size() != crypto_aead_xchacha20poly1305_ietf_KEYBYTES)
     return false;
+  if (m_asynchronousPersistence) {
+    if (m_saving)
+      m_pendingSave = historyEntries;
+    else
+      startAsyncSave(historyEntries);
+    return true;
+  }
+
+  SaveResult result = persistEntries(historyEntries, m_key, m_storagePath, m_commit);
+  if (!result.success) {
+    fail(result.error);
+    return false;
+  }
+  m_persistedEntries = historyEntries;
+  m_available = true;
+  m_resetRequired = false;
+  m_status = i18n("History is encrypted locally. The key is stored in KDE Wallet.");
+  return true;
+}
+
+void DictationHistory::startAsyncSave(QList<Entry> entries) {
+  m_saving = true;
+  emit changed();
+  QByteArray key(m_key.constData(), m_key.size());
+  const QString path = m_storagePath;
+  const CommitFunction commit = m_commit;
+  m_saveWatcher.setFuture(QtConcurrent::run(
+      [entries = std::move(entries), key = std::move(key), path, commit]() mutable {
+        return persistEntries(std::move(entries), std::move(key), path, commit);
+      }));
+}
+
+void DictationHistory::finishAsyncSave() {
+  SaveResult result = m_saveWatcher.result();
+  if (!result.success) {
+    m_pendingSave.reset();
+    m_saving = false;
+    replaceEntries(m_persistedEntries);
+    fail(result.error);
+    return;
+  }
+  m_persistedEntries = std::move(result.entries);
+  if (m_pendingSave) {
+    QList<Entry> pending = std::move(*m_pendingSave);
+    m_pendingSave.reset();
+    startAsyncSave(std::move(pending));
+    return;
+  }
+  m_saving = false;
+  m_available = true;
+  m_resetRequired = false;
+  m_status = i18n("History is encrypted locally. The key is stored in KDE Wallet.");
+  emit changed();
+}
+
+DictationHistory::SaveResult DictationHistory::persistEntries(QList<Entry> historyEntries,
+                                                              QByteArray key, const QString &path,
+                                                              const CommitFunction &commit) {
+  SaveResult outcome{std::move(historyEntries), false, {}};
   QJsonArray entries;
-  for (const Entry &entry : historyEntries) {
+  for (const Entry &entry : outcome.entries) {
     entries.append(QJsonObject{
         {QStringLiteral("id"), entry.id},
         {QStringLiteral("createdAt"), entry.createdAt.toUTC().toString(Qt::ISODateWithMs)},
@@ -537,33 +617,27 @@ bool DictationHistory::saveEntries(const QList<Entry> &historyEntries) {
       reinterpret_cast<const unsigned char *>(magic.constData()),
       static_cast<unsigned long long>(magic.size()), nullptr,
       reinterpret_cast<const unsigned char *>(nonce.constData()),
-      reinterpret_cast<const unsigned char *>(m_key.constData()));
+      reinterpret_cast<const unsigned char *>(key.constData()));
   sodium_memzero(plain.data(), size_t(plain.size()));
+  sodium_memzero(key.data(), size_t(key.size()));
   if (result != 0) {
-    fail(i18n("The history could not be encrypted."));
-    return false;
+    outcome.error = i18n("The history could not be encrypted.");
+    return outcome;
   }
   cipher.resize(qsizetype(cipherLength));
   QString error;
-  if (!m_commit(m_storagePath, magic + nonce + cipher, &error)) {
-    fail(error.isEmpty() ? i18n("The encrypted history could not be saved.") : error);
-    return false;
+  if (!commit(path, magic + nonce + cipher, &error)) {
+    outcome.error = error.isEmpty() ? i18n("The encrypted history could not be saved.") : error;
+    return outcome;
   }
-  m_available = true;
-  m_resetRequired = false;
-  m_status = i18n("History is encrypted locally. The key is stored in KDE Wallet.");
-  return true;
+  outcome.success = true;
+  return outcome;
 }
 
 bool DictationHistory::commitAtomically(const QString &path, const QByteArray &data,
                                         QString *error) {
-  const QString directoryPath = QFileInfo(path).absolutePath();
-  if (!QDir().mkpath(directoryPath) ||
-      !QFile::setPermissions(directoryPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner |
-                                                QFileDevice::ExeOwner)) {
-    *error = i18n("The private history directory could not be secured.");
+  if (!secureStorageDirectory(path, error))
     return false;
-  }
   QSaveFile file(path);
   file.setDirectWriteFallback(false);
   if (!file.open(QIODevice::WriteOnly) ||
@@ -574,6 +648,16 @@ bool DictationHistory::commitAtomically(const QString &path, const QByteArray &d
     return false;
   }
   return true;
+}
+
+bool DictationHistory::secureStorageDirectory(const QString &path, QString *error) {
+  const QString directoryPath = QFileInfo(path).absolutePath();
+  if (QDir().mkpath(directoryPath) &&
+      QFile::setPermissions(directoryPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner |
+                                               QFileDevice::ExeOwner))
+    return true;
+  *error = i18n("The private history directory could not be secured.");
+  return false;
 }
 
 void DictationHistory::fail(const QString &message, bool resetRequired) {

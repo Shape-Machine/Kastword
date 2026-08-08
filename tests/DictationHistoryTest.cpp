@@ -4,15 +4,18 @@
 #include "DictationHistory.h"
 
 #include <KLocalizedString>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
+#include <QSemaphore>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <atomic>
 #include <sodium.h>
 
 namespace {
@@ -131,6 +134,80 @@ private slots:
     QVERIFY(history.enabled());
   }
 
+  void persistsSnapshotsAsynchronouslyInOrder() {
+    QTemporaryDir directory;
+    QSemaphore saveStarted;
+    QSemaphore allowSave;
+    std::atomic_int saves = 0;
+    DictationHistory history(
+        directory.filePath(QStringLiteral("history.enc")), provider(), {},
+        [&saveStarted, &allowSave, &saves](const QString &, const QByteArray &, QString *error) {
+          ++saves;
+          saveStarted.release();
+          if (!allowSave.tryAcquire(1, 2000)) {
+            *error = QStringLiteral("Timed out waiting for test release");
+            return false;
+          }
+          return true;
+        },
+        nullptr, true);
+    history.enable();
+
+    QElapsedTimer elapsed;
+    elapsed.start();
+    QVERIFY(history.add(QStringLiteral("first")));
+    QVERIFY(elapsed.elapsed() < 500);
+    QVERIFY(saveStarted.tryAcquire(1, 1000));
+    QVERIFY(history.busy());
+    QVERIFY(history.add(QStringLiteral("second")));
+
+    allowSave.release();
+    QTRY_COMPARE_WITH_TIMEOUT(saves.load(), 2, 1000);
+    QVERIFY(saveStarted.tryAcquire(1));
+    allowSave.release();
+    QTRY_VERIFY_WITH_TIMEOUT(!history.busy(), 1000);
+    QCOMPARE(saves.load(), 2);
+    QCOMPARE(history.entries().size(), 2);
+    QCOMPARE(history.entries().constFirst().toMap().value(QStringLiteral("text")).toString(),
+             QStringLiteral("second"));
+  }
+
+  void rollsBackOptimisticEntriesAfterAsyncFailure() {
+    QTemporaryDir directory;
+    DictationHistory history(
+        directory.filePath(QStringLiteral("history.enc")), provider(), {},
+        [](const QString &, const QByteArray &, QString *error) {
+          *error = QStringLiteral("Injected asynchronous failure");
+          return false;
+        },
+        nullptr, true);
+    history.enable();
+
+    QVERIFY(history.add(QStringLiteral("not persisted")));
+    QTRY_VERIFY_WITH_TIMEOUT(!history.busy(), 1000);
+    QVERIFY(history.entries().isEmpty());
+    QVERIFY(!history.available());
+    QCOMPARE(history.status(), QStringLiteral("Injected asynchronous failure"));
+  }
+
+  void flushesLatestSnapshotDuringShutdown() {
+    QTemporaryDir directory;
+    std::atomic_int saves = 0;
+    {
+      DictationHistory history(
+          directory.filePath(QStringLiteral("history.enc")), provider(), {},
+          [&saves](const QString &, const QByteArray &, QString *) {
+            ++saves;
+            return true;
+          },
+          nullptr, true);
+      history.enable();
+      QVERIFY(history.add(QStringLiteral("first")));
+      QVERIFY(history.add(QStringLiteral("second")));
+    }
+    QVERIFY(saves.load() >= 2);
+  }
+
   void encryptsAndReloadsWithoutPlaintext() {
     QTemporaryDir directory;
     const QString path = directory.filePath(QStringLiteral("private/history.enc"));
@@ -139,6 +216,10 @@ private slots:
     {
       DictationHistory history(path, provider(key), [now] { return now; });
       history.enable();
+      QVERIFY(QFileInfo::exists(QFileInfo(path).absolutePath()));
+      QCOMPARE(QFileInfo(QFileInfo(path).absolutePath()).permissions() &
+                   QFileDevice::Permissions(0x077),
+               QFileDevice::Permissions{});
       QVERIFY(history.add(QStringLiteral("sensitive dictation")));
       QCOMPARE(history.entries().size(), 1);
     }

@@ -6,6 +6,7 @@
 #include <QAbstractListModel>
 #include <QByteArray>
 #include <QDateTime>
+#include <QFutureWatcher>
 #include <QObject>
 #include <QTimer>
 #include <QVariantList>
@@ -51,11 +52,12 @@ public:
 
   explicit DictationHistory(QObject *parent = nullptr);
   DictationHistory(QString storagePath, std::unique_ptr<HistoryKeyProvider> keyProvider,
-                   Clock clock = {}, CommitFunction commit = {}, QObject *parent = nullptr);
+                   Clock clock = {}, CommitFunction commit = {}, QObject *parent = nullptr,
+                   bool asynchronousPersistence = false);
   ~DictationHistory() override;
 
   bool enabled() const { return m_enabled; }
-  bool busy() const { return m_busy; }
+  bool busy() const { return m_busy || m_saving; }
   bool deletionPending() const;
   bool available() const { return m_available; }
   bool resetRequired() const { return m_resetRequired; }
@@ -88,6 +90,8 @@ private:
   Q_SLOT void expireEntries();
   bool load();
   bool saveEntries(const QList<Entry> &entries);
+  void startAsyncSave(QList<Entry> entries);
+  void finishAsyncSave();
   bool pruneEntries(QList<Entry> &entries, int maximumEntries, int maximumAgeDays) const;
   void scheduleExpiry();
   QString deletionMarkerPath() const;
@@ -95,7 +99,16 @@ private:
   void replaceEntries(QList<Entry> entries);
   void fail(const QString &message, bool resetRequired = false);
   static bool commitAtomically(const QString &path, const QByteArray &data, QString *error);
+  static bool secureStorageDirectory(const QString &path, QString *error);
   QVariantMap entryMap(const Entry &entry) const;
+
+  struct SaveResult {
+    QList<Entry> entries;
+    bool success = false;
+    QString error;
+  };
+  static SaveResult persistEntries(QList<Entry> entries, QByteArray key, const QString &path,
+                                   const CommitFunction &commit);
 
   QString m_storagePath;
   std::unique_ptr<HistoryKeyProvider> m_keyProvider;
@@ -104,11 +117,16 @@ private:
   QTimer m_expiryTimer;
   QByteArray m_key;
   QList<Entry> m_entries;
+  QList<Entry> m_persistedEntries;
+  std::optional<QList<Entry>> m_pendingSave;
+  QFutureWatcher<SaveResult> m_saveWatcher;
   bool m_enabled = false;
   bool m_busy = false;
   bool m_available = true;
   bool m_resetRequired = false;
   bool m_cryptoAvailable = true;
+  bool m_asynchronousPersistence = false;
+  bool m_saving = false;
   QString m_status;
   int m_maximumEntries = 100;
   int m_maximumAgeDays = 30;
