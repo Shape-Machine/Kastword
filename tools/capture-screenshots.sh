@@ -18,10 +18,15 @@ case "$output_directory" in
     *) echo "Refusing unsafe screenshot output path: $output_directory" >&2; exit 2 ;;
 esac
 
-stage_directory=$(mktemp -d "$repository_root/.screenshots-stage.XXXXXX")
-backup_directory="$repository_root/.screenshots-backup.$$"
-stage_exists=true
+exec 9< "$repository_root"
+flock 9
+
+transaction_directory=$(mktemp -d "$repository_root/.screenshots-transaction.XXXXXX")
+stage_directory="$transaction_directory/stage"
+backup_directory="$transaction_directory/backup"
+cmake -E make_directory "$stage_directory"
 replacement_complete=false
+preserve_transaction=false
 
 cleanup() {
     status=$?
@@ -32,20 +37,18 @@ cleanup() {
             if [ -e "$output_directory" ] || [ -L "$output_directory" ]; then
                 cmake -E remove_directory "$output_directory"
             fi
-            mv -- "$backup_directory" "$output_directory"
-        elif [ "$stage_exists" = true ] \
-            && [ ! -e "$stage_directory" ] \
+            if ! mv -- "$backup_directory" "$output_directory"; then
+                preserve_transaction=true
+                status=1
+            fi
+        elif [ ! -e "$stage_directory" ] \
             && { [ -e "$output_directory" ] || [ -L "$output_directory" ]; }; then
             cmake -E remove_directory "$output_directory"
         fi
     fi
 
-    if [ "$stage_exists" = true ]; then
-        cmake -E remove_directory "$stage_directory"
-    fi
-    if [ "$replacement_complete" = true ] \
-        && { [ -e "$backup_directory" ] || [ -L "$backup_directory" ]; }; then
-        cmake -E remove_directory "$backup_directory"
+    if [ "$preserve_transaction" != true ]; then
+        cmake -E remove_directory "$transaction_directory"
     fi
 
     exit "$status"
@@ -67,11 +70,6 @@ do
 done
 test "$(find "$stage_directory" -mindepth 1 -maxdepth 1 | wc -l)" -eq 4
 
-if [ -e "$backup_directory" ] || [ -L "$backup_directory" ]; then
-    echo "Refusing to overwrite screenshot backup path: $backup_directory" >&2
-    exit 2
-fi
-
 if [ -e "$output_directory" ] || [ -L "$output_directory" ]; then
     mv -- "$output_directory" "$backup_directory"
 fi
@@ -79,7 +77,6 @@ fi
 if ! mv -- "$stage_directory" "$output_directory"; then
     exit 1
 fi
-stage_exists=false
 replacement_complete=true
 
 echo "Wrote screenshots to $output_directory"

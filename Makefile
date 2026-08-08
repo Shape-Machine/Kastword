@@ -119,10 +119,10 @@ clean:
 	cmake -E remove_directory $(BUILD_DIR)
 
 format:
-	clang-format -i src/*.cpp src/*.h tests/*.cpp tests/*.h tools/*.cpp
+	clang-format -i src/*.cpp src/*.h tests/*.cpp tests/*.h tools/*.cpp tools/*.h
 
 lint:
-	clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp tests/*.h tools/*.cpp
+	clang-format --dry-run --Werror src/*.cpp src/*.h tests/*.cpp tests/*.h tools/*.cpp tools/*.h
 
 license:
 	./tools/reuse-lint.sh
