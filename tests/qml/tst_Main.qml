@@ -67,9 +67,15 @@ TestCase {
         return page
     }
 
+    function historyPage() {
+        const page = findChild(applicationWindow.contentItem, "historyPage")
+        verify(page)
+        return page
+    }
+
     function test_missingModelOpensSetupAndDisablesDictation() {
         appController.setModelReady(false)
-        tryCompare(applicationWindow, "currentView", 1)
+        tryCompare(applicationWindow, "currentView", 2)
         compare(modelPage().objectName, "modelManagerPage")
         const button = findChild(applicationWindow.contentItem, "dictationButton")
         verify(button)
@@ -79,7 +85,7 @@ TestCase {
     function test_missingAudioInputOpensAudioSetup() {
         applicationWindow.currentView = 0
         appController.requestAudioInputSetup()
-        tryCompare(applicationWindow, "currentView", 2)
+        tryCompare(applicationWindow, "currentView", 3)
         compare(audioInputPage().visible, true)
     }
 
@@ -88,14 +94,14 @@ TestCase {
         appController.setModelReady(false)
         compare(applicationWindow.currentView, 0)
         applicationWindow.openModelManager()
-        compare(applicationWindow.currentView, 1)
+        compare(applicationWindow.currentView, 2)
         const models = modelPage()
         const warning = findChild(models, "modelSetupWarning")
         verify(warning)
         compare(warning.visible, false)
 
         appController.setRestoringModel(false)
-        compare(applicationWindow.currentView, 1)
+        compare(applicationWindow.currentView, 2)
     }
 
     function cleanup() {
@@ -353,28 +359,35 @@ TestCase {
 
     function test_verticalTabsSwitchViewsInOneWindow() {
         const dictationTab = findChild(applicationWindow.contentItem, "dictationTab")
+        const historyTab = findChild(applicationWindow.contentItem, "historyTab")
         const modelsTab = findChild(applicationWindow.contentItem, "modelsTab")
         const audioInputTab = findChild(applicationWindow.contentItem, "audioInputTab")
         const settingsTab = findChild(applicationWindow.contentItem, "settingsTab")
         verify(dictationTab)
+        verify(historyTab)
         verify(modelsTab)
         verify(audioInputTab)
         verify(settingsTab)
         compare(dictationTab.checked, true)
 
-        mouseClick(modelsTab)
+        mouseClick(historyTab)
         tryCompare(applicationWindow, "currentView", 1)
+        compare(historyTab.checked, true)
+        compare(historyPage().visible, true)
+
+        mouseClick(modelsTab)
+        tryCompare(applicationWindow, "currentView", 2)
         compare(modelsTab.checked, true)
         compare(modelPage().visible, true)
 
         mouseClick(audioInputTab)
-        tryCompare(applicationWindow, "currentView", 2)
+        tryCompare(applicationWindow, "currentView", 3)
         compare(appController.audioInputMonitoringEnabled, true)
         compare(audioInputTab.checked, true)
         compare(audioInputPage().visible, true)
 
         mouseClick(settingsTab)
-        tryCompare(applicationWindow, "currentView", 3)
+        tryCompare(applicationWindow, "currentView", 4)
         compare(appController.audioInputMonitoringEnabled, false)
         compare(settingsTab.checked, true)
         compare(settingsPage().visible, true)
@@ -383,10 +396,12 @@ TestCase {
 
     function test_verticalTabsSupportArrowKeys() {
         const dictationTab = findChild(applicationWindow.contentItem, "dictationTab")
+        const historyTab = findChild(applicationWindow.contentItem, "historyTab")
         const modelsTab = findChild(applicationWindow.contentItem, "modelsTab")
         const audioInputTab = findChild(applicationWindow.contentItem, "audioInputTab")
         const settingsTab = findChild(applicationWindow.contentItem, "settingsTab")
         verify(dictationTab)
+        verify(historyTab)
         verify(modelsTab)
         verify(audioInputTab)
         verify(settingsTab)
@@ -394,9 +409,11 @@ TestCase {
         dictationTab.forceActiveFocus()
         verify(dictationTab.activeFocus)
         keyClick(Qt.Key_Down)
+        verify(historyTab.activeFocus)
+        keyClick(Qt.Key_Down)
         verify(modelsTab.activeFocus)
         keyClick(Qt.Key_Space)
-        compare(applicationWindow.currentView, 1)
+        compare(applicationWindow.currentView, 2)
 
         keyClick(Qt.Key_Down)
         verify(audioInputTab.activeFocus)
@@ -407,7 +424,30 @@ TestCase {
         keyClick(Qt.Key_Up)
         verify(settingsTab.activeFocus)
         keyClick(Qt.Key_Space)
-        compare(applicationWindow.currentView, 3)
+        compare(applicationWindow.currentView, 4)
+    }
+
+    function test_historyShowsRecentAndFullEntriesAccessibly() {
+        applicationWindow.currentView = 0
+        const recent = findChild(applicationWindow.contentItem, "recentHistoryPanel")
+        verify(recent)
+        compare(recent.visible, true)
+
+        applicationWindow.currentView = 1
+        const page = historyPage()
+        const enabled = findChild(page, "historyEnabledSwitch")
+        const count = findChild(page, "historyMaximumEntries")
+        const age = findChild(page, "historyMaximumAgeDays")
+        const clear = findChild(page, "clearHistoryButton")
+        verify(enabled)
+        verify(count)
+        verify(age)
+        verify(clear)
+        compare(enabled.checked, true)
+        verify(enabled.Accessible.description.indexOf("authenticated encryption") >= 0)
+        compare(count.Accessible.name, "Maximum history entries")
+        compare(age.Accessible.name, "Maximum history age in days")
+        compare(clear.visible, true)
     }
 
     function test_audioInputPageSelectsAndReportsDevices() {

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "AudioCapture.h"
+#include "DictationHistory.h"
 #include "ModelManager.h"
 #include "PlatformIntegration.h"
 #include "TextOutput.h"
@@ -29,6 +30,7 @@ class AppController final : public QObject {
   Q_PROPERTY(bool transcribing READ isTranscribing NOTIFY stateChanged)
   Q_PROPERTY(QString status READ status NOTIFY statusChanged)
   Q_PROPERTY(QString transcript READ transcript NOTIFY transcriptChanged)
+  Q_PROPERTY(QObject *history READ history CONSTANT)
   Q_PROPERTY(QString modelPath READ modelPath WRITE setModelPath NOTIFY modelPathChanged)
   Q_PROPERTY(bool modelReady READ modelReady NOTIFY modelReadyChanged)
   Q_PROPERTY(bool modelSetupRequired READ modelSetupRequired NOTIFY modelReadyChanged)
@@ -68,7 +70,8 @@ public:
   AppController(std::unique_ptr<AudioCapture> audio, std::unique_ptr<TextOutput> output,
                 TranscribeFunction transcribe, bool desktopIntegration, bool requireModel,
                 QObject *parent = nullptr, std::unique_ptr<ModelManager> modelManager = {},
-                std::unique_ptr<DesktopIntegration> desktopServices = {});
+                std::unique_ptr<DesktopIntegration> desktopServices = {},
+                std::unique_ptr<DictationHistory> history = {});
   ~AppController() override;
   State state() const { return m_state; }
   bool isIdle() const { return m_state == State::Idle; }
@@ -76,6 +79,7 @@ public:
   bool isTranscribing() const { return m_state == State::Transcribing; }
   QString status() const { return m_status; }
   QString transcript() const { return m_transcript; }
+  QObject *history() { return m_history.get(); }
   QString modelPath() const { return m_modelPath; }
   bool modelReady() const { return !m_requireModel || m_modelManager->modelReady(); }
   bool modelSetupRequired() const {
@@ -120,6 +124,8 @@ public:
 
   Q_INVOKABLE void toggle();
   Q_INVOKABLE void copyText(const QString &text);
+  Q_INVOKABLE bool enableHistory();
+  Q_INVOKABLE void disableHistory(bool deleteData);
   Q_INVOKABLE void copyTranscript();
   Q_INVOKABLE void forgetTranscript();
   Q_INVOKABLE void setModelUrl(const QUrl &url);
@@ -160,6 +166,7 @@ private:
   std::unique_ptr<TextOutput> m_output;
   std::unique_ptr<ModelManager> m_modelManager;
   std::unique_ptr<DesktopIntegration> m_desktopServices;
+  std::unique_ptr<DictationHistory> m_history;
   QThread m_transcriptionThread;
   TranscriptionWorker *m_transcriptionWorker;
   bool m_desktopIntegration;

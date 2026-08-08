@@ -91,6 +91,80 @@ private:
   QString m_installedId;
 };
 
+class FakeDictationHistory final : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(bool enabled READ enabled NOTIFY changed)
+  Q_PROPERTY(bool available READ available NOTIFY changed)
+  Q_PROPERTY(QString status READ status NOTIFY changed)
+  Q_PROPERTY(QString storagePath READ storagePath CONSTANT)
+  Q_PROPERTY(QVariantList entries READ entries NOTIFY changed)
+  Q_PROPERTY(QVariantList recentEntries READ recentEntries NOTIFY changed)
+  Q_PROPERTY(int maximumEntries READ maximumEntries WRITE setMaximumEntries NOTIFY changed)
+  Q_PROPERTY(int maximumAgeDays READ maximumAgeDays WRITE setMaximumAgeDays NOTIFY changed)
+
+public:
+  FakeDictationHistory() {
+    m_entries = {
+        QVariantMap{{QStringLiteral("id"), QStringLiteral("recent")},
+                    {QStringLiteral("createdText"), QStringLiteral("8 Aug 2026, 12:00")},
+                    {QStringLiteral("text"), QStringLiteral("Recent private dictation")}},
+        QVariantMap{{QStringLiteral("id"), QStringLiteral("older")},
+                    {QStringLiteral("createdText"), QStringLiteral("7 Aug 2026, 09:30")},
+                    {QStringLiteral("text"), QStringLiteral("Earlier dictation")}},
+    };
+  }
+  bool enabled() const { return m_enabled; }
+  bool available() const { return m_available; }
+  QString status() const {
+    return m_available
+               ? QStringLiteral("History is encrypted locally. The key is stored in KDE Wallet.")
+               : QStringLiteral("Secure history requires an available, unlocked KDE Wallet.");
+  }
+  QString storagePath() const { return QStringLiteral("/tmp/history.enc"); }
+  QVariantList entries() const { return m_enabled ? m_entries : QVariantList{}; }
+  QVariantList recentEntries() const { return entries().mid(0, 1); }
+  int maximumEntries() const { return m_maximumEntries; }
+  int maximumAgeDays() const { return m_maximumAgeDays; }
+  void setMaximumEntries(int value) {
+    m_maximumEntries = value;
+    emit changed();
+  }
+  void setMaximumAgeDays(int value) {
+    m_maximumAgeDays = value;
+    emit changed();
+  }
+  void setEnabled(bool enabled) {
+    m_enabled = enabled;
+    emit changed();
+  }
+  void setAvailable(bool available) {
+    m_available = available;
+    emit changed();
+  }
+  Q_INVOKABLE bool removeEntry(const QString &id) {
+    m_entries.removeIf([&id](const QVariant &entry) {
+      return entry.toMap().value(QStringLiteral("id")).toString() == id;
+    });
+    emit changed();
+    return true;
+  }
+  Q_INVOKABLE bool clear() {
+    m_entries.clear();
+    emit changed();
+    return true;
+  }
+
+signals:
+  void changed();
+
+private:
+  bool m_enabled = true;
+  bool m_available = true;
+  int m_maximumEntries = 100;
+  int m_maximumAgeDays = 30;
+  QVariantList m_entries;
+};
+
 class FakeAppController final : public QObject {
   Q_OBJECT
   Q_PROPERTY(bool idle READ idle NOTIFY stateChanged)
@@ -98,6 +172,7 @@ class FakeAppController final : public QObject {
   Q_PROPERTY(bool transcribing READ transcribing NOTIFY stateChanged)
   Q_PROPERTY(QString status READ status NOTIFY statusChanged)
   Q_PROPERTY(QString transcript READ transcript NOTIFY transcriptChanged)
+  Q_PROPERTY(QObject *history READ history CONSTANT)
   Q_PROPERTY(QString modelPath READ modelPath WRITE setModelPath NOTIFY modelPathChanged)
   Q_PROPERTY(bool modelReady READ modelReady NOTIFY modelReadyChanged)
   Q_PROPERTY(bool modelSetupRequired READ modelSetupRequired NOTIFY modelReadyChanged)
@@ -136,6 +211,7 @@ public:
   bool transcribing() const { return m_transcribing; }
   QString status() const { return m_status; }
   QString transcript() const { return QStringLiteral("Test transcription"); }
+  QObject *history() { return &m_history; }
   QString modelPath() const { return m_modelPath; }
   bool modelReady() const { return m_modelReady; }
   bool modelSetupRequired() const { return !m_modelReady && !m_restoringModel; }
@@ -263,6 +339,17 @@ public:
   }
   Q_INVOKABLE void forgetTranscript() {}
   Q_INVOKABLE void copyTranscript() {}
+  Q_INVOKABLE bool enableHistory() {
+    if (!m_history.available())
+      return false;
+    m_history.setEnabled(true);
+    return true;
+  }
+  Q_INVOKABLE void disableHistory(bool deleteData) {
+    if (deleteData)
+      m_history.clear();
+    m_history.setEnabled(false);
+  }
   Q_INVOKABLE bool removeModel(const QString &) { return true; }
   Q_INVOKABLE void setTestState(bool recording, bool transcribing) {
     m_recording = recording;
@@ -347,6 +434,7 @@ private:
   QString m_copiedText;
   QKeySequence m_shortcut{QStringLiteral("Meta+Z")};
   FakeModelManager m_modelManager;
+  FakeDictationHistory m_history;
   bool m_modelReady = true;
   bool m_restoringModel = false;
   bool m_shortcutChangeAccepted = true;

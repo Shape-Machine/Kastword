@@ -66,13 +66,14 @@ cmake -E make_directory "$stage_directory"
 
 for screenshot in \
     01-offline-dictation.png \
-    02-speech-models.png \
-    03-audio-input.png \
-    04-settings.png
+    02-history.png \
+    03-speech-models.png \
+    04-audio-input.png \
+    05-settings.png
 do
     test -f "$stage_directory/$screenshot"
 done
-test "$(find "$stage_directory" -mindepth 1 -maxdepth 1 | wc -l)" -eq 4
+test "$(find "$stage_directory" -mindepth 1 -maxdepth 1 | wc -l)" -eq 5
 
 if [ -e "$output_directory" ] || [ -L "$output_directory" ]; then
     mv -- "$output_directory" "$backup_directory"

@@ -1,0 +1,406 @@
+// SPDX-FileCopyrightText: 2026 Sri Rang
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "DictationHistory.h"
+
+#include <KLocalizedString>
+#include <KWallet>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QLocale>
+#include <QSaveFile>
+#include <QStandardPaths>
+#include <QUuid>
+#include <algorithm>
+#include <sodium.h>
+
+namespace {
+constexpr auto historyFileName = "history.enc";
+constexpr auto walletFolder = "Kastword";
+constexpr auto walletEntry = "dictation-history-key-v1";
+constexpr qint64 maximumHistoryFileSize = 64LL * 1024 * 1024;
+const QByteArray magic = QByteArrayLiteral("KWHIST01");
+
+class KWalletHistoryKeyProvider final : public HistoryKeyProvider {
+public:
+  std::optional<QByteArray> loadOrCreate(QString *error) override {
+    std::unique_ptr<KWallet::Wallet> wallet(KWallet::Wallet::openWallet(
+        KWallet::Wallet::LocalWallet(), 0, KWallet::Wallet::Synchronous));
+    if (!wallet) {
+      *error = i18n("Secure history requires an available, unlocked KDE Wallet.");
+      return std::nullopt;
+    }
+    if (!wallet->hasFolder(QString::fromLatin1(walletFolder)) &&
+        !wallet->createFolder(QString::fromLatin1(walletFolder))) {
+      *error = i18n("Kastword could not create its secure wallet folder.");
+      return std::nullopt;
+    }
+    if (!wallet->setFolder(QString::fromLatin1(walletFolder))) {
+      *error = i18n("Kastword could not open its secure wallet folder.");
+      return std::nullopt;
+    }
+    QByteArray key;
+    if (wallet->hasEntry(QString::fromLatin1(walletEntry))) {
+      if (wallet->readEntry(QString::fromLatin1(walletEntry), key) != 0 ||
+          key.size() != crypto_aead_xchacha20poly1305_ietf_KEYBYTES) {
+        *error = i18n("The secure history key could not be read.");
+        return std::nullopt;
+      }
+      return key;
+    }
+    key.resize(crypto_aead_xchacha20poly1305_ietf_KEYBYTES);
+    randombytes_buf(key.data(), size_t(key.size()));
+    if (wallet->writeEntry(QString::fromLatin1(walletEntry), key) != 0) {
+      sodium_memzero(key.data(), size_t(key.size()));
+      *error = i18n("The secure history key could not be stored.");
+      return std::nullopt;
+    }
+    return key;
+  }
+
+  bool remove(QString *error) override {
+    std::unique_ptr<KWallet::Wallet> wallet(KWallet::Wallet::openWallet(
+        KWallet::Wallet::LocalWallet(), 0, KWallet::Wallet::Synchronous));
+    if (!wallet) {
+      *error = i18n("The secure history key could not be removed from KDE Wallet.");
+      return false;
+    }
+    if (!wallet->hasFolder(QString::fromLatin1(walletFolder)))
+      return true;
+    if (!wallet->setFolder(QString::fromLatin1(walletFolder))) {
+      *error = i18n("The secure history key could not be removed from KDE Wallet.");
+      return false;
+    }
+    if (wallet->hasEntry(QString::fromLatin1(walletEntry)) &&
+        wallet->removeEntry(QString::fromLatin1(walletEntry)) != 0) {
+      *error = i18n("The secure history key could not be removed from KDE Wallet.");
+      return false;
+    }
+    return true;
+  }
+};
+} // namespace
+
+std::unique_ptr<HistoryKeyProvider> createHistoryKeyProvider() {
+  return std::make_unique<KWalletHistoryKeyProvider>();
+}
+
+DictationHistory::DictationHistory(QObject *parent)
+    : DictationHistory(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) +
+                           QStringLiteral("/") + QString::fromLatin1(historyFileName),
+                       createHistoryKeyProvider(), {}, {}, parent) {}
+
+DictationHistory::DictationHistory(QString storagePath,
+                                   std::unique_ptr<HistoryKeyProvider> keyProvider, Clock clock,
+                                   CommitFunction commit, QObject *parent)
+    : QObject(parent), m_storagePath(std::move(storagePath)), m_keyProvider(std::move(keyProvider)),
+      m_clock(clock ? std::move(clock) : [] { return QDateTime::currentDateTimeUtc(); }),
+      m_commit(commit ? std::move(commit) : &DictationHistory::commitAtomically) {
+  Q_ASSERT(m_keyProvider);
+  if (sodium_init() < 0) {
+    m_cryptoAvailable = false;
+    fail(i18n("Secure history encryption is unavailable."));
+  }
+}
+
+DictationHistory::~DictationHistory() {
+  if (!m_key.isEmpty())
+    sodium_memzero(m_key.data(), size_t(m_key.size()));
+}
+
+QVariantMap DictationHistory::entryMap(const Entry &entry) const {
+  return {{QStringLiteral("id"), entry.id},
+          {QStringLiteral("createdAt"), entry.createdAt},
+          {QStringLiteral("createdText"),
+           QLocale().toString(entry.createdAt.toLocalTime(), QLocale::ShortFormat)},
+          {QStringLiteral("text"), entry.text}};
+}
+
+QVariantList DictationHistory::entries() const {
+  QVariantList result;
+  for (const Entry &entry : m_entries)
+    result.append(entryMap(entry));
+  return result;
+}
+
+QVariantList DictationHistory::recentEntries() const {
+  QVariantList result;
+  for (qsizetype i = 0; i < qMin<qsizetype>(3, m_entries.size()); ++i)
+    result.append(entryMap(m_entries.at(i)));
+  return result;
+}
+
+bool DictationHistory::enable() {
+  if (m_enabled)
+    return true;
+  if (!m_cryptoAvailable)
+    return false;
+  m_available = true;
+  QString error;
+  std::optional<QByteArray> key = m_keyProvider->loadOrCreate(&error);
+  if (!key || key->size() != crypto_aead_xchacha20poly1305_ietf_KEYBYTES) {
+    fail(error.isEmpty() ? i18n("The secure history key is unavailable.") : error);
+    return false;
+  }
+  m_key = *key;
+  sodium_memzero(key->data(), size_t(key->size()));
+  key->clear();
+  m_enabled = true;
+  if (!load()) {
+    m_enabled = false;
+    sodium_memzero(m_key.data(), size_t(m_key.size()));
+    m_key.clear();
+    emit changed();
+    return false;
+  }
+  m_status = i18n("History is encrypted locally. The key is stored in KDE Wallet.");
+  emit changed();
+  return true;
+}
+
+void DictationHistory::disable(bool deleteData) {
+  if (deleteData) {
+    QString error;
+    const bool fileRemoved = !QFileInfo::exists(m_storagePath) || QFile::remove(m_storagePath);
+    if (!fileRemoved) {
+      fail(i18n("The encrypted history file could not be deleted."));
+      return;
+    }
+    m_entries.clear();
+    if (!m_key.isEmpty())
+      sodium_memzero(m_key.data(), size_t(m_key.size()));
+    m_key.clear();
+    m_enabled = false;
+    if (!m_keyProvider->remove(&error)) {
+      fail(error.isEmpty() ? i18n("The encrypted history could not be deleted completely.")
+                           : error);
+      return;
+    }
+    m_available = true;
+  }
+  m_entries.clear();
+  if (!m_key.isEmpty())
+    sodium_memzero(m_key.data(), size_t(m_key.size()));
+  m_key.clear();
+  m_enabled = false;
+  m_status = deleteData ? i18n("Encrypted history was deleted.")
+                        : i18n("History is disabled. Existing encrypted history was kept.");
+  emit changed();
+}
+
+bool DictationHistory::add(const QString &text) {
+  const QString trimmed = text.trimmed();
+  if (!m_enabled || trimmed.isEmpty())
+    return false;
+  const QList<Entry> previous = m_entries;
+  m_entries.prepend({QUuid::createUuid().toString(QUuid::WithoutBraces), m_clock(), trimmed});
+  prune();
+  if (!save()) {
+    m_entries = previous;
+    return false;
+  }
+  emit changed();
+  return true;
+}
+
+bool DictationHistory::removeEntry(const QString &id) {
+  if (!m_enabled)
+    return false;
+  const QList<Entry> previous = m_entries;
+  const qsizetype removed =
+      m_entries.removeIf([&id](const Entry &entry) { return entry.id == id; });
+  if (removed == 0)
+    return false;
+  if (!save()) {
+    m_entries = previous;
+    return false;
+  }
+  emit changed();
+  return true;
+}
+
+bool DictationHistory::clear() {
+  if (!m_enabled)
+    return false;
+  const QList<Entry> previous = m_entries;
+  m_entries.clear();
+  if (!save()) {
+    m_entries = previous;
+    return false;
+  }
+  emit changed();
+  return true;
+}
+
+void DictationHistory::setMaximumEntries(int value) {
+  value = qBound(1, value, 10000);
+  if (m_maximumEntries == value)
+    return;
+  m_maximumEntries = value;
+  if (m_enabled) {
+    prune();
+    save();
+  }
+  emit changed();
+}
+
+void DictationHistory::setMaximumAgeDays(int value) {
+  value = qBound(1, value, 3650);
+  if (m_maximumAgeDays == value)
+    return;
+  m_maximumAgeDays = value;
+  if (m_enabled) {
+    prune();
+    save();
+  }
+  emit changed();
+}
+
+bool DictationHistory::prune() {
+  const QDateTime oldest = m_clock().addDays(-m_maximumAgeDays);
+  const qsizetype before = m_entries.size();
+  m_entries.removeIf([&oldest](const Entry &entry) { return entry.createdAt < oldest; });
+  while (m_entries.size() > m_maximumEntries)
+    m_entries.removeLast();
+  return before != m_entries.size();
+}
+
+bool DictationHistory::load() {
+  m_entries.clear();
+  QFile file(m_storagePath);
+  if (!file.exists())
+    return true;
+  if (QFileInfo(file).size() > maximumHistoryFileSize) {
+    fail(i18n("The encrypted history file is too large to open safely."));
+    return false;
+  }
+  if (!file.open(QIODevice::ReadOnly)) {
+    fail(i18n("The encrypted history file could not be opened."));
+    return false;
+  }
+  const QByteArray stored = file.readAll();
+  const qsizetype overhead = magic.size() + crypto_aead_xchacha20poly1305_ietf_NPUBBYTES +
+                             crypto_aead_xchacha20poly1305_ietf_ABYTES;
+  if (stored.size() < overhead || !stored.startsWith(magic)) {
+    fail(i18n("The encrypted history file is damaged or unsupported."));
+    return false;
+  }
+  const QByteArray nonce = stored.mid(magic.size(), crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
+  const QByteArray cipher = stored.mid(magic.size() + nonce.size());
+  QByteArray plain(cipher.size() - crypto_aead_xchacha20poly1305_ietf_ABYTES, Qt::Uninitialized);
+  unsigned long long plainLength = 0;
+  if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+          reinterpret_cast<unsigned char *>(plain.data()), &plainLength, nullptr,
+          reinterpret_cast<const unsigned char *>(cipher.constData()),
+          static_cast<unsigned long long>(cipher.size()),
+          reinterpret_cast<const unsigned char *>(magic.constData()),
+          static_cast<unsigned long long>(magic.size()),
+          reinterpret_cast<const unsigned char *>(nonce.constData()),
+          reinterpret_cast<const unsigned char *>(m_key.constData())) != 0) {
+    fail(i18n("The encrypted history could not be authenticated or decrypted."));
+    return false;
+  }
+  plain.resize(qsizetype(plainLength));
+  QJsonParseError parseError;
+  const QJsonDocument document = QJsonDocument::fromJson(plain, &parseError);
+  sodium_memzero(plain.data(), size_t(plain.size()));
+  const QJsonObject root = document.object();
+  if (parseError.error != QJsonParseError::NoError ||
+      root.value(QStringLiteral("version")).toInt() != 1) {
+    fail(i18n("The decrypted history format is damaged or unsupported."));
+    return false;
+  }
+  const QJsonArray storedEntries = root.value(QStringLiteral("entries")).toArray();
+  if (storedEntries.size() > 10000) {
+    fail(i18n("The decrypted history contains too many entries."));
+    return false;
+  }
+  for (const QJsonValue &value : storedEntries) {
+    const QJsonObject object = value.toObject();
+    const QDateTime createdAt = QDateTime::fromString(
+        object.value(QStringLiteral("createdAt")).toString(), Qt::ISODateWithMs);
+    const QString id = object.value(QStringLiteral("id")).toString();
+    const QString text = object.value(QStringLiteral("text")).toString();
+    if (!createdAt.isValid() || id.isEmpty() || text.isEmpty()) {
+      fail(i18n("The decrypted history contains an invalid entry."));
+      return false;
+    }
+    m_entries.append({id, createdAt, text});
+  }
+  std::stable_sort(m_entries.begin(), m_entries.end(), [](const Entry &left, const Entry &right) {
+    return left.createdAt > right.createdAt;
+  });
+  if (prune() && !save())
+    return false;
+  return true;
+}
+
+bool DictationHistory::save() {
+  if (!m_enabled || m_key.size() != crypto_aead_xchacha20poly1305_ietf_KEYBYTES)
+    return false;
+  QJsonArray entries;
+  for (const Entry &entry : m_entries) {
+    entries.append(QJsonObject{
+        {QStringLiteral("id"), entry.id},
+        {QStringLiteral("createdAt"), entry.createdAt.toUTC().toString(Qt::ISODateWithMs)},
+        {QStringLiteral("text"), entry.text}});
+  }
+  QByteArray plain = QJsonDocument(QJsonObject{{QStringLiteral("version"), 1},
+                                               {QStringLiteral("entries"), entries}})
+                         .toJson(QJsonDocument::Compact);
+  QByteArray nonce(crypto_aead_xchacha20poly1305_ietf_NPUBBYTES, Qt::Uninitialized);
+  randombytes_buf(nonce.data(), size_t(nonce.size()));
+  QByteArray cipher(plain.size() + crypto_aead_xchacha20poly1305_ietf_ABYTES, Qt::Uninitialized);
+  unsigned long long cipherLength = 0;
+  const int result = crypto_aead_xchacha20poly1305_ietf_encrypt(
+      reinterpret_cast<unsigned char *>(cipher.data()), &cipherLength,
+      reinterpret_cast<const unsigned char *>(plain.constData()),
+      static_cast<unsigned long long>(plain.size()),
+      reinterpret_cast<const unsigned char *>(magic.constData()),
+      static_cast<unsigned long long>(magic.size()), nullptr,
+      reinterpret_cast<const unsigned char *>(nonce.constData()),
+      reinterpret_cast<const unsigned char *>(m_key.constData()));
+  sodium_memzero(plain.data(), size_t(plain.size()));
+  if (result != 0) {
+    fail(i18n("The history could not be encrypted."));
+    return false;
+  }
+  cipher.resize(qsizetype(cipherLength));
+  QString error;
+  if (!m_commit(m_storagePath, magic + nonce + cipher, &error)) {
+    fail(error.isEmpty() ? i18n("The encrypted history could not be saved.") : error);
+    return false;
+  }
+  return true;
+}
+
+bool DictationHistory::commitAtomically(const QString &path, const QByteArray &data,
+                                        QString *error) {
+  const QString directoryPath = QFileInfo(path).absolutePath();
+  if (!QDir().mkpath(directoryPath) ||
+      !QFile::setPermissions(directoryPath, QFileDevice::ReadOwner | QFileDevice::WriteOwner |
+                                                QFileDevice::ExeOwner)) {
+    *error = i18n("The private history directory could not be secured.");
+    return false;
+  }
+  QSaveFile file(path);
+  file.setDirectWriteFallback(false);
+  if (!file.open(QIODevice::WriteOnly) ||
+      !file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner) ||
+      file.write(data) != data.size() || !file.commit()) {
+    file.cancelWriting();
+    *error = i18n("The encrypted history could not be written atomically.");
+    return false;
+  }
+  return true;
+}
+
+void DictationHistory::fail(const QString &message) {
+  m_available = false;
+  m_status = message;
+  emit changed();
+}

@@ -19,7 +19,7 @@ sudo pacman -S --needed \
   qt6-base qt6-declarative qt6-multimedia \
   extra-cmake-modules kirigami kdeclarative \
   kconfig kcoreaddons kdbusaddons kglobalaccel ki18n \
-  knotifications kstatusnotifieritem
+  knotifications kstatusnotifieritem kwallet libsodium
 ```
 
 Automatic paste requires a separate session helper. See [Automatic paste setup and
@@ -111,7 +111,7 @@ reports under `build-coverage/coverage/`. The default gates require at least 68%
 coverage and can be raised with `COVERAGE_MIN_LINE` and `COVERAGE_MIN_BRANCH`. Coverage uses an
 installed `gcovr`, or runs it through `uvx` when available.
 
-`make screenshots` renders all four top-level views in a 760×520 logical window with deterministic
+`make screenshots` renders all five top-level views in a 760×520 logical window with deterministic
 fake data and safely replaces the permanent PNG assets in `screenshots/`. It requires an active
 graphical session so output inherits the current Plasma theme, icons, fonts, and display scale. It
 does not access the microphone or network and preserves the previous complete set on failure.

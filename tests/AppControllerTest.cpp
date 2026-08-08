@@ -12,11 +12,13 @@
 #include <QSemaphore>
 #include <QSignalSpy>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QTemporaryFile>
 #include <QTest>
 #include <algorithm>
 #include <atomic>
 #include <memory>
+#include <sodium.h>
 #include <stdexcept>
 #include <utility>
 
@@ -140,6 +142,14 @@ public:
   bool *destroyed = nullptr;
 };
 
+class ControllerHistoryKeyProvider final : public HistoryKeyProvider {
+public:
+  std::optional<QByteArray> loadOrCreate(QString *) override {
+    return QByteArray(crypto_aead_xchacha20poly1305_ietf_KEYBYTES, 'h');
+  }
+  bool remove(QString *) override { return true; }
+};
+
 class FakeDesktopIntegration final : public DesktopIntegration {
 public:
   void configureShortcut(QAction *action, const QList<QKeySequence> &shortcuts) override {
@@ -212,6 +222,7 @@ private slots:
   void reportsMicrophoneFailure();
   void recoversFromCaptureFailure();
   void completesDictationFlow();
+  void savesOnlySuccessfulNonEmptyDictationsToEnabledHistory();
   void recoversFromTranscriptionFailure();
   void ignoresEmptyTranscription();
   void recoversFromTranscriptionException();
@@ -364,6 +375,29 @@ void AppControllerTest::completesDictationFlow() {
   QCOMPARE(controller.status(), outputPtr->result);
   QCOMPARE(transcriptChanged.count(), 1);
   QTRY_COMPARE_WITH_TIMEOUT(controller.state(), AppController::State::Idle, 2000);
+}
+
+void AppControllerTest::savesOnlySuccessfulNonEmptyDictationsToEnabledHistory() {
+  QTemporaryDir directory;
+  auto history =
+      std::make_unique<DictationHistory>(directory.filePath(QStringLiteral("history.enc")),
+                                         std::make_unique<ControllerHistoryKeyProvider>());
+  auto *historyPtr = history.get();
+  QVERIFY(historyPtr->enable());
+  auto audio = std::make_unique<FakeAudioCapture>();
+  auto output = std::make_unique<FakeTextOutput>();
+  AppController controller(
+      std::move(audio), std::move(output),
+      [](const QByteArray &, const QString &, const QString &) {
+        return qMakePair(QStringLiteral("saved locally"), QString());
+      },
+      false, false, nullptr, {}, {}, std::move(history));
+
+  controller.toggle();
+  controller.toggle();
+  QTRY_COMPARE(historyPtr->entries().size(), 1);
+  QCOMPARE(historyPtr->entries().constFirst().toMap().value(QStringLiteral("text")),
+           QStringLiteral("saved locally"));
 }
 
 void AppControllerTest::recoversFromTranscriptionFailure() {

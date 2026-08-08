@@ -15,8 +15,10 @@ include(FetchContent)
 include(GNUInstallDirs)
 find_package(ECM 6.0 REQUIRED NO_MODULE)
 list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(Sodium REQUIRED IMPORTED_TARGET libsodium)
 find_package(Qt6 6.6 REQUIRED COMPONENTS Concurrent Core DBus Gui Multimedia Network Quick QuickControls2 Widgets)
-find_package(KF6 6.20 REQUIRED COMPONENTS Config CoreAddons DBusAddons Declarative GlobalAccel I18n Kirigami Notifications StatusNotifierItem)
+find_package(KF6 6.20 REQUIRED COMPONENTS Config CoreAddons DBusAddons Declarative GlobalAccel I18n Kirigami Notifications StatusNotifierItem Wallet)
 
 option(KASTWORD_FETCH_WHISPER "Download the pinned whisper.cpp dependency" ON)
 option(KASTWORD_FETCH_DEFAULT_MODEL "Download the legacy default English Whisper model" OFF)
@@ -56,6 +58,8 @@ qt_add_executable(kastword
     src/main.cpp
     src/AppController.cpp
     src/AppController.h
+    src/DictationHistory.cpp
+    src/DictationHistory.h
     src/AudioConversion.cpp
     src/AudioConversion.h
     src/AudioCapture.cpp
@@ -92,6 +96,7 @@ target_link_libraries(kastword PRIVATE
     Qt6::Multimedia Qt6::Network
     KF6::ConfigCore KF6::CoreAddons KF6::DBusAddons KF6::GlobalAccel KF6::I18n
     KF6::I18nQml KF6::Kirigami KF6::Notifications KF6::StatusNotifierItem whisper)
+target_link_libraries(kastword PRIVATE KF6::Wallet PkgConfig::Sodium)
 
 function(kastword_enable_coverage target)
     if(KASTWORD_ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -133,13 +138,14 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/io.github.shape_machine.Kastword.deskt
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications COMPONENT Kastword)
 install(FILES data/io.github.shape_machine.Kastword.metainfo.xml DESTINATION share/metainfo COMPONENT Kastword)
 install(FILES README.md DESTINATION share/doc/kastword COMPONENT Kastword)
-install(FILES docs/DEVELOPMENT.md docs/AUTOMATIC_PASTE.md
+install(FILES docs/DEVELOPMENT.md docs/AUTOMATIC_PASTE.md docs/DICTATION_HISTORY.md
         DESTINATION share/doc/kastword/docs COMPONENT Kastword)
 install(FILES
         screenshots/01-offline-dictation.png
-        screenshots/02-speech-models.png
-        screenshots/03-audio-input.png
-        screenshots/04-settings.png
+        screenshots/02-history.png
+        screenshots/03-speech-models.png
+        screenshots/04-audio-input.png
+        screenshots/05-settings.png
         DESTINATION share/doc/kastword/screenshots COMPONENT Kastword)
 install(FILES LICENSES/GPL-3.0-or-later.txt
         DESTINATION share/doc/kastword/LICENSES COMPONENT Kastword)
@@ -198,10 +204,23 @@ if(BUILD_TESTING)
     kastword_enable_sanitizers(kastword_model_manager_test)
     add_test(NAME model-manager COMMAND kastword_model_manager_test)
 
+    add_executable(kastword_history_test
+        tests/DictationHistoryTest.cpp
+        src/DictationHistory.cpp
+        src/DictationHistory.h)
+    target_include_directories(kastword_history_test PRIVATE src)
+    target_link_libraries(kastword_history_test PRIVATE
+        Qt6::Core Qt6::Test KF6::I18n KF6::Wallet PkgConfig::Sodium)
+    kastword_enable_coverage(kastword_history_test)
+    kastword_enable_sanitizers(kastword_history_test)
+    add_test(NAME history COMMAND kastword_history_test)
+
     add_executable(kastword_controller_test
         tests/AppControllerTest.cpp
         src/AppController.cpp
         src/AppController.h
+        src/DictationHistory.cpp
+        src/DictationHistory.h
         src/AudioCapture.cpp
         src/AudioCapture.h
         src/AudioConversion.cpp
@@ -223,7 +242,8 @@ if(BUILD_TESTING)
     target_include_directories(kastword_controller_test PRIVATE src)
     target_link_libraries(kastword_controller_test PRIVATE
         Qt6::Concurrent Qt6::Core Qt6::DBus Qt6::Gui Qt6::Multimedia Qt6::Network Qt6::Test Qt6::Widgets
-        KF6::ConfigCore KF6::GlobalAccel KF6::I18n KF6::Notifications whisper)
+        KF6::ConfigCore KF6::GlobalAccel KF6::I18n KF6::Notifications KF6::Wallet
+        PkgConfig::Sodium whisper)
     kastword_enable_coverage(kastword_controller_test)
     kastword_enable_sanitizers(kastword_controller_test)
     add_test(NAME controller COMMAND kastword_controller_test)
