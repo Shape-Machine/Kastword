@@ -87,10 +87,32 @@ signals:
   void settingsChanged();
 
 private:
+  struct SaveRequest {
+    QList<Entry> entries;
+    int maximumEntries = 100;
+    int maximumAgeDays = 30;
+  };
+  struct SaveResult {
+    SaveRequest request;
+    bool success = false;
+    QString error;
+  };
+  struct LoadResult {
+    QList<Entry> entries;
+    bool success = false;
+    bool resetRequired = false;
+    QString error;
+  };
+
   Q_SLOT void expireEntries();
   bool load();
-  bool saveEntries(const QList<Entry> &entries);
-  void startAsyncSave(QList<Entry> entries);
+  void startAsyncLoad();
+  void finishAsyncLoad();
+  bool saveEntries(const QList<Entry> &entries, int maximumEntries, int maximumAgeDays);
+  bool saveEntries(const QList<Entry> &entries) {
+    return saveEntries(entries, m_stagedMaximumEntries, m_stagedMaximumAgeDays);
+  }
+  void startAsyncSave(SaveRequest request);
   void finishAsyncSave();
   bool pruneEntries(QList<Entry> &entries, int maximumEntries, int maximumAgeDays) const;
   void scheduleExpiry();
@@ -102,13 +124,11 @@ private:
   static bool secureStorageDirectory(const QString &path, QString *error);
   QVariantMap entryMap(const Entry &entry) const;
 
-  struct SaveResult {
-    QList<Entry> entries;
-    bool success = false;
-    QString error;
-  };
-  static SaveResult persistEntries(QList<Entry> entries, QByteArray key, const QString &path,
+  static SaveResult persistEntries(SaveRequest request, QByteArray key, const QString &path,
                                    const CommitFunction &commit);
+  static LoadResult loadEntries(const QString &path, QByteArray key, const QDateTime &now,
+                                int maximumEntries, int maximumAgeDays,
+                                const CommitFunction &commit);
 
   QString m_storagePath;
   std::unique_ptr<HistoryKeyProvider> m_keyProvider;
@@ -118,8 +138,10 @@ private:
   QByteArray m_key;
   QList<Entry> m_entries;
   QList<Entry> m_persistedEntries;
-  std::optional<QList<Entry>> m_pendingSave;
+  QList<Entry> m_stagedEntries;
+  std::optional<SaveRequest> m_pendingSave;
   QFutureWatcher<SaveResult> m_saveWatcher;
+  QFutureWatcher<LoadResult> m_loadWatcher;
   bool m_enabled = false;
   bool m_busy = false;
   bool m_available = true;
@@ -130,4 +152,6 @@ private:
   QString m_status;
   int m_maximumEntries = 100;
   int m_maximumAgeDays = 30;
+  int m_stagedMaximumEntries = 100;
+  int m_stagedMaximumAgeDays = 30;
 };
