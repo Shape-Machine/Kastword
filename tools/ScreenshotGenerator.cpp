@@ -69,6 +69,15 @@ int main(int argc, char **argv) {
   QLocale::setDefault(QLocale::c());
   KLocalizedString::setApplicationDomain("kastword");
 
+  const QString platformName = QApplication::platformName();
+  if (platformName == QStringLiteral("offscreen") || platformName == QStringLiteral("minimal")) {
+    std::fprintf(stderr,
+                 "Screenshot capture requires an active graphical Plasma session; the Qt platform "
+                 "is '%s'. Unset QT_QPA_PLATFORM and try again.\n",
+                 platformName.toLocal8Bit().constData());
+    return 2;
+  }
+
   if (application.arguments().size() != 2) {
     std::fputs("Usage: kastword_screenshot_generator OUTPUT_DIRECTORY\n", stderr);
     return 2;

@@ -52,6 +52,28 @@ after=$(sha256sum "$fixture_root/screenshots"/*.png)
 test "$before" = "$after"
 test ! -e "$fixture_root/screenshots/partial.png"
 
+real_mv=$(command -v mv)
+cmake -E make_directory "$fixture_root/fake-bin"
+interrupting_mv="$fixture_root/fake-bin/mv"
+printf '%s\n' \
+    '#!/bin/sh' \
+    '"$REAL_MV" "$@"' \
+    'if [ ! -e "$MV_STATE" ]; then' \
+    '    cmake -E touch "$MV_STATE"' \
+    '    kill -TERM "$PPID"' \
+    'fi' > "$interrupting_mv"
+chmod +x "$interrupting_mv"
+before=$(sha256sum "$fixture_root/screenshots"/*.png)
+if PATH="$fixture_root/fake-bin:$PATH" REAL_MV="$real_mv" \
+    MV_STATE="$fixture_root/mv-interrupted" "$fixture_capture" "$fixture_generator"; then
+    echo "An interrupted replacement unexpectedly succeeded." >&2
+    exit 1
+fi
+after=$(sha256sum "$fixture_root/screenshots"/*.png)
+test "$before" = "$after"
+test ! -e "$fixture_root/.screenshots-backup."*
+test ! -e "$fixture_root/.screenshots-stage."*
+
 cmake -E remove_directory "$fixture_root/screenshots"
 outside_directory="$fixture_root/outside"
 cmake -E make_directory "$outside_directory"

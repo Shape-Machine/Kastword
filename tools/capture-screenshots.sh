@@ -21,17 +21,39 @@ esac
 stage_directory=$(mktemp -d "$repository_root/.screenshots-stage.XXXXXX")
 backup_directory="$repository_root/.screenshots-backup.$$"
 stage_exists=true
-backup_exists=false
+replacement_complete=false
 
 cleanup() {
+    status=$?
+    trap - EXIT HUP INT TERM
+
+    if [ "$replacement_complete" != true ]; then
+        if [ -e "$backup_directory" ] || [ -L "$backup_directory" ]; then
+            if [ -e "$output_directory" ] || [ -L "$output_directory" ]; then
+                cmake -E remove_directory "$output_directory"
+            fi
+            mv -- "$backup_directory" "$output_directory"
+        elif [ "$stage_exists" = true ] \
+            && [ ! -e "$stage_directory" ] \
+            && { [ -e "$output_directory" ] || [ -L "$output_directory" ]; }; then
+            cmake -E remove_directory "$output_directory"
+        fi
+    fi
+
     if [ "$stage_exists" = true ]; then
         cmake -E remove_directory "$stage_directory"
     fi
-    if [ "$backup_exists" = true ]; then
+    if [ "$replacement_complete" = true ] \
+        && { [ -e "$backup_directory" ] || [ -L "$backup_directory" ]; }; then
         cmake -E remove_directory "$backup_directory"
     fi
+
+    exit "$status"
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 "$generator" "$stage_directory"
 
@@ -52,21 +74,12 @@ fi
 
 if [ -e "$output_directory" ] || [ -L "$output_directory" ]; then
     mv -- "$output_directory" "$backup_directory"
-    backup_exists=true
 fi
 
-if mv -- "$stage_directory" "$output_directory"; then
-    stage_exists=false
-    if [ "$backup_exists" = true ]; then
-        cmake -E remove_directory "$backup_directory"
-        backup_exists=false
-    fi
-else
-    if [ "$backup_exists" = true ]; then
-        mv -- "$backup_directory" "$output_directory"
-        backup_exists=false
-    fi
+if ! mv -- "$stage_directory" "$output_directory"; then
     exit 1
 fi
+stage_exists=false
+replacement_complete=true
 
 echo "Wrote screenshots to $output_directory"
